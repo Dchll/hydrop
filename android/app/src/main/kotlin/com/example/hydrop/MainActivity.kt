@@ -1,4 +1,4 @@
-package com.example.hydrop
+package com.dchll.hydrop
 
 import io.flutter.embedding.android.FlutterActivity
 
