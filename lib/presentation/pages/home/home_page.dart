@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hydrop/data/local/database.dart';
 import 'package:hydrop/data/local/database_providers.dart';
-import 'package:riverpod/src/framework.dart';
 
 @RoutePage()
 class HomePage extends ConsumerWidget {

@@ -10,23 +10,11 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # https://pub.dev/packages/talker
-  talker: ^5.1.16
-
-  # https://pub.dev/packages/riverpod
-  riverpod: ^3.2.1
-
-  # https://pub.dev/packages/flutter_riverpod
-  flutter_riverpod: ^3.2.1
-
-  # https://pub.dev/packages/riverpod_annotation
-  riverpod_annotation: ^4.0.2
+  # https://pub.dev/packages/auto_route
+  auto_route: ^11.1.0
 
   # https://pub.dev/packages/dio
   dio: ^5.9.2
-
-  # https://pub.dev/packages/auto_route
-  auto_route: ^11.1.0
 
   # https://pub.dev/packages/drift
   drift: ^2.31.0
@@ -34,27 +22,66 @@ dependencies:
   # https://pub.dev/packages/drift_flutter
   drift_flutter: ^0.2.8
 
+  # https://pub.dev/packages/flutter_riverpod
+  flutter_riverpod: ^3.2.1
+
   # https://pub.dev/packages/path_provider
   path_provider: ^2.1.5
+
+  # https://pub.dev/packages/riverpod
+  riverpod: ^3.2.1
+
+  # https://pub.dev/packages/riverpod_annotation
+  riverpod_annotation: ^4.0.2
+
+  # https://pub.dev/packages/share_plus
+  share_plus: ^13.1.0
+
+  # https://pub.dev/packages/talker
+  talker: ^5.1.16
+
+  # https://pub.dev/packages/talker_flutter
+  talker_flutter: ^5.1.17
+
+  # https://pub.dev/packages/talker_riverpod_logger
+  talker_riverpod_logger: ^5.1.17
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
-  #  https://pub:dev/packages/flutter_lints
-  flutter_lints: ^6.0.0
+  # https://pub.dev/packages/auto_route#introduction
+  auto_route_generator: ^10.4.0
 
   # https://pub.dev/packages/build_runner
   build_runner: ^2.14.1
 
-  # https://pub.dev/packages/riverpod_generator
-  riverpod_generator: ^4.0.3
-
-  # https://pub.dev/packages/auto_route#introduction
-  auto_route_generator: ^10.4.0
-
   # https://pub.dev/packages/drift_dev
   drift_dev: ^2.31.0
 
+  #  https://pub:dev/packages/flutter_lints
+  flutter_lints: ^6.0.0
+
+  # https://pub.dev/packages/flutter_gen_runner
+  flutter_gen_runner: ^5.14.1
+
+  # https://pub.dev/packages/riverpod_generator
+  riverpod_generator: ^4.0.3
+
 flutter:
   uses-material-design: true
+  assets:
+    - assets/
+
+flutter_gen:
+  output: lib/gen/
+
+  integrations:
+    image: true
+    flutter_svg: false
+    rive: false
+    lottie: false
+
+  colors:
+    inputs:
+      - assets/color/colors.xml

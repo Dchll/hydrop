@@ -1,12 +1,26 @@
-import 'package:auto_route/annotations.dart';
+import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
+import 'package:hydrop/routes/app_router.gr.dart';
 
 @RoutePage()
 class MinePage extends StatelessWidget {
-  const MinePage({super.key});
+  MinePage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const Placeholder(child: Text("Mine Page"),);
+    return Scaffold(
+      body: Column(
+        mainAxisAlignment: .end,
+        children: [
+          ElevatedButton(
+            onPressed: () {
+              context.navigateTo(ChatRoute());
+            },
+            child: Text("Chat"),
+          ),
+          SizedBox(height: 50),
+        ],
+      ),
+    );
   }
 }
