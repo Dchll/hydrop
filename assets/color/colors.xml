@@ -1,6 +1,16 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <resources>
     <color name="black">#000000</color>
-    <color name="transparent">#000000000</color>
+    <color name="transparent">#00000000</color>
     <color name="black_50">#80000000</color>
+
+    <!-- 浅色 -->
+    <color name="light_accent">#0169CC</color>
+    <color name="light_background">#FFFFFF</color>
+    <color name="light_foreground">#0D0D0D</color>
+
+    <!-- 深色 -->
+    <color name="dark_accent">#0169CC</color>
+    <color name="dark_background">#181818</color>
+    <color name="dark_foreground">#FFFFFF</color>
 </resources>

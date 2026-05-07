@@ -4,7 +4,7 @@ import 'package:hydrop/routes/app_router.gr.dart';
 
 @RoutePage()
 class MinePage extends StatelessWidget {
-  MinePage({super.key});
+  const MinePage({super.key});
 
   @override
   Widget build(BuildContext context) {

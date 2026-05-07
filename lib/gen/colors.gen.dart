@@ -20,6 +20,24 @@ class ColorName {
   /// Color: #80000000
   static const Color black50 = Color(0x80000000);
 
-  /// Color: #000000000
-  static const Color transparent = Color(0x000000000);
+  /// Color: #0169CC
+  static const Color darkAccent = Color(0xFF0169CC);
+
+  /// Color: #181818
+  static const Color darkBackground = Color(0xFF181818);
+
+  /// Color: #FFFFFF
+  static const Color darkForeground = Color(0xFFFFFFFF);
+
+  /// Color: #0169CC
+  static const Color lightAccent = Color(0xFF0169CC);
+
+  /// Color: #FFFFFF
+  static const Color lightBackground = Color(0xFFFFFFFF);
+
+  /// Color: #0D0D0D
+  static const Color lightForeground = Color(0xFF0D0D0D);
+
+  /// Color: #00000000
+  static const Color transparent = Color(0x00000000);
 }

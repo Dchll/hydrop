@@ -1,8 +1,9 @@
+import 'dart:ui';
+
 import 'package:auto_route/annotations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hydrop/data/local/database.dart';
-import 'package:hydrop/data/local/database_providers.dart';
+import 'package:hydrop/data/repository/device_repository.dart';
 
 @RoutePage()
 class HomePage extends ConsumerWidget {
@@ -10,45 +11,48 @@ class HomePage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final padding = MediaQuery.paddingOf(context);
     return Scaffold(
+      backgroundColor: Colors.grey,
       body: Stack(
         children: [
           Align(
             alignment: Alignment.topCenter,
-            child: SafeArea(child: Row(children: [Text("Home")])),
-          ),
-          Align(
-            alignment: Alignment.topCenter,
             child: Builder(
               builder: (context) {
-                final db = ref.watch(appDataBaseProvider);
-                final deviceItems = db.select(db.deviceItems).get();
-                return FutureBuilder(
-                  future: deviceItems,
-                  builder: (context, asyncSnapshot) {
-                    if (asyncSnapshot.hasData) {
+                final devices = ref.watch(deviceListProvider);
+                return devices.when(
+                  data: (deviceItems) {
+                    if (deviceItems.isNotEmpty) {
                       return ListView.builder(
-                        itemCount: asyncSnapshot.data?.length ?? 0,
+                        padding: EdgeInsets.fromLTRB(
+                          0,
+                          50 + padding.top,
+                          0,
+                          50 + padding.bottom,
+                        ),
+                        itemCount: deviceItems.length,
                         itemBuilder: (context, index) {
-                          final deviceItem = asyncSnapshot.data?[index];
+                          final deviceItem = deviceItems[index];
                           return Container(
+                            height: 80,
                             decoration: BoxDecoration(color: Colors.grey),
                             child: Row(
                               children: [
-                                Text(deviceItem?.name ?? ''),
-                                Text(deviceItem?.info ?? ''),
-                                Text(deviceItem?.id.toString() ?? ''),
+                                Text(deviceItem.displayName),
+                                Text(deviceItem.deviceId),
+                                Text(deviceItem.connectionStatus.name),
+                                Text(deviceItem.id.toString()),
                               ],
                             ),
                           );
                         },
                       );
                     }
-                    if (asyncSnapshot.hasError) {
-                      return Text(asyncSnapshot.error.toString());
-                    }
-                    return CircularProgressIndicator();
+                    return const SizedBox.shrink();
                   },
+                  error: (error, stackTrace) => Text(error.toString()),
+                  loading: () => const CircularProgressIndicator(),
                 );
               },
             ),
@@ -59,17 +63,49 @@ class HomePage extends ConsumerWidget {
               child: Row(
                 children: [
                   ElevatedButton(
-                    onPressed: () {
-                      final db = ref.read(appDataBaseProvider);
-                      db
-                          .into(db.deviceItems)
-                          .insert(
-                            DeviceItem(name: "test", info: "test", id: 0),
+                    onPressed: () async {
+                      final uniqueId = DateTime.now().microsecondsSinceEpoch
+                          .toString();
+                      await ref
+                          .read(deviceRepositoryProvider)
+                          .saveDiscoveredDevice(
+                            displayName: 'test',
+                            deviceId: 'test-$uniqueId',
                           );
                     },
                     child: Text("add data"),
                   ),
                 ],
+              ),
+            ),
+          ),
+          Align(
+            alignment: Alignment.topCenter,
+            child: SafeArea(
+              child: SizedBox(
+                height: 50,
+                child: Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(25),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(25),
+                            border: .all(color: Colors.grey, width: 1),
+                            color: Colors.white.withAlpha(128),
+                          ),
+                          padding: .all(8),
+                          child: Text(
+                            "Home",
+                            style: TextStyle(fontSize: 24, fontWeight: .bold),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
