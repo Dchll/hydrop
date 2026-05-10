@@ -1,6 +1,7 @@
 import 'package:hydrop/core/utils/device_identity/device_identity.dart';
 import 'package:hydrop/data/local/dao/dao_providers.dart';
 import 'package:hydrop/data/local/dao/mine_dao.dart';
+import 'package:hydrop/data/local/database.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'mine_repository.g.dart';
