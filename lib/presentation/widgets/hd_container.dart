@@ -1,7 +1,6 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:hydrop/gen/colors.gen.dart';
 
 class HdContainer extends StatelessWidget {
   const HdContainer({
@@ -23,6 +22,10 @@ class HdContainer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(borderRadius),
       child: BackdropFilter(
@@ -32,12 +35,19 @@ class HdContainer extends StatelessWidget {
           height: height,
           padding: padding,
           decoration: BoxDecoration(
-            color: ColorName.lightForeground,
+            color: colorScheme.surface.withValues(alpha: isDark ? 0.36 : 0.56),
             borderRadius: BorderRadius.circular(borderRadius),
-            border: Border.all(color: Colors.white.withAlpha(1), width: 1),
+            border: Border.all(
+              color: colorScheme.onSurface.withValues(
+                alpha: isDark ? 0.18 : 0.12,
+              ),
+              width: 1,
+            ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withAlpha(1),
+                color: colorScheme.shadow.withValues(
+                  alpha: isDark ? 0.32 : 0.12,
+                ),
                 blurRadius: 30,
                 offset: const Offset(0, 16),
               ),
