@@ -50,6 +50,100 @@ final class DeviceDaoProvider
 
 String _$deviceDaoHash() => r'969cb184bc2cd52a12e7b1201bbdae6b7cda249b';
 
+@ProviderFor(deviceAddressDao)
+final deviceAddressDaoProvider = DeviceAddressDaoProvider._();
+
+final class DeviceAddressDaoProvider
+    extends
+        $FunctionalProvider<
+          DeviceAddressDao,
+          DeviceAddressDao,
+          DeviceAddressDao
+        >
+    with $Provider<DeviceAddressDao> {
+  DeviceAddressDaoProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'deviceAddressDaoProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$deviceAddressDaoHash();
+
+  @$internal
+  @override
+  $ProviderElement<DeviceAddressDao> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  DeviceAddressDao create(Ref ref) {
+    return deviceAddressDao(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(DeviceAddressDao value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<DeviceAddressDao>(value),
+    );
+  }
+}
+
+String _$deviceAddressDaoHash() => r'e90610d9dede479c7a66acc887a8a844b5c2d3da';
+
+@ProviderFor(connectionSessionDao)
+final connectionSessionDaoProvider = ConnectionSessionDaoProvider._();
+
+final class ConnectionSessionDaoProvider
+    extends
+        $FunctionalProvider<
+          ConnectionSessionDao,
+          ConnectionSessionDao,
+          ConnectionSessionDao
+        >
+    with $Provider<ConnectionSessionDao> {
+  ConnectionSessionDaoProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'connectionSessionDaoProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$connectionSessionDaoHash();
+
+  @$internal
+  @override
+  $ProviderElement<ConnectionSessionDao> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  ConnectionSessionDao create(Ref ref) {
+    return connectionSessionDao(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(ConnectionSessionDao value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<ConnectionSessionDao>(value),
+    );
+  }
+}
+
+String _$connectionSessionDaoHash() =>
+    r'dca1c46ee5a0c90e778c8304729910bd063ea07e';
+
 @ProviderFor(messageDao)
 final messageDaoProvider = MessageDaoProvider._();
 

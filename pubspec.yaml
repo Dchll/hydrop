@@ -16,6 +16,9 @@ dependencies:
   # https://pub.dev/packages/dio
   dio: ^5.9.2
 
+  # https://pub.dev/packages/crypto
+  crypto: ^3.0.7
+
   # https://pub.dev/packages/drift
   drift: ^2.31.0
 
@@ -79,6 +82,9 @@ dev_dependencies:
 
   # https://pub.dev/packages/riverpod_generator
   riverpod_generator: ^4.0.3
+
+  # https://pub.dev/packages/sqlite3
+  sqlite3: ^2.9.4
 
 flutter:
   uses-material-design: true
