@@ -3,7 +3,10 @@ import 'dart:ui';
 import 'package:auto_route/annotations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hydrop/core/utils/talker/talker.dart';
 import 'package:hydrop/data/local/repository/device_repository.dart';
+import 'package:hydrop/data/remote/repository/bing_wallpaper_repository.dart';
+import 'package:hydrop/presentation/widgets/image_widget.dart';
 
 @RoutePage()
 class HomePage extends ConsumerWidget {
@@ -16,6 +19,7 @@ class HomePage extends ConsumerWidget {
       backgroundColor: Colors.grey,
       body: Stack(
         children: [
+          Positioned.fill(child: _Background()),
           Align(
             alignment: Alignment.topCenter,
             child: Builder(
@@ -111,6 +115,26 @@ class HomePage extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _Background extends ConsumerWidget {
+  const _Background({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final wallpaperPath = ref.watch(bingWallpaperProvider.future);
+    return FutureBuilder(
+      future: wallpaperPath,
+      builder: (context, asyncSnapshot) {
+        if (asyncSnapshot.hasData) {
+          final path = asyncSnapshot.data ?? '';
+          talker.debug('dchll $path');
+          return ImageWidget(url: path, fit: BoxFit.cover);
+        }
+        return Placeholder();
+      },
     );
   }
 }
