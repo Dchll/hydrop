@@ -1,5 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
+import 'package:hydrop/presentation/widgets/hd_glass_components.dart';
 import 'package:hydrop/routes/app_router.gr.dart';
 
 @RoutePage()
@@ -8,17 +9,44 @@ class MinePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Column(
-        mainAxisAlignment: .end,
+    return HdPageScaffold(
+      child: Column(
         children: [
-          ElevatedButton(
-            onPressed: () {
-              context.navigateTo(ChatRoute());
-            },
-            child: Text("Chat"),
+          const HdGlassHeader(
+            title: 'Mine',
+            subtitle: 'Device profile, settings and diagnostics',
           ),
-          SizedBox(height: 50),
+          const SizedBox(height: 18),
+          const Expanded(
+            child: HdGlassPanel(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Profile and settings modules will be composed here.'),
+                  SizedBox(height: 12),
+                  Text(
+                    'The page now shares the same glass-first visual language as the rest of the app.',
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
+          HdGlassDock(
+            child: Row(
+              children: [
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: () {
+                      context.navigateTo(const ChatRoute());
+                    },
+                    icon: const Icon(Icons.chat_bubble_outline_rounded),
+                    label: const Text('Open chat'),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
