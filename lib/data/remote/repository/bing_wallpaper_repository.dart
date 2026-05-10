@@ -108,7 +108,7 @@ class BingWallpaperStorage {
   Future<File> _imageFile({required String date}) async {
     final directory = await _wallpaperDirectory();
     return File(
-      _join(directory.path, 'bing_${date}_${_bingWallpaperResolution}.jpg'),
+      _join(directory.path, 'bing_${date}_$_bingWallpaperResolution.jpg'),
     );
   }
 
