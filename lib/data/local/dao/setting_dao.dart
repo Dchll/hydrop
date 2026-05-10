@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:hydrop/data/local/database.dart';
-import 'package:hydrop/data/model/setting/setting.dart';
+import 'package:hydrop/data/local/model/setting/setting.dart';
 
 part 'setting_dao.g.dart';
 

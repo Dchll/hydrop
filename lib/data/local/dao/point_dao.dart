@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:hydrop/data/local/database.dart';
-import 'package:hydrop/data/model/point/point.dart';
+import 'package:hydrop/data/local/model/point/point.dart';
 
 part 'point_dao.g.dart';
 

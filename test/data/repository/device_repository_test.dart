@@ -4,8 +4,8 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hydrop/data/local/database.dart';
 import 'package:hydrop/data/local/database_providers.dart';
-import 'package:hydrop/data/model/device/device.dart';
-import 'package:hydrop/data/repository/device_repository.dart';
+import 'package:hydrop/data/local/model/device/device.dart';
+import 'package:hydrop/data/local/repository/device_repository.dart';
 import 'package:riverpod/riverpod.dart';
 
 void main() {

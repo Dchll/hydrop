@@ -2,7 +2,7 @@
 
 ## 目标
 
-- 数据库细节只保留在 `lib/data` 层，页面和业务 UI 不直接操作 Drift。
+- 数据库细节只保留在 `lib/data/local` 层，页面和业务 UI 不直接操作 Drift。
 - 以 Drift 作为本地持久化 Single Source of Truth。
 - 以 Riverpod 负责依赖注入、响应式读取和测试 override。
 - 外部代码通过 Repository 和业务 provider 读写数据，不感知表、SQL、DAO 或 Companion。
@@ -17,14 +17,14 @@
 
 ### DAO 层
 
-- 目录：`lib/data/dao`。
+- 目录：`lib/data/local/dao`。
 - DAO 只处理 Drift 查询、事务、批量写入和表关联。
 - DAO 可以返回 Drift row，但不暴露给 UI。
 - 跨表原子操作使用 Drift `transaction`。
 
 ### Repository 层
 
-- 目录：`lib/data/repository`。
+- 目录：`lib/data/local/repository`。
 - Repository 是 data 层对外主入口。
 - Repository 暴露业务语义方法，例如：
   - `watchDevices()`

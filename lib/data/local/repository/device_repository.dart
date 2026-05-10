@@ -1,7 +1,7 @@
-import 'package:hydrop/data/dao/dao_providers.dart';
-import 'package:hydrop/data/dao/device_dao.dart';
+import 'package:hydrop/data/local/dao/dao_providers.dart';
+import 'package:hydrop/data/local/dao/device_dao.dart';
 import 'package:hydrop/data/local/database.dart';
-import 'package:hydrop/data/model/device/device.dart';
+import 'package:hydrop/data/local/model/device/device.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'device_repository.g.dart';

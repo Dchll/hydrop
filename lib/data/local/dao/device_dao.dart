@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:hydrop/data/local/database.dart';
-import 'package:hydrop/data/model/device/device.dart';
+import 'package:hydrop/data/local/model/device/device.dart';
 
 part 'device_dao.g.dart';
 

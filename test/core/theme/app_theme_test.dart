@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hydrop/core/theme/app_theme.dart';
-import 'package:hydrop/data/model/setting/setting.dart';
+import 'package:hydrop/data/local/model/setting/setting.dart';
 import 'package:hydrop/gen/colors.gen.dart';
 
 void main() {

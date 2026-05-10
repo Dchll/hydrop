@@ -1,7 +1,7 @@
-import 'package:hydrop/data/dao/dao_providers.dart';
-import 'package:hydrop/data/dao/message_dao.dart';
+import 'package:hydrop/data/local/dao/dao_providers.dart';
+import 'package:hydrop/data/local/dao/message_dao.dart';
 import 'package:hydrop/data/local/database.dart';
-import 'package:hydrop/data/model/message/message.dart';
+import 'package:hydrop/data/local/model/message/message.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'message_repository.g.dart';

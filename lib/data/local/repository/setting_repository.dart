@@ -1,7 +1,7 @@
-import 'package:hydrop/data/dao/dao_providers.dart';
-import 'package:hydrop/data/dao/setting_dao.dart';
+import 'package:hydrop/data/local/dao/dao_providers.dart';
+import 'package:hydrop/data/local/dao/setting_dao.dart';
 import 'package:hydrop/data/local/database.dart';
-import 'package:hydrop/data/model/setting/setting.dart';
+import 'package:hydrop/data/local/model/setting/setting.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'setting_repository.g.dart';

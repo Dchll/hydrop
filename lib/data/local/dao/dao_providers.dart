@@ -1,8 +1,8 @@
-import 'package:hydrop/data/dao/device_dao.dart';
-import 'package:hydrop/data/dao/message_dao.dart';
-import 'package:hydrop/data/dao/mine_dao.dart';
-import 'package:hydrop/data/dao/point_dao.dart';
-import 'package:hydrop/data/dao/setting_dao.dart';
+import 'package:hydrop/data/local/dao/device_dao.dart';
+import 'package:hydrop/data/local/dao/message_dao.dart';
+import 'package:hydrop/data/local/dao/mine_dao.dart';
+import 'package:hydrop/data/local/dao/point_dao.dart';
+import 'package:hydrop/data/local/dao/setting_dao.dart';
 import 'package:hydrop/data/local/database_providers.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 

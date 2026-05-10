@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:hydrop/data/local/database.dart';
-import 'package:hydrop/data/model/message/message.dart';
+import 'package:hydrop/data/local/model/message/message.dart';
 
 part 'message_dao.g.dart';
 

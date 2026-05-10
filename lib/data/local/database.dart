@@ -1,15 +1,15 @@
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
-import 'package:hydrop/data/dao/device_dao.dart';
-import 'package:hydrop/data/dao/message_dao.dart';
-import 'package:hydrop/data/dao/mine_dao.dart';
-import 'package:hydrop/data/dao/point_dao.dart';
-import 'package:hydrop/data/dao/setting_dao.dart';
-import 'package:hydrop/data/model/device/device.dart';
-import 'package:hydrop/data/model/message/message.dart';
-import 'package:hydrop/data/model/mine/mine.dart';
-import 'package:hydrop/data/model/point/point.dart';
-import 'package:hydrop/data/model/setting/setting.dart';
+import 'package:hydrop/data/local/dao/device_dao.dart';
+import 'package:hydrop/data/local/dao/message_dao.dart';
+import 'package:hydrop/data/local/dao/mine_dao.dart';
+import 'package:hydrop/data/local/dao/point_dao.dart';
+import 'package:hydrop/data/local/dao/setting_dao.dart';
+import 'package:hydrop/data/local/model/device/device.dart';
+import 'package:hydrop/data/local/model/message/message.dart';
+import 'package:hydrop/data/local/model/mine/mine.dart';
+import 'package:hydrop/data/local/model/point/point.dart';
+import 'package:hydrop/data/local/model/setting/setting.dart';
 import 'package:path_provider/path_provider.dart';
 
 part 'database.g.dart';

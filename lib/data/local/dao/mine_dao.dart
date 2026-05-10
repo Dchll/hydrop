@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:hydrop/data/local/database.dart';
-import 'package:hydrop/data/model/mine/mine.dart';
+import 'package:hydrop/data/local/model/mine/mine.dart';
 
 part 'mine_dao.g.dart';
 

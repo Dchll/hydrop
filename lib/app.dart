@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hydrop/core/theme/app_theme.dart';
-import 'package:hydrop/data/repository/setting_repository.dart';
+import 'package:hydrop/data/local/repository/setting_repository.dart';
 import 'package:hydrop/routes/app_router.dart';
 import 'package:talker_flutter/talker_flutter.dart';
 
@@ -13,7 +13,9 @@ class MainApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final themeMode = ref.watch(settingsProvider).maybeWhen(
+    final themeMode = ref
+        .watch(settingsProvider)
+        .maybeWhen(
           data: (settings) => settings.themeMode.materialThemeMode,
           orElse: () => ThemeMode.system,
         );

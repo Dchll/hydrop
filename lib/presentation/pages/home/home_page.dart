@@ -3,7 +3,7 @@ import 'dart:ui';
 import 'package:auto_route/annotations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hydrop/data/repository/device_repository.dart';
+import 'package:hydrop/data/local/repository/device_repository.dart';
 
 @RoutePage()
 class HomePage extends ConsumerWidget {

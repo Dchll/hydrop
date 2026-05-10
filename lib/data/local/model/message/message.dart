@@ -1,5 +1,5 @@
 import 'package:drift/drift.dart';
-import 'package:hydrop/data/model/device/device.dart';
+import 'package:hydrop/data/local/model/device/device.dart';
 
 enum MessageDirection { sent, received }
 

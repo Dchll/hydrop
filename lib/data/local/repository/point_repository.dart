@@ -1,5 +1,5 @@
-import 'package:hydrop/data/dao/dao_providers.dart';
-import 'package:hydrop/data/dao/point_dao.dart';
+import 'package:hydrop/data/local/dao/dao_providers.dart';
+import 'package:hydrop/data/local/dao/point_dao.dart';
 import 'package:hydrop/data/local/database.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
