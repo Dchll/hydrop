@@ -3,7 +3,13 @@ import 'package:hydrop/data/local/model/device/device.dart';
 
 enum MessageDirection { sent, received }
 
+enum MessageType { text, image, video, file, link }
+
+enum MessageSendStatus { pending, sending, sent, failed, received }
+
 enum MessageAttachmentSaveStatus { pending, saving, saved, failed }
+
+enum MessageAttachmentTransferStatus { pending, transferring, saved, failed }
 
 /// 设备间消息表
 /// - 对方唯一设备号
@@ -28,7 +34,17 @@ class MessageItems extends Table {
       )();
   late final textContent = text().nullable()();
   late final createdAt = dateTime().clientDefault(DateTime.now)();
+  late final updatedAt = dateTime().clientDefault(DateTime.now)();
   late final direction = textEnum<MessageDirection>()();
+  late final messageType = textEnum<MessageType>().clientDefault(
+    () => MessageType.text.name,
+  )();
+  late final sendStatus = textEnum<MessageSendStatus>().clientDefault(
+    () => MessageSendStatus.pending.name,
+  )();
+  late final localMessageId = text().nullable()();
+  late final remoteMessageId = text().nullable()();
+  late final errorMessage = text().nullable()();
 }
 
 @TableIndex(name: 'message_attachment_items_message_id', columns: {#messageId})
@@ -49,4 +65,16 @@ class MessageAttachmentItems extends Table {
       .customConstraint(
         'NOT NULL CHECK (download_progress BETWEEN 0 AND 100)',
       )();
+  late final attachmentId = text().nullable()();
+  late final fileName = text().nullable()();
+  late final mimeType = text().nullable()();
+  late final totalBytes = integer().clientDefault(() => 0)();
+  late final transferredBytes = integer().clientDefault(() => 0)();
+  late final checksumSha256 = text().nullable()();
+  late final thumbnailPath = text().nullable()();
+  late final transferStatus = textEnum<MessageAttachmentTransferStatus>()
+      .clientDefault(() => MessageAttachmentTransferStatus.pending.name)();
+  late final transferTaskId = text().nullable()();
+  late final createdAt = dateTime().clientDefault(DateTime.now)();
+  late final updatedAt = dateTime().clientDefault(DateTime.now)();
 }
