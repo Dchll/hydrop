@@ -10,7 +10,6 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:auto_route/auto_route.dart' as _i5;
-import 'package:flutter/material.dart' as _i6;
 import 'package:hydrop/presentation/pages/app/app_page.dart' as _i1;
 import 'package:hydrop/presentation/pages/chat/chat_page.dart' as _i2;
 import 'package:hydrop/presentation/pages/home/home_page.dart' as _i3;
@@ -66,44 +65,16 @@ class HomeRoute extends _i5.PageRouteInfo<void> {
 
 /// generated route for
 /// [_i4.MinePage]
-class MineRoute extends _i5.PageRouteInfo<MineRouteArgs> {
-  MineRoute({_i6.Key? key, List<_i5.PageRouteInfo>? children})
-    : super(
-        MineRoute.name,
-        args: MineRouteArgs(key: key),
-        initialChildren: children,
-      );
+class MineRoute extends _i5.PageRouteInfo<void> {
+  const MineRoute({List<_i5.PageRouteInfo>? children})
+    : super(MineRoute.name, initialChildren: children);
 
   static const String name = 'MineRoute';
 
   static _i5.PageInfo page = _i5.PageInfo(
     name,
     builder: (data) {
-      final args = data.argsAs<MineRouteArgs>(
-        orElse: () => const MineRouteArgs(),
-      );
-      return _i4.MinePage(key: args.key);
+      return const _i4.MinePage();
     },
   );
-}
-
-class MineRouteArgs {
-  const MineRouteArgs({this.key});
-
-  final _i6.Key? key;
-
-  @override
-  String toString() {
-    return 'MineRouteArgs{key: $key}';
-  }
-
-  @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-    if (other is! MineRouteArgs) return false;
-    return key == other.key;
-  }
-
-  @override
-  int get hashCode => key.hashCode;
 }
