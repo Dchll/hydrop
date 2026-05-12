@@ -58,14 +58,33 @@ class DiscoveryBroadcastAnnouncementAddress {
     required this.ip,
     required this.version,
     required this.interfaceName,
+    this.subnetMask,
+    this.gatewayAddress,
+    this.broadcastAddress,
+    this.networkSignature,
+    this.isWifiLike = false,
   });
 
   final String ip;
   final String version;
   final String interfaceName;
+  final String? subnetMask;
+  final String? gatewayAddress;
+  final String? broadcastAddress;
+  final String? networkSignature;
+  final bool isWifiLike;
 
   Map<String, Object?> toJson() {
-    return {'ip': ip, 'version': version, 'interfaceName': interfaceName};
+    return {
+      'ip': ip,
+      'version': version,
+      'interfaceName': interfaceName,
+      'subnetMask': subnetMask,
+      'gatewayAddress': gatewayAddress,
+      'broadcastAddress': broadcastAddress,
+      'networkSignature': networkSignature,
+      'isWifiLike': isWifiLike,
+    };
   }
 }
 
@@ -175,6 +194,11 @@ class DiscoveryBroadcastService {
                 ip: address.address,
                 version: address.isIpv4 ? 'ipv4' : 'ipv6',
                 interfaceName: address.interfaceName,
+                subnetMask: address.subnetMask,
+                gatewayAddress: address.gatewayAddress,
+                broadcastAddress: address.broadcastAddress,
+                networkSignature: address.networkSignature,
+                isWifiLike: address.isWifiLike,
               ),
             )
             .toList(growable: false),
