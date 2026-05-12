@@ -18,20 +18,25 @@
 ### 已具备能力
 
 - `lib/data/local` 已有 Drift 数据库、DAO、Repository 和 Riverpod provider。
-- 已有本地表：`DeviceItems`、`SettingItems`、`MineItems`、`MessageItems`、`MessageAttachmentItems`、`PointItems`。
+- 已有本地表：`DeviceItems`、`DeviceAddressItems`、`ConnectionSessionItems`、`SettingItems`、`MineItems`、`MessageItems`、`MessageAttachmentItems`、`PointItems`。
 - `DeviceRepository` 暴露 `watchDevices()`、`saveDiscoveredDevice()`、`updateConnectionStatus()`。
 - `MessageRepository` 暴露 `watchConversation()`、`sendTextMessage()`、`saveReceivedMessage()`。
 - `SettingRepository` 已接入 `AppThemeMode`，`MainApp` 通过 `settingsProvider` 驱动 `ThemeMode`。
+- `MineRepository` 已支持 `getMineProfile()`、`initializeMineProfile()`、`ensureMineProfile()`，可初始化并复用稳定 `deviceId`。
 - `bingWallpaperProvider` 已能请求 UAPI、下载 4K 图片到 Downloads/`bing_wallpaper`，并清理旧图。
 - `ImageWidget` 已支持网络、文件、asset、data URI 自动识别。
+- `lib/application/mine/mine_page_state.dart` 已作为首个 application 层落地，负责编排本机 profile 与局域网地址概览。
+- `HdPageScaffold`、`HdGlassHeader`、`HdGlassPanel`、`HdGlassDock` 已完成抽象，并已用于 `AppPage`、`HomePage`、`ChatPage`、`MinePage` 的主视觉骨架。
+- `MinePage` 已能展示 `displayName`、`hostName`、`deviceId` 和基础本地可用 IP 列表，并支持手动刷新。
+- `LocalNetworkAddressService` 已作为共享地址枚举服务抽出，`DiscoveryBroadcastService` 已按所有本机可用 IPv4 源地址建立多网卡 UDP 广播。
 
 ### 主要缺口
 
-- 没有统一的网络接口枚举服务，不能稳定拿到本机所有可用 IP 和广播地址。
-- 没有 UDP 发现协议、广播监听、发现 TTL、去重和自设备过滤。
+- 网络接口枚举已经共享到 `LocalNetworkAddressService`；基础地址过滤与排序已落地，但广播地址、网关和子网元数据仍需后续补全。
+- UDP 广播发送已经落地；广播监听、发现 TTL、去重和自设备过滤仍待实现。
 - 没有连接管理器、连接状态机、心跳、断线重连和测速。
-- 设备记忆目前只存设备基础信息，缺少 IP 历史、端口、可用性、测速和最后成功时间。
-- 消息表缺少消息类型、发送状态、远端消息 ID、幂等字段；附件表缺少文件名、MIME、大小、校验、缩略图和传输任务绑定。
+- 设备记忆虽然已有 `DeviceAddressItems` / `ConnectionSessionItems` 数据结构，但还缺 discovery 回写、TTL 清理、测速刷新和 UI 展示闭环。
+- 消息表和附件表的扩展字段已经落地，但缺少 ACK 协议、真实发送队列、收发链路和页面交互闭环。
 - 聊天页还没有按 `remoteDeviceId` 绑定会话，也没有发送 UI 和传输队列。
 
 ### 规划新增依赖
@@ -117,8 +122,17 @@ lib/
 ```
 
 说明：`application` 是建议新增的逻辑层。它不破坏 `lib/data` 只能有 `local` / `remote` 两个顶层目录的约束。
+当前 `main` 已有 `lib/application/mine/mine_page_state.dart` 作为第一批落地代码；后续发现、连接、消息编排建议沿用同样边界继续扩展。
 
 ## 4. 核心数据设计
+
+当前实现记录（2026-05-10）：
+
+- [x] `schemaVersion` 已升级到 V2，并补齐 V1 -> V2 迁移测试。
+- [x] `DeviceAddressItems` / `ConnectionSessionItems`、对应 DAO / Repository 已完成数据层实现。
+- [x] 消息表和附件表的核心扩展字段已落地，支持消息状态和附件媒体元数据持久化。
+- [x] 本机 `deviceId` 已补充哈希生成工具和 `MineRepository.initializeMineProfile()` 初始化入口。
+- [ ] 网络发现、连接状态机、真实收发链路和 UI 消费仍待接入。
 
 ### 4.1 现有表保留策略
 
@@ -159,6 +173,12 @@ deviceId = "hydrop_" + sha256("hydrop-device-id-v1:" + rawStableDeviceSeed).subs
 - 如果平台拿不到稳定标识，才退回随机 UUID；此时 UI 应提示“清除数据后设备 ID 可能变化”。
 - `MineRepository.saveMineProfile()` 不负责生成 ID，只负责持久化；生成逻辑放在 `DeviceIdentityService` 或 `MineInitializer`。
 - 广播 payload 只发送 hash 后的 `deviceId`。
+
+实现状态：
+
+- [x] 已提供 `deriveHydropDeviceId(stableSeed)`，按 `sha256("hydrop-device-id-v1:" + stableSeed)` 生成稳定 ID。
+- [x] `MineRepository.initializeMineProfile()` 已支持以稳定 seed 初始化本机展示名和 `deviceId`。
+- [ ] 平台层 `platformStableIdentifier()` 和首次启动初始化编排仍待补齐。
 
 ### 4.2 新增表：设备地址历史
 
@@ -206,6 +226,12 @@ deviceId = "hydrop_" + sha256("hydrop-device-id-v1:" + rawStableDeviceSeed).subs
 3. 速度相同按 `latencyMs asc`。
 4. 不可用地址按 `lastSeenAt desc`，保留历史但不优先连接。
 
+实现状态：
+
+- [x] `DeviceAddressItems`、唯一索引和基础排序规则已落地。
+- [x] `DeviceAddressDao` / `DeviceAddressRepository` 已支持 upsert、按设备查询和按可用性/速度/延迟排序。
+- [ ] 地址 TTL、广播回写、自动清理和 UI 展示仍待接入。
+
 ### 4.3 新增表：连接会话
 
 用于调试连接状态、重启后恢复最后连接信息。
@@ -234,6 +260,12 @@ deviceId = "hydrop_" + sha256("hydrop-device-id-v1:" + rawStableDeviceSeed).subs
 - 后续可以增加用户主动清理入口，但不做静默删除。
 - 当前运行态仍以 `ConnectionManager` 内存状态为准，表用于审计和恢复。
 
+实现状态：
+
+- [x] `ConnectionSessionItems`、`ConnectionSessionDao`、`ConnectionSessionRepository` 已落地。
+- [x] 已支持 session upsert、状态更新、分页查询历史会话。
+- [ ] 连接状态机、心跳和真实链路写回仍待接入。
+
 ### 4.4 扩展消息表
 
 当前 `MessageItems` 需要在 V2 迁移中补充字段。
@@ -254,6 +286,12 @@ deviceId = "hydrop_" + sha256("hydrop-device-id-v1:" + rawStableDeviceSeed).subs
 - 本机发送：先生成 `localMessageId`，写入 pending，再发送。
 - 对端接收：按 `(remoteDeviceId, remoteMessageId)` 去重，重复消息只回 ACK，不重复插入。
 - ACK 回来后按 `localMessageId` 更新为 sent。
+
+实现状态：
+
+- [x] `MessageItems` 已增加 `messageType`、`sendStatus`、`localMessageId`、`remoteMessageId`、`updatedAt`、`errorMessage`。
+- [x] `MessageDao` / `MessageRepository` 已支持本地 pending 消息写入，以及 sent / failed 状态回写。
+- [ ] 对端幂等去重、ACK 协议和聊天 UI 绑定仍待接入。
 
 ### 4.5 扩展附件表
 
@@ -285,6 +323,12 @@ deviceId = "hydrop_" + sha256("hydrop-device-id-v1:" + rawStableDeviceSeed).subs
   - 文件被用户删除：附件状态显示为“文件已删除/本地文件不存在”，保留消息记录。
   - 远端仍在线且协议支持重传：展示“重新下载”入口。
 
+实现状态：
+
+- [x] `MessageAttachmentItems` 已扩展 `attachmentId`、`fileName`、`mimeType`、`totalBytes`、`transferredBytes`、`checksumSha256`、`thumbnailPath`、`transferStatus`、`transferTaskId`、`createdAt`、`updatedAt`。
+- [x] 附件 Repository/DAO 写入链路已支持媒体元数据和传输状态持久化。
+- [ ] 分片传输、文件校验、重新下载和附件清理仍待实现。
+
 ### 4.6 迁移策略
 
 `schemaVersion` 从 1 升到 2 时：
@@ -304,6 +348,12 @@ deviceId = "hydrop_" + sha256("hydrop-device-id-v1:" + rawStableDeviceSeed).subs
 - 使用 Drift schema snapshots 验证 V1 -> V2。
 - 使用 `NativeDatabase.memory()` 验证新表写入、排序和 cascade。
 - 保留 `test/data/data_layout_test.dart`，确保 `lib/data` 仍只有 `local` 和 `remote`。
+
+实现状态：
+
+- [x] 已新增 `test/data/database_migration_test.dart`，覆盖 V1 -> V2 迁移和 legacy 数据回填。
+- [x] 已新增内存数据库测试，覆盖 `DeviceAddressRepository`、`ConnectionSessionRepository`、`MessageRepository` 和 `deriveHydropDeviceId()`。
+- [ ] Drift schema snapshot 方案和 `test/data/data_layout_test.dart` 仍需补齐。
 
 ## 5. 设备发现设计
 
@@ -363,6 +413,14 @@ class LocalNetworkAddress {
 - 都没有时：`$interfaceName/$ipVersion`。
 - 该字段只用于本地排序和分组，不参与跨设备身份识别。
 
+当前实现状态（2026-05-10）：
+
+- [x] `mineOverviewProvider` 已基于 `NetworkInterface.list()` 枚举本机地址，并做去重、基础排序与过滤。
+- [x] 已过滤回环、链路本地、组播地址，以及 `lo`、`awdl`、`llw`、`utun`、`bridge`、`vmnet`、`vboxnet` 等常见虚拟接口。
+- [x] `MinePage` 已展示网卡名称、IP 地址和 IPv4 / IPv6 标签，并提供手动刷新入口。
+- [x] `LocalNetworkAddressService` 已抽离并被 Mine 页面与广播服务复用。
+- [ ] `NetworkInterfaceService` 仍需合并 `network_info_plus` 的网关 / 子网 / 广播地址补充能力。
+
 ### 5.2 UDP 发现协议
 
 端口建议：
@@ -372,7 +430,7 @@ class LocalNetworkAddress {
 
 广播间隔：
 
-- 前台活跃：每 3 秒一次。
+- 前台活跃：每 10 秒一次。
 - 后台或非活跃：暂停或降到 15 秒一次，视平台能力决定。
 - 设备 TTL：12 秒未收到广播则标记为 disconnected，但不删除设备记忆。
 
@@ -749,6 +807,8 @@ class TransferTask {
 
 ## 11. UI 与 Riverpod 设计
 
+当前 `main` 已落地统一高斯模糊主视觉组件：`HdPageScaffold` 负责页面级背景与安全区承载，`HdGlassHeader` 负责标题区，`HdGlassPanel` 负责内容卡片，`HdGlassDock` 负责底部浮层操作区。`AppPage`、`HomePage`、`ChatPage`、`MinePage` 已基于这组组件实现一致的页面骨架；后续新页面优先复用，而不是重新拼装散落的容器和模糊样式。
+
 ### 11.1 首页设备列表
 
 Provider 组合：
@@ -992,7 +1052,7 @@ MVP 可以先不做端到端加密，但协议要预留字段。
 
 ### 单元测试
 
-- `NetworkInterfaceService`：过滤规则、地址排序、fallback broadcast。
+- `LocalNetworkAddressService`：过滤规则、地址排序、fallback broadcast。
 - `DiscoveryPayloadCodec`：JSON 编解码、版本不兼容、字段缺失。
 - `FrameCodec`：header/body 长度、非法长度、分片组合。
 - `ConnectionStateMachine`：心跳 miss、重试、地址切换。
@@ -1031,26 +1091,32 @@ flutter analyze
 
 ### P0：基础稳定
 
+- [x] 已抽离 `HdPageScaffold` / `HdGlassHeader` / `HdGlassPanel` / `HdGlassDock`，统一首页、聊天页、我的页主视觉骨架。
 - [ ] `ImageWidget` 支持 nullable URL、灰色占位、失败点击重试。
 - [ ] `ImageWidget` 网络分支接入 `cached_network_image: ^3.4.1`，并保留非网络图片自动识别能力。
 - [ ] `ChatRoute` 增加 `deviceId` 参数。
-- [ ] Drift `schemaVersion` 规划 V2，补齐迁移测试框架。
-- [ ] `DeviceIdentityService` 生成清除 app 数据后仍尽量稳定的本机 `deviceId`。
-- [ ] 本机 `MineProfile` 首次启动初始化：展示名、稳定 `deviceId`。
+- [x] Drift `schemaVersion` 已升级到 V2，并补齐迁移测试框架。
+- [x] 已提供稳定 `deviceId` 哈希生成工具，供 `DeviceIdentityService` 或初始化流程复用。
+- [x] `MineRepository.initializeMineProfile()` 已支持首次落库展示名和稳定 `deviceId`。
+- [ ] 平台层 `platformStableIdentifier()` 与首次启动编排仍待补齐。
 
 ### P1：发现闭环
 
+- [x] `MinePage` 已先基于 `NetworkInterface.list()` 打通本机 profile 和基础局域网地址展示，作为网络发现落地前的诊断入口。
 - [ ] 引入 `network_info_plus: ^8.1.0`。
-- [ ] `NetworkInterfaceService` 合并 `NetworkInterface.list()` 和 `network_info_plus` 信息，输出本机地址、网关、子网和广播地址。
+- [x] `LocalNetworkAddressService` 合并 `NetworkInterface.list()` 的基础信息，并作为 `MinePage` 与广播服务的共享来源。
+- [ ] `NetworkInterfaceService` 合并 `network_info_plus` 信息，输出本机地址、网关、子网和广播地址。
+- [x] `DiscoveryBroadcastService` 实现 UDP 广播发送和多网卡轮询。
 - [ ] `DiscoveryPayloadCodec` 编解码和测试。
-- [ ] `DiscoverySocketService` 实现 UDP 发送/监听。
+- [ ] `DiscoverySocketService` 实现 UDP 监听。
 - [ ] `DiscoveryController` 启停服务、写入设备和地址。
 - [ ] 首页设备列表显示真实发现结果。
 
 ### P2：设备记忆和测速
 
-- [ ] 新增 `DeviceAddressItems`。
-- [ ] 新增 `DeviceAddressDao` / `DeviceAddressRepository`。
+- [x] 新增 `DeviceAddressItems`。
+- [x] 新增 `DeviceAddressDao` / `DeviceAddressRepository`。
+- [x] 新增 `ConnectionSessionItems` / `ConnectionSessionDao` / `ConnectionSessionRepository`。
 - [ ] 实现地址 TTL、可用性、测速排序。
 - [ ] UI 展示速度、延迟、在线/离线。
 
@@ -1059,12 +1125,13 @@ flutter analyze
 - [ ] `TransferSocketService` 实现 TCP server/client。
 - [ ] `FrameCodec` 实现二进制 frame。
 - [ ] `ConnectionManager` 实现状态机、握手、心跳、重连。
+- [x] 消息表已支持 pending / sent / failed 状态、幂等 ID 和错误信息落库。
 - [ ] `OutboundMessageQueue` 实现 pending 消息发送和 ACK。
 - [ ] `ChatController` 接入文本发送和失败重试。
 
 ### P4：图片和视频
 
-- [ ] 扩展附件表和传输任务。
+- [x] 附件表已扩展媒体元数据、传输状态和任务标识字段。
 - [ ] `FileTransferCoordinator` 实现 offer/chunk/complete。
 - [ ] 图片选择、缩略图、发送、接收、预览。
 - [ ] 视频选择、封面、发送、接收、播放入口。
@@ -1082,7 +1149,7 @@ flutter analyze
 | --- | --- | --- |
 | UDP discovery port | `39175` | 可改，需避免和系统服务冲突 |
 | TCP transfer port | `39176` 或动态端口 | 动态端口更稳，广播 payload 必须携带 |
-| discovery interval | `3s` | 前台广播频率 |
+| discovery interval | `10s` | 广播频率 |
 | device TTL | `12s` | 超过后标记 disconnected |
 | connect timeout | `2s` | 单地址 TCP 连接超时 |
 | heartbeat interval | `5s` | 心跳间隔 |

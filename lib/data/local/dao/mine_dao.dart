@@ -16,6 +16,12 @@ class MineDao extends DatabaseAccessor<AppDataBase> with _$MineDaoMixin {
     return query.watchSingleOrNull();
   }
 
+  Future<MineItem?> getMine() {
+    final query = select(mineItems)
+      ..where((table) => table.id.equals(_mineRowId));
+    return query.getSingleOrNull();
+  }
+
   Future<int> saveMine({
     required String displayName,
     required String deviceId,

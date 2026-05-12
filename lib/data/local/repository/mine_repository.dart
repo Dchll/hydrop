@@ -31,6 +31,11 @@ class MineRepository {
 
   final MineDao _mineDao;
 
+  Future<MineProfile?> getMineProfile() async {
+    final row = await _mineDao.getMine();
+    return row == null ? null : MineProfile.fromRow(row);
+  }
+
   Stream<MineProfile?> watchMineProfile() {
     return _mineDao.watchMine().map(
       (row) => row == null ? null : MineProfile.fromRow(row),
@@ -51,6 +56,27 @@ class MineRepository {
     final deviceId = deriveHydropDeviceId(stableSeed);
     await _mineDao.saveMine(displayName: displayName, deviceId: deviceId);
     return deviceId;
+  }
+
+  Future<MineProfile> ensureMineProfile({
+    required String displayName,
+    required String stableSeed,
+  }) async {
+    final existing = await getMineProfile();
+    if (existing != null) {
+      return existing;
+    }
+
+    await initializeMineProfile(
+      displayName: displayName,
+      stableSeed: stableSeed,
+    );
+
+    final created = await getMineProfile();
+    if (created == null) {
+      throw StateError('Mine profile was not created successfully.');
+    }
+    return created;
   }
 }
 
