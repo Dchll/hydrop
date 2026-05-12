@@ -1,6 +1,6 @@
 # Hydrop 架构设计
 
-更新时间：2026-05-10
+更新时间：2026-05-12
 
 本文用于承接 `README.md` 中规划的功能，并把“要做什么”拆解成可实现、可测试、可逐步调整的架构方案。文档偏设计稿，不要求一次性全部实现；后续每次改动可以直接在对应章节调整字段、协议和阶段任务。
 
@@ -29,10 +29,11 @@
 - `HdPageScaffold`、`HdGlassHeader`、`HdGlassPanel`、`HdGlassDock` 已完成抽象，并已用于 `AppPage`、`HomePage`、`ChatPage`、`MinePage` 的主视觉骨架。
 - `MinePage` 已能展示 `displayName`、`hostName`、`deviceId` 和基础本地可用 IP 列表，并支持手动刷新。
 - `LocalNetworkAddressService` 已作为共享地址枚举服务抽出，`DiscoveryBroadcastService` 已按所有本机可用 IPv4 源地址建立多网卡 UDP 广播。
+- `network_info_plus: ^8.1.0` 已接入，Wi-Fi 的网关 / 子网 / 广播元数据会合并到本机地址与广播 payload。
 
 ### 主要缺口
 
-- 网络接口枚举已经共享到 `LocalNetworkAddressService`；基础地址过滤与排序已落地，但广播地址、网关和子网元数据仍需后续补全。
+- 网络接口枚举已经共享到 `LocalNetworkAddressService`；基础地址过滤与排序已落地，Wi-Fi 场景下的广播地址、网关和子网元数据也已补齐，剩余风险主要在平台返回值差异。
 - UDP 广播发送已经落地；广播监听、发现 TTL、去重和自设备过滤仍待实现。
 - 没有连接管理器、连接状态机、心跳、断线重连和测速。
 - 设备记忆虽然已有 `DeviceAddressItems` / `ConnectionSessionItems` 数据结构，但还缺 discovery 回写、TTL 清理、测速刷新和 UI 展示闭环。
@@ -413,13 +414,13 @@ class LocalNetworkAddress {
 - 都没有时：`$interfaceName/$ipVersion`。
 - 该字段只用于本地排序和分组，不参与跨设备身份识别。
 
-当前实现状态（2026-05-10）：
+当前实现状态（2026-05-12）：
 
 - [x] `mineOverviewProvider` 已基于 `NetworkInterface.list()` 枚举本机地址，并做去重、基础排序与过滤。
 - [x] 已过滤回环、链路本地、组播地址，以及 `lo`、`awdl`、`llw`、`utun`、`bridge`、`vmnet`、`vboxnet` 等常见虚拟接口。
 - [x] `MinePage` 已展示网卡名称、IP 地址和 IPv4 / IPv6 标签，并提供手动刷新入口。
 - [x] `LocalNetworkAddressService` 已抽离并被 Mine 页面与广播服务复用。
-- [ ] `NetworkInterfaceService` 仍需合并 `network_info_plus` 的网关 / 子网 / 广播地址补充能力。
+- [x] `network_info_plus` 已补齐 Wi-Fi 网关 / 子网 / 广播地址，并进入本机地址与广播 payload。
 
 ### 5.2 UDP 发现协议
 
@@ -1103,9 +1104,9 @@ flutter analyze
 ### P1：发现闭环
 
 - [x] `MinePage` 已先基于 `NetworkInterface.list()` 打通本机 profile 和基础局域网地址展示，作为网络发现落地前的诊断入口。
-- [ ] 引入 `network_info_plus: ^8.1.0`。
+- [x] 引入 `network_info_plus: ^8.1.0`。
 - [x] `LocalNetworkAddressService` 合并 `NetworkInterface.list()` 的基础信息，并作为 `MinePage` 与广播服务的共享来源。
-- [ ] `NetworkInterfaceService` 合并 `network_info_plus` 信息，输出本机地址、网关、子网和广播地址。
+- [x] `LocalNetworkAddressService` 合并 `network_info_plus` 信息，输出本机地址、网关、子网和广播地址。
 - [x] `DiscoveryBroadcastService` 实现 UDP 广播发送和多网卡轮询。
 - [ ] `DiscoveryPayloadCodec` 编解码和测试。
 - [ ] `DiscoverySocketService` 实现 UDP 监听。
