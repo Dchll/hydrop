@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hydrop/application/discovery/discovery_broadcast_state.dart';
+import 'package:hydrop/application/discovery/discovery_controller.dart';
 import 'package:hydrop/core/theme/app_theme.dart';
 import 'package:hydrop/data/local/repository/setting_repository.dart';
 import 'package:hydrop/routes/app_router.dart';
@@ -14,7 +14,7 @@ class MainApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    ref.watch(discoveryBroadcastControllerProvider);
+    ref.watch(discoveryControllerProvider);
     final themeMode = ref
         .watch(settingsProvider)
         .maybeWhen(
