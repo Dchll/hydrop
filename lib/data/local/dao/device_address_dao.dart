@@ -102,6 +102,44 @@ class DeviceAddressDao extends DatabaseAccessor<AppDataBase>
     });
   }
 
+  Future<List<String>> expireBroadcastAddresses({
+    required DateTime cutoff,
+    required DateTime now,
+    required String failureReason,
+  }) async {
+    final candidates =
+        await (select(deviceAddressItems)
+              ..where((table) => table.lastSeenAt.isSmallerThanValue(cutoff))
+              ..where((table) => table.isReachable.equals(true)))
+            .get();
+    final expiredRows = candidates
+        .where((row) => row.source == DeviceAddressSource.broadcast)
+        .toList(growable: false);
+    if (expiredRows.isEmpty) {
+      return const [];
+    }
+
+    await transaction(() async {
+      for (final row in expiredRows) {
+        await (update(
+          deviceAddressItems,
+        )..where((table) => table.id.equals(row.id))).write(
+          DeviceAddressItemsCompanion(
+            isReachable: const Value(false),
+            lastFailureAt: Value(now),
+            failureReason: Value(failureReason),
+            updatedAt: Value(now),
+          ),
+        );
+      }
+    });
+
+    return expiredRows
+        .map((row) => row.deviceId)
+        .toSet()
+        .toList(growable: false);
+  }
+
   Future<int> updateAddressHealth({
     required int id,
     required bool isReachable,

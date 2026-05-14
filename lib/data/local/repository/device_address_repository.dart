@@ -107,6 +107,18 @@ class DeviceAddressRepository {
     return _deviceAddressDao.upsertAddresses(addresses);
   }
 
+  Future<List<String>> expireBroadcastAddresses({
+    required DateTime cutoff,
+    required DateTime now,
+    required String failureReason,
+  }) {
+    return _deviceAddressDao.expireBroadcastAddresses(
+      cutoff: cutoff,
+      now: now,
+      failureReason: failureReason,
+    );
+  }
+
   Future<int> updateAddressHealth({
     required int id,
     required bool isReachable,

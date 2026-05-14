@@ -13,6 +13,16 @@ import 'package:hydrop/data/remote/service/discovery_payload_codec.dart';
 import 'package:hydrop/data/remote/service/discovery_socket_service.dart';
 import 'package:hydrop/data/remote/service/local_network_address_service.dart';
 
+typedef DiscoveryControllerTimerFactory =
+    DiscoveryControllerTimerHandle Function(
+      Duration interval,
+      Future<void> Function() onTick,
+    );
+
+abstract class DiscoveryControllerTimerHandle {
+  void cancel();
+}
+
 final discoveryControllerProvider = Provider<DiscoveryController>((ref) {
   final controller = DiscoveryController(
     mineRepository: ref.watch(mineRepositoryProvider),
@@ -40,12 +50,14 @@ class DiscoveryController {
     required DeviceAddressRepository deviceAddressRepository,
     required DiscoveryBroadcastService broadcastService,
     required DiscoverySocketService socketService,
+    DiscoveryControllerTimerFactory? ttlTimerFactory,
     DateTime Function()? now,
   }) : _mineRepository = mineRepository,
        _deviceRepository = deviceRepository,
        _deviceAddressRepository = deviceAddressRepository,
        _broadcastService = broadcastService,
        _socketService = socketService,
+       _ttlTimerFactory = ttlTimerFactory ?? _defaultTtlTimerFactory,
        _now = now ?? DateTime.now;
 
   final MineRepository _mineRepository;
@@ -53,9 +65,11 @@ class DiscoveryController {
   final DeviceAddressRepository _deviceAddressRepository;
   final DiscoveryBroadcastService _broadcastService;
   final DiscoverySocketService _socketService;
+  final DiscoveryControllerTimerFactory _ttlTimerFactory;
   final DateTime Function() _now;
 
   Future<void>? _startFuture;
+  DiscoveryControllerTimerHandle? _ttlTimerHandle;
   String? _localDeviceId;
   final _seenNonces = <String>{};
   final _seenNonceOrder = <String>[];
@@ -66,6 +80,8 @@ class DiscoveryController {
 
   Future<void> stop() async {
     _startFuture = null;
+    _ttlTimerHandle?.cancel();
+    _ttlTimerHandle = null;
     await _socketService.stop();
     await _broadcastService.stop();
   }
@@ -80,6 +96,7 @@ class DiscoveryController {
 
     await _startSocketBestEffort();
     await _startBroadcastBestEffort(profile);
+    _startTtlScanner();
   }
 
   Future<void> _startSocketBestEffort() async {
@@ -104,6 +121,39 @@ class DiscoveryController {
       );
     } catch (_) {
       // Listening can still work even if one platform refuses broadcast sockets.
+    }
+  }
+
+  void _startTtlScanner() {
+    _ttlTimerHandle?.cancel();
+    _ttlTimerHandle = _ttlTimerFactory(
+      discoveryTtlScanInterval,
+      _expireDevices,
+    );
+  }
+
+  Future<void> _expireDevices() async {
+    final now = _now();
+    final cutoff = now.subtract(discoveryDeviceTtl);
+    final candidateDeviceIds = await _deviceAddressRepository
+        .expireBroadcastAddresses(
+          cutoff: cutoff,
+          now: now,
+          failureReason: discoveryTtlExpiredFailureReason,
+        );
+
+    for (final deviceId in candidateDeviceIds) {
+      final addresses = await _deviceAddressRepository.listAddressesForDevice(
+        deviceId,
+      );
+      if (addresses.any((address) => address.isReachable)) {
+        continue;
+      }
+
+      await _deviceRepository.updateConnectionStatus(
+        deviceId: deviceId,
+        connectionStatus: DeviceConnectionStatus.disconnected,
+      );
     }
   }
 
@@ -191,6 +241,27 @@ class DiscoveryController {
       DiscoveryAddressVersion.ipv4 => DeviceIpVersion.ipv4,
       DiscoveryAddressVersion.ipv6 => DeviceIpVersion.ipv6,
     };
+  }
+}
+
+DiscoveryControllerTimerHandle _defaultTtlTimerFactory(
+  Duration interval,
+  Future<void> Function() onTick,
+) {
+  final timer = Timer.periodic(interval, (_) {
+    unawaited(onTick());
+  });
+  return _DiscoveryTimerHandle(timer);
+}
+
+class _DiscoveryTimerHandle implements DiscoveryControllerTimerHandle {
+  _DiscoveryTimerHandle(this._timer);
+
+  final Timer _timer;
+
+  @override
+  void cancel() {
+    _timer.cancel();
   }
 }
 

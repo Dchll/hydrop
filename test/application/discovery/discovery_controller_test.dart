@@ -1,5 +1,7 @@
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hydrop/core/constants/discovery_constants.dart';
+import 'package:hydrop/data/local/dao/device_address_dao.dart';
 import 'package:hydrop/application/discovery/discovery_controller.dart';
 import 'package:hydrop/data/local/database.dart';
 import 'package:hydrop/data/local/model/device/device.dart';
@@ -163,6 +165,82 @@ void main() {
     expect(addresses.single.ipVersion, DeviceIpVersion.ipv4);
     expect(addresses.single.interfaceName, isNull);
   });
+
+  test(
+    'marks devices disconnected when discovery addresses exceed TTL',
+    () async {
+      final database = AppDataBase.forTesting(NativeDatabase.memory());
+      addTearDown(database.close);
+
+      final mineRepository = MineRepository(database.mineDao);
+      final deviceRepository = DeviceRepository(database.deviceDao);
+      final addressRepository = DeviceAddressRepository(
+        database.deviceAddressDao,
+      );
+      final now = DateTime.fromMillisecondsSinceEpoch(1770000000000);
+      await mineRepository.saveMineProfile(
+        displayName: 'Local Mac',
+        deviceId: 'local-device',
+      );
+      await deviceRepository.saveDiscoveredDevice(
+        displayName: 'Remote Mac',
+        deviceId: 'remote-device',
+        connectionStatus: DeviceConnectionStatus.localNetwork,
+      );
+      await addressRepository.saveAddress(
+        DeviceAddressUpsert(
+          deviceId: 'remote-device',
+          ipAddress: '192.168.1.23',
+          ipVersion: DeviceIpVersion.ipv4,
+          port: 39176,
+          isReachable: true,
+          lastSeenAt: now.subtract(
+            discoveryDeviceTtl + const Duration(seconds: 1),
+          ),
+          lastSuccessAt: now.subtract(
+            discoveryDeviceTtl + const Duration(seconds: 1),
+          ),
+        ),
+      );
+
+      FakeDiscoveryControllerTimerHandle? ttlTimer;
+      final controller = DiscoveryController(
+        mineRepository: mineRepository,
+        deviceRepository: deviceRepository,
+        deviceAddressRepository: addressRepository,
+        broadcastService: FakeDiscoveryBroadcastService(),
+        socketService: FakeDiscoverySocketService(),
+        now: () => now,
+        ttlTimerFactory: (interval, onTick) {
+          ttlTimer = FakeDiscoveryControllerTimerHandle(
+            interval: interval,
+            onTick: onTick,
+          );
+          return ttlTimer!;
+        },
+      );
+      addTearDown(controller.stop);
+
+      await controller.start();
+
+      expect(ttlTimer?.interval, discoveryTtlScanInterval);
+
+      await ttlTimer!.tick();
+
+      final devices = await deviceRepository.watchDevices().first;
+      expect(
+        devices.single.connectionStatus,
+        DeviceConnectionStatus.disconnected,
+      );
+
+      final addresses = await addressRepository.listAddressesForDevice(
+        'remote-device',
+      );
+      expect(addresses.single.isReachable, isFalse);
+      expect(addresses.single.lastFailureAt, now);
+      expect(addresses.single.failureReason, discoveryTtlExpiredFailureReason);
+    },
+  );
 }
 
 class FakeDiscoveryBroadcastService extends DiscoveryBroadcastService {
@@ -218,5 +296,28 @@ class FakeLocalNetworkAddressService extends LocalNetworkAddressService {
   @override
   Future<List<LocalBroadcastSource>> listBroadcastSources() async {
     return const [];
+  }
+}
+
+class FakeDiscoveryControllerTimerHandle
+    implements DiscoveryControllerTimerHandle {
+  FakeDiscoveryControllerTimerHandle({
+    required this.interval,
+    required this.onTick,
+  });
+
+  final Duration interval;
+  final Future<void> Function() onTick;
+  bool cancelled = false;
+
+  Future<void> tick() async {
+    if (!cancelled) {
+      await onTick();
+    }
+  }
+
+  @override
+  void cancel() {
+    cancelled = true;
   }
 }

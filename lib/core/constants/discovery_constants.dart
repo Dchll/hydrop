@@ -19,3 +19,11 @@ const discoveryBroadcastCapabilities = <String>[
 ];
 
 const discoveryBroadcastFallbackTargetAddress = '255.255.255.255';
+
+/// Mark a discovered device offline when no broadcast refresh arrives in time.
+const discoveryDeviceTtl = Duration(seconds: 12);
+
+/// Periodically scans stored discovery addresses for TTL expiry.
+const discoveryTtlScanInterval = Duration(seconds: 3);
+
+const discoveryTtlExpiredFailureReason = 'discovery_ttl_expired';
