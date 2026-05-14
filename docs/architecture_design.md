@@ -34,9 +34,9 @@
 ### 主要缺口
 
 - 网络接口枚举已经共享到 `LocalNetworkAddressService`；基础地址过滤与排序已落地，Wi-Fi 场景下的广播地址、网关和子网元数据也已补齐，剩余风险主要在平台返回值差异。
-- UDP 广播发送已经落地；广播监听、发现 TTL、去重和自设备过滤仍待实现。
+- UDP 广播发送/监听、payload 编解码、nonce 去重、自设备过滤、发现设备和地址回写已经落地；发现 TTL 和生命周期调度仍待实现。
 - 没有连接管理器、连接状态机、心跳、断线重连和测速。
-- 设备记忆虽然已有 `DeviceAddressItems` / `ConnectionSessionItems` 数据结构，但还缺 discovery 回写、TTL 清理、测速刷新和 UI 展示闭环。
+- 设备记忆已有 `DeviceAddressItems` / `ConnectionSessionItems` 数据结构，discovery 回写已经落地，但还缺 TTL 清理、测速刷新和 UI 展示闭环。
 - 消息表和附件表的扩展字段已经落地，但缺少 ACK 协议、真实发送队列、收发链路和页面交互闭环。
 - 聊天页还没有按 `remoteDeviceId` 绑定会话，也没有发送 UI 和传输队列。
 
@@ -450,8 +450,10 @@ Payload 控制在 1200 bytes 内，避免 UDP 分片。
       "version": "ipv4",
       "interfaceName": "en0",
       "subnetMask": "255.255.255.0",
-      "gateway": "192.168.1.1",
-      "broadcast": "192.168.1.255"
+      "gatewayAddress": "192.168.1.1",
+      "broadcastAddress": "192.168.1.255",
+      "networkSignature": "192.168.1.1/255.255.255.0",
+      "isWifiLike": true
     }
   ],
   "capabilities": ["text", "image", "video", "file", "speed-test-v1"],
@@ -464,17 +466,21 @@ Payload 控制在 1200 bytes 内，避免 UDP 分片。
 
 - `deviceId == mine.deviceId` 直接丢弃。
 - `protocolVersion` 不支持则记录日志，不写入设备列表。
-- 同一个 `nonce` 在短时间内重复收到，只处理一次。
+- 同一个 `nonce` 在短时间内重复收到，只处理一次；当前实现保留最近 128 个 `deviceId:nonce`。
 - `addresses` 为空时仍可用 UDP 来源 IP 作为候选地址。
-- 写入 `DeviceRepository.saveDiscoveredDevice()` 和 `DeviceAddressRepository.upsertAddresses()`。
+- 写入 `DeviceRepository.saveDiscoveredDevice()` 和 `DeviceAddressRepository.saveAddresses()`；发现到的设备标记为 `localNetwork`，地址来源标记为 `broadcast`。
 
 ### 5.3 发现状态 provider
 
 建议 provider：
 
 ```dart
-@Riverpod(keepAlive: true)
-DiscoveryController discoveryController(Ref ref) => DiscoveryController(...);
+final discoveryControllerProvider = Provider<DiscoveryController>((ref) {
+  final controller = DiscoveryController(...);
+  unawaited(controller.start());
+  ref.onDispose(controller.stop);
+  return controller;
+});
 
 @Riverpod()
 Stream<List<LocalNetworkAddress>> localNetworkAddresses(Ref ref) => ...;
@@ -486,8 +492,8 @@ Stream<List<DeviceSnapshot>> deviceList(Ref ref) => ...; // 已有
 `DiscoveryController` 负责：
 
 - app 启动后初始化本机信息。
-- 启动 TCP server，再启动 UDP 广播。
-- 监听 UDP hello，写入设备和地址。
+- 启动 UDP 监听和广播；后续接入 TCP server 后再纳入同一个控制器。
+- 监听 UDP hello，解析 payload，过滤本机设备，写入设备和地址。
 - 定期扫描 `lastSeenAt`，把超时设备标记为 disconnected。
 
 ## 6. 连接管理设计
@@ -1108,10 +1114,10 @@ flutter analyze
 - [x] `LocalNetworkAddressService` 合并 `NetworkInterface.list()` 的基础信息，并作为 `MinePage` 与广播服务的共享来源。
 - [x] `LocalNetworkAddressService` 合并 `network_info_plus` 信息，输出本机地址、网关、子网和广播地址。
 - [x] `DiscoveryBroadcastService` 实现 UDP 广播发送和多网卡轮询。
-- [ ] `DiscoveryPayloadCodec` 编解码和测试。
-- [ ] `DiscoverySocketService` 实现 UDP 监听。
-- [ ] `DiscoveryController` 启停服务、写入设备和地址。
-- [ ] 首页设备列表显示真实发现结果。
+- [x] `DiscoveryPayloadCodec` 编解码和测试。
+- [x] `DiscoverySocketService` 实现 UDP 监听。
+- [x] `DiscoveryController` 启停服务、写入设备和地址。
+- [x] 首页设备列表显示真实发现结果。
 
 ### P2：设备记忆和测速
 
