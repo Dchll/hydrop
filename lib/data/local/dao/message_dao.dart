@@ -133,6 +133,30 @@ class MessageDao extends DatabaseAccessor<AppDataBase> with _$MessageDaoMixin {
     });
   }
 
+  Future<int> updateAttachmentTransfer({
+    required String attachmentId,
+    String? filePath,
+    int? transferredBytes,
+    String? checksumSha256,
+    MessageAttachmentTransferStatus? transferStatus,
+    MessageAttachmentSaveStatus? saveStatus,
+    int? downloadProgress,
+  }) {
+    return (update(
+      messageAttachmentItems,
+    )..where((table) => table.attachmentId.equals(attachmentId))).write(
+      MessageAttachmentItemsCompanion(
+        filePath: Value.absentIfNull(filePath),
+        transferredBytes: Value.absentIfNull(transferredBytes),
+        checksumSha256: Value.absentIfNull(checksumSha256),
+        transferStatus: Value.absentIfNull(transferStatus),
+        saveStatus: Value.absentIfNull(saveStatus),
+        downloadProgress: Value.absentIfNull(downloadProgress),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
   Future<int> updateMessageStatus({
     required String localMessageId,
     required MessageSendStatus sendStatus,

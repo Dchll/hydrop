@@ -157,6 +157,18 @@ class ConversationMessage {
   final List<MessageAttachmentSnapshot> attachments;
 }
 
+class FileMessageRecord {
+  const FileMessageRecord({
+    required this.messageId,
+    required this.localMessageId,
+    required this.attachmentId,
+  });
+
+  final int messageId;
+  final String localMessageId;
+  final String attachmentId;
+}
+
 class MessageRepository {
   const MessageRepository(this._messageDao);
 
@@ -207,6 +219,95 @@ class MessageRepository {
       attachments: attachments
           .map((attachment) => attachment.toDraft())
           .toList(),
+    );
+  }
+
+  Future<FileMessageRecord> createOutgoingFileMessage({
+    required String remoteDeviceId,
+    required String attachmentId,
+    required String filePath,
+    required String fileName,
+    String? mimeType,
+    required int totalBytes,
+    String? checksumSha256,
+    required String transferTaskId,
+  }) async {
+    final localMessageId = _newLocalEntityId(prefix: 'msg');
+    final messageId = await _messageDao.insertMessageWithAttachments(
+      remoteDeviceId: remoteDeviceId,
+      direction: MessageDirection.sent,
+      messageType: MessageType.file,
+      sendStatus: MessageSendStatus.sending,
+      localMessageId: localMessageId,
+      attachments: [
+        MessageAttachmentDraft(
+          attachmentId: attachmentId,
+          filePath: filePath,
+          fileName: fileName,
+          mimeType: mimeType,
+          totalBytes: totalBytes,
+          checksumSha256: checksumSha256,
+          transferStatus: MessageAttachmentTransferStatus.transferring,
+          transferTaskId: transferTaskId,
+        ),
+      ],
+    );
+    return FileMessageRecord(
+      messageId: messageId,
+      localMessageId: localMessageId,
+      attachmentId: attachmentId,
+    );
+  }
+
+  Future<int> saveIncomingFileOffer({
+    required String remoteDeviceId,
+    required String attachmentId,
+    required String filePath,
+    required String fileName,
+    String? mimeType,
+    required int totalBytes,
+    String? checksumSha256,
+    required String transferTaskId,
+    String? remoteMessageId,
+  }) {
+    return _messageDao.insertMessageWithAttachments(
+      remoteDeviceId: remoteDeviceId,
+      direction: MessageDirection.received,
+      messageType: MessageType.file,
+      sendStatus: MessageSendStatus.received,
+      remoteMessageId: remoteMessageId,
+      attachments: [
+        MessageAttachmentDraft(
+          attachmentId: attachmentId,
+          filePath: filePath,
+          fileName: fileName,
+          mimeType: mimeType,
+          totalBytes: totalBytes,
+          checksumSha256: checksumSha256,
+          transferStatus: MessageAttachmentTransferStatus.transferring,
+          transferTaskId: transferTaskId,
+        ),
+      ],
+    );
+  }
+
+  Future<int> updateAttachmentTransfer({
+    required String attachmentId,
+    String? filePath,
+    int? transferredBytes,
+    String? checksumSha256,
+    MessageAttachmentTransferStatus? transferStatus,
+    MessageAttachmentSaveStatus? saveStatus,
+    int? downloadProgress,
+  }) {
+    return _messageDao.updateAttachmentTransfer(
+      attachmentId: attachmentId,
+      filePath: filePath,
+      transferredBytes: transferredBytes,
+      checksumSha256: checksumSha256,
+      transferStatus: transferStatus,
+      saveStatus: saveStatus,
+      downloadProgress: downloadProgress,
     );
   }
 

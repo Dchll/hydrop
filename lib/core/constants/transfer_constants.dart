@@ -21,3 +21,14 @@ const speedTestFailedFailureReason = 'speed_test_failed';
 
 /// Avoid probing the same device on every 10s discovery broadcast.
 const speedTestRefreshInterval = Duration(minutes: 5);
+
+const transferFrameTypeFileOffer = 'fileOffer';
+const transferFrameTypeFileOfferAck = 'fileOfferAck';
+const transferFrameTypeFileChunk = 'fileChunk';
+const transferFrameTypeFileComplete = 'fileComplete';
+const transferFrameTypeFileCompleteAck = 'fileCompleteAck';
+const transferFrameTypeError = 'error';
+
+const transferFileChunkBytes = transferFrameMaxBodyBytes;
+const transferFileFailedFailureReason = 'file_transfer_failed';
+const transferFileChecksumMismatchReason = 'file_checksum_mismatch';

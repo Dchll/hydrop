@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hydrop/application/transfer/file_transfer_coordinator.dart';
 import 'package:hydrop/core/constants/transfer_constants.dart';
 import 'package:hydrop/data/remote/service/frame_codec.dart';
 import 'package:hydrop/data/remote/service/transfer_socket_service.dart';
@@ -10,6 +11,7 @@ final transferServerControllerProvider = Provider<TransferServerController>((
 ) {
   final controller = TransferServerController(
     transferSocketService: ref.watch(transferSocketServiceProvider),
+    fileTransferCoordinator: ref.watch(fileTransferCoordinatorProvider),
   );
 
   unawaited(
@@ -24,11 +26,14 @@ final transferServerControllerProvider = Provider<TransferServerController>((
 class TransferServerController {
   TransferServerController({
     required TransferSocketService transferSocketService,
+    FileTransferCoordinator? fileTransferCoordinator,
     DateTime Function()? now,
   }) : _transferSocketService = transferSocketService,
+       _fileTransferCoordinator = fileTransferCoordinator,
        _now = now ?? DateTime.now;
 
   final TransferSocketService _transferSocketService;
+  final FileTransferCoordinator? _fileTransferCoordinator;
   final DateTime Function() _now;
 
   TransferServer? _server;
@@ -88,7 +93,15 @@ class TransferServerController {
     switch (frame.header['type']) {
       case transferFrameTypeSpeedProbe:
         await _sendSpeedProbeAck(connection, frame);
+        return;
       default:
+        final handled = await _fileTransferCoordinator?.handleIncomingFrame(
+          connection,
+          frame,
+        );
+        if (handled == true) {
+          return;
+        }
         // Other frame types are handled by ConnectionManager in a later phase.
         break;
     }
