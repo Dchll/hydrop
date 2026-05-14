@@ -34,9 +34,9 @@
 ### 主要缺口
 
 - 网络接口枚举已经共享到 `LocalNetworkAddressService`；基础地址过滤与排序已落地，Wi-Fi 场景下的广播地址、网关和子网元数据也已补齐，剩余风险主要在平台返回值差异。
-- UDP 广播发送/监听、payload 编解码、nonce 去重、自设备过滤、发现设备和地址回写已经落地；发现 TTL 和生命周期调度仍待实现。
+- UDP 广播发送/监听、payload 编解码、nonce 去重、自设备过滤、发现设备和地址回写、发现 TTL 扫描已经落地；生命周期调度仍待实现。
 - 没有连接管理器、连接状态机、心跳、断线重连和测速。
-- 设备记忆已有 `DeviceAddressItems` / `ConnectionSessionItems` 数据结构，discovery 回写已经落地，但还缺 TTL 清理、测速刷新和 UI 展示闭环。
+- 设备记忆已有 `DeviceAddressItems` / `ConnectionSessionItems` 数据结构，discovery 回写和 TTL 过期标记已经落地，但还缺测速刷新和 UI 展示闭环。
 - 消息表和附件表的扩展字段已经落地，但缺少 ACK 协议、真实发送队列、收发链路和页面交互闭环。
 - 聊天页还没有按 `remoteDeviceId` 绑定会话，也没有发送 UI 和传输队列。
 
@@ -231,7 +231,7 @@ deviceId = "hydrop_" + sha256("hydrop-device-id-v1:" + rawStableDeviceSeed).subs
 
 - [x] `DeviceAddressItems`、唯一索引和基础排序规则已落地。
 - [x] `DeviceAddressDao` / `DeviceAddressRepository` 已支持 upsert、按设备查询和按可用性/速度/延迟排序。
-- [ ] 地址 TTL、广播回写、自动清理和 UI 展示仍待接入。
+- [x] 地址 TTL、广播回写和自动过期标记已接入；UI 展示仍待接入。
 
 ### 4.3 新增表：连接会话
 
@@ -494,7 +494,7 @@ Stream<List<DeviceSnapshot>> deviceList(Ref ref) => ...; // 已有
 - app 启动后初始化本机信息。
 - 启动 UDP 监听和广播；后续接入 TCP server 后再纳入同一个控制器。
 - 监听 UDP hello，解析 payload，过滤本机设备，写入设备和地址。
-- 定期扫描 `lastSeenAt`，把超时设备标记为 disconnected。
+- 定期扫描 `lastSeenAt`，把超时广播地址标记为不可用，并在没有可用地址时把设备标记为 disconnected。
 
 ## 6. 连接管理设计
 
@@ -1124,7 +1124,8 @@ flutter analyze
 - [x] 新增 `DeviceAddressItems`。
 - [x] 新增 `DeviceAddressDao` / `DeviceAddressRepository`。
 - [x] 新增 `ConnectionSessionItems` / `ConnectionSessionDao` / `ConnectionSessionRepository`。
-- [ ] 实现地址 TTL、可用性、测速排序。
+- [x] 实现地址 TTL 和可用性过期标记。
+- [ ] 实现主动测速刷新。
 - [ ] UI 展示速度、延迟、在线/离线。
 
 ### P3：连接与文本消息
@@ -1158,6 +1159,7 @@ flutter analyze
 | TCP transfer port | `39176` 或动态端口 | 动态端口更稳，广播 payload 必须携带 |
 | discovery interval | `10s` | 广播频率 |
 | device TTL | `12s` | 超过后标记 disconnected |
+| discovery TTL scan interval | `3s` | 后台扫描过期广播地址 |
 | connect timeout | `2s` | 单地址 TCP 连接超时 |
 | heartbeat interval | `5s` | 心跳间隔 |
 | heartbeat timeout | `15s` | 心跳超时 |
