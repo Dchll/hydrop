@@ -2,7 +2,9 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hydrop/application/connection/speed_test_runner.dart';
 import 'package:hydrop/core/constants/discovery_constants.dart';
+import 'package:hydrop/core/constants/transfer_constants.dart';
 import 'package:hydrop/data/local/dao/device_address_dao.dart';
 import 'package:hydrop/data/local/model/device/device.dart';
 import 'package:hydrop/data/local/repository/device_address_repository.dart';
@@ -28,6 +30,7 @@ final discoveryControllerProvider = Provider<DiscoveryController>((ref) {
     mineRepository: ref.watch(mineRepositoryProvider),
     deviceRepository: ref.watch(deviceRepositoryProvider),
     deviceAddressRepository: ref.watch(deviceAddressRepositoryProvider),
+    speedTestRunner: ref.watch(speedTestRunnerProvider),
     broadcastService: DiscoveryBroadcastService(
       localNetworkAddressService: ref.watch(localNetworkAddressServiceProvider),
     ),
@@ -48,6 +51,7 @@ class DiscoveryController {
     required MineRepository mineRepository,
     required DeviceRepository deviceRepository,
     required DeviceAddressRepository deviceAddressRepository,
+    SpeedTestRunner? speedTestRunner,
     required DiscoveryBroadcastService broadcastService,
     required DiscoverySocketService socketService,
     DiscoveryControllerTimerFactory? ttlTimerFactory,
@@ -55,6 +59,7 @@ class DiscoveryController {
   }) : _mineRepository = mineRepository,
        _deviceRepository = deviceRepository,
        _deviceAddressRepository = deviceAddressRepository,
+       _speedTestRunner = speedTestRunner,
        _broadcastService = broadcastService,
        _socketService = socketService,
        _ttlTimerFactory = ttlTimerFactory ?? _defaultTtlTimerFactory,
@@ -63,6 +68,7 @@ class DiscoveryController {
   final MineRepository _mineRepository;
   final DeviceRepository _deviceRepository;
   final DeviceAddressRepository _deviceAddressRepository;
+  final SpeedTestRunner? _speedTestRunner;
   final DiscoveryBroadcastService _broadcastService;
   final DiscoverySocketService _socketService;
   final DiscoveryControllerTimerFactory _ttlTimerFactory;
@@ -73,6 +79,7 @@ class DiscoveryController {
   String? _localDeviceId;
   final _seenNonces = <String>{};
   final _seenNonceOrder = <String>[];
+  final _lastSpeedTestAtByDeviceId = <String, DateTime>{};
 
   Future<void> start() {
     return _startFuture ??= _startInternal();
@@ -176,7 +183,24 @@ class DiscoveryController {
     final addresses = _toAddressUpserts(payload, event, seenAt);
     if (addresses.isNotEmpty) {
       await _deviceAddressRepository.saveAddresses(addresses);
+      _scheduleSpeedTest(payload.deviceId, seenAt);
     }
+  }
+
+  void _scheduleSpeedTest(String deviceId, DateTime seenAt) {
+    final speedTestRunner = _speedTestRunner;
+    if (speedTestRunner == null) {
+      return;
+    }
+
+    final lastRefresh = _lastSpeedTestAtByDeviceId[deviceId];
+    if (lastRefresh != null &&
+        seenAt.difference(lastRefresh) < speedTestRefreshInterval) {
+      return;
+    }
+
+    _lastSpeedTestAtByDeviceId[deviceId] = seenAt;
+    unawaited(speedTestRunner.refreshDevice(deviceId));
   }
 
   bool _isDuplicate(DiscoveryPayload payload) {

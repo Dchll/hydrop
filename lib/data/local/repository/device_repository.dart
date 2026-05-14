@@ -59,6 +59,16 @@ class DeviceRepository {
     );
   }
 
+  Future<void> updateAverageTransferSpeed({
+    required String deviceId,
+    required int averageTransferSpeedBytesPerSecond,
+  }) async {
+    await _deviceDao.updateAverageTransferSpeed(
+      deviceId: deviceId,
+      averageTransferSpeedBytesPerSecond: averageTransferSpeedBytesPerSecond,
+    );
+  }
+
   Future<void> updateConnectionStatus({
     required String deviceId,
     required DeviceConnectionStatus connectionStatus,

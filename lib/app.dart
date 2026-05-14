@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hydrop/application/connection/transfer_server_controller.dart';
 import 'package:hydrop/application/discovery/discovery_controller.dart';
 import 'package:hydrop/core/theme/app_theme.dart';
 import 'package:hydrop/data/local/repository/setting_repository.dart';
@@ -15,6 +16,7 @@ class MainApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ref.watch(discoveryControllerProvider);
+    ref.watch(transferServerControllerProvider);
     final themeMode = ref
         .watch(settingsProvider)
         .maybeWhen(

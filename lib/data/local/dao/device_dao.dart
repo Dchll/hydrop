@@ -35,6 +35,21 @@ class DeviceDao extends DatabaseAccessor<AppDataBase> with _$DeviceDaoMixin {
     );
   }
 
+  Future<int> updateAverageTransferSpeed({
+    required String deviceId,
+    required int averageTransferSpeedBytesPerSecond,
+  }) {
+    return (update(
+      deviceItems,
+    )..where((table) => table.deviceId.equals(deviceId))).write(
+      DeviceItemsCompanion(
+        averageTransferSpeedBytesPerSecond: Value(
+          averageTransferSpeedBytesPerSecond,
+        ),
+      ),
+    );
+  }
+
   Future<int> updateConnectionStatus({
     required String deviceId,
     required DeviceConnectionStatus connectionStatus,
