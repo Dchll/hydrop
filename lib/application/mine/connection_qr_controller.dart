@@ -1,0 +1,127 @@
+import 'dart:async';
+import 'dart:io';
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hydrop/application/connection/speed_test_runner.dart';
+import 'package:hydrop/application/mine/connection_qr_payload.dart';
+import 'package:hydrop/data/local/dao/device_address_dao.dart';
+import 'package:hydrop/data/local/model/device/device.dart';
+import 'package:hydrop/data/local/repository/device_address_repository.dart';
+import 'package:hydrop/data/local/repository/device_repository.dart';
+import 'package:hydrop/data/local/repository/mine_repository.dart';
+
+final connectionQrControllerProvider = Provider<ConnectionQrController>((ref) {
+  return ConnectionQrController(
+    mineRepository: ref.watch(mineRepositoryProvider),
+    deviceRepository: ref.watch(deviceRepositoryProvider),
+    deviceAddressRepository: ref.watch(deviceAddressRepositoryProvider),
+    speedTestRunner: ref.watch(speedTestRunnerProvider),
+  );
+});
+
+class ConnectionQrSaveResult {
+  const ConnectionQrSaveResult({
+    required this.deviceId,
+    required this.displayName,
+    required this.addressCount,
+  });
+
+  final String deviceId;
+  final String displayName;
+  final int addressCount;
+}
+
+class ConnectionQrController {
+  ConnectionQrController({
+    required MineRepository mineRepository,
+    required DeviceRepository deviceRepository,
+    required DeviceAddressRepository deviceAddressRepository,
+    required SpeedTestRunner speedTestRunner,
+    ConnectionQrPayloadCodec codec = const ConnectionQrPayloadCodec(),
+    DateTime Function()? now,
+  }) : _mineRepository = mineRepository,
+       _deviceRepository = deviceRepository,
+       _deviceAddressRepository = deviceAddressRepository,
+       _speedTestRunner = speedTestRunner,
+       _codec = codec,
+       _now = now ?? DateTime.now;
+
+  final MineRepository _mineRepository;
+  final DeviceRepository _deviceRepository;
+  final DeviceAddressRepository _deviceAddressRepository;
+  final SpeedTestRunner _speedTestRunner;
+  final ConnectionQrPayloadCodec _codec;
+  final DateTime Function() _now;
+
+  Future<ConnectionQrSaveResult> saveScannedPayload(String rawValue) async {
+    final payload = _codec.decode(rawValue);
+    if (payload == null) {
+      throw const FormatException('Unsupported Hydrop connection QR code.');
+    }
+
+    final hostName = _defaultHostName();
+    final profile = await _mineRepository.ensureMineProfile(
+      displayName: hostName,
+      stableSeed: hostName,
+    );
+    if (payload.deviceId == profile.deviceId) {
+      throw StateError('This QR code belongs to the current device.');
+    }
+
+    final now = _now();
+    await _deviceRepository.saveDiscoveredDevice(
+      displayName: payload.displayName,
+      deviceId: payload.deviceId,
+      connectionStatus: DeviceConnectionStatus.localNetwork,
+    );
+
+    final addresses = payload.addresses
+        .map((address) => _toAddressUpsert(payload, address, now))
+        .toList(growable: false);
+    if (addresses.isNotEmpty) {
+      await _deviceAddressRepository.saveAddresses(addresses);
+      unawaited(
+        _speedTestRunner.refreshDevice(payload.deviceId).catchError((_) {}),
+      );
+    }
+
+    return ConnectionQrSaveResult(
+      deviceId: payload.deviceId,
+      displayName: payload.displayName,
+      addressCount: addresses.length,
+    );
+  }
+
+  DeviceAddressUpsert _toAddressUpsert(
+    ConnectionQrPayload payload,
+    ConnectionQrAddress address,
+    DateTime seenAt,
+  ) {
+    return DeviceAddressUpsert(
+      deviceId: payload.deviceId,
+      ipAddress: address.ip,
+      ipVersion: address.version == 'ipv4'
+          ? DeviceIpVersion.ipv4
+          : DeviceIpVersion.ipv6,
+      port: payload.tcpPort,
+      interfaceName: address.interfaceName,
+      networkSignature: address.networkSignature,
+      subnetMask: address.subnetMask,
+      gatewayAddress: address.gatewayAddress,
+      broadcastAddress: address.broadcastAddress,
+      source: DeviceAddressSource.manual,
+      isReachable: true,
+      lastSeenAt: seenAt,
+      lastSuccessAt: seenAt,
+    );
+  }
+}
+
+String _defaultHostName() {
+  final hostName = Platform.localHostname.trim();
+  if (hostName.isNotEmpty) {
+    return hostName;
+  }
+
+  return '${Platform.operatingSystem}-${Platform.numberOfProcessors}';
+}

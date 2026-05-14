@@ -1,6 +1,6 @@
 # Hydrop 架构设计
 
-更新时间：2026-05-12
+更新时间：2026-05-14
 
 本文用于承接 `README.md` 中规划的功能，并把“要做什么”拆解成可实现、可测试、可逐步调整的架构方案。文档偏设计稿，不要求一次性全部实现；后续每次改动可以直接在对应章节调整字段、协议和阶段任务。
 
@@ -30,11 +30,13 @@
 - `MinePage` 已能展示 `displayName`、`hostName`、`deviceId` 和基础本地可用 IP 列表，并支持手动刷新。
 - `LocalNetworkAddressService` 已作为共享地址枚举服务抽出，`DiscoveryBroadcastService` 已按所有本机可用 IPv4 源地址建立多网卡 UDP 广播。
 - `network_info_plus: ^8.1.0` 已接入，Wi-Fi 的网关 / 子网 / 广播元数据会合并到本机地址与广播 payload。
+- `MinePage` 已接入二维码连接：本机二维码包含设备 ID、TCP 端口、能力列表和本机可用地址；扫描对方二维码后写入设备和地址，并触发轻量测速。扫描端使用 `mobile_scanner`，Windows 不启用扫描入口。
 
 ### 主要缺口
 
 - 网络接口枚举已经共享到 `LocalNetworkAddressService`；基础地址过滤与排序已落地，Wi-Fi 场景下的广播地址、网关和子网元数据也已补齐，剩余风险主要在平台返回值差异。
 - UDP 广播发送/监听、payload 编解码、nonce 去重、自设备过滤、发现设备和地址回写、发现 TTL 扫描已经落地；生命周期调度仍待实现。
+- 二维码连接已作为不依赖 UDP 广播的手动配对路径落地；后续仍需把扫描成功后的设备选择、聊天入口和连接状态 UI 打通。
 - TCP frame 编解码、基础 TCP server/client 和轻量测速服务已经落地；连接管理器、连接状态机、心跳和断线重连仍待实现。
 - 设备记忆已有 `DeviceAddressItems` / `ConnectionSessionItems` 数据结构，discovery 回写、TTL 过期标记和主动测速刷新已经落地，但还缺 UI 展示闭环。
 - 消息表和附件表的扩展字段已经落地，但缺少 ACK 协议、真实发送队列、收发链路和页面交互闭环。
@@ -47,6 +49,8 @@
 | 依赖 | 版本 | 用途 | 设计约束 |
 | --- | --- | --- | --- |
 | `network_info_plus` | `^8.1.0` | 获取 Wi-Fi IP、网关、子网掩码、广播地址等信息 | 作为 `NetworkInterface.list()` 的补充，不作为唯一地址来源 |
+| `qr_flutter` | `^4.1.0` | 渲染本机连接二维码 | 只负责展示二维码，payload 编解码放在 application 层 |
+| `mobile_scanner` | `^7.2.0` | 扫描对方连接二维码 | Android / iOS / macOS / Web 可用；Windows 不启用扫描入口 |
 | `cached_network_image` | `^3.4.1` | 网络图片缓存、占位、错误态 | 只用于 `ImageWidget` 的网络分支，文件/asset/data URI 仍走对应原生 provider |
 
 ## 3. 分层原则
@@ -470,7 +474,62 @@ Payload 控制在 1200 bytes 内，避免 UDP 分片。
 - `addresses` 为空时仍可用 UDP 来源 IP 作为候选地址。
 - 写入 `DeviceRepository.saveDiscoveredDevice()` 和 `DeviceAddressRepository.saveAddresses()`；发现到的设备标记为 `localNetwork`，地址来源标记为 `broadcast`。
 
-### 5.3 发现状态 provider
+### 5.3 二维码连接协议
+
+二维码连接是 UDP 自动发现之外的手动配对路径，用于对方不在同一广播域、系统限制 UDP 广播或用户希望直接指定设备时使用。二维码只承载连接元数据，不承载文件、消息或密钥材料。
+
+生成规则：
+
+- `MineOverviewState.connectionQrPayload` 由 application 层生成，UI 只负责渲染。
+- payload 类型固定为 `hydrop.connection.qr`，版本独立放在 `connection_qr_constants.dart`。
+- `tcpPort` 使用当前 TCP 传输端口 `39176`。
+- `addresses` 使用 `LocalNetworkAddressService` 输出的本机可用地址，最多保留 16 个，避免二维码过大导致扫码失败。
+- 地址字段与 UDP 发现 payload 对齐，包含 IP、IPv4 / IPv6、网卡名、子网、网关、广播地址和 `networkSignature`。
+
+```json
+{
+  "type": "hydrop.connection.qr",
+  "protocolVersion": 1,
+  "deviceId": "device-uuid",
+  "displayName": "Andy's MacBook",
+  "hostName": "andys-macbook",
+  "tcpPort": 39176,
+  "addresses": [
+    {
+      "ip": "192.168.1.23",
+      "version": "ipv4",
+      "interfaceName": "en0",
+      "subnetMask": "255.255.255.0",
+      "gatewayAddress": "192.168.1.1",
+      "broadcastAddress": "192.168.1.255",
+      "networkSignature": "192.168.1.1/255.255.255.0",
+      "isWifiLike": true
+    }
+  ],
+  "capabilities": ["text", "image", "video", "file", "speed-test-v1"],
+  "generatedAt": 1770000000000
+}
+```
+
+扫描接收规则：
+
+- `ConnectionQrPayloadCodec` 只接受 `hydrop.connection.qr` 和当前协议版本。
+- `deviceId == mine.deviceId` 直接拒绝，避免把本机加入设备列表。
+- 扫描成功后调用 `DeviceRepository.saveDiscoveredDevice()`，设备状态标记为 `localNetwork`。
+- 地址写入 `DeviceAddressRepository.saveAddresses()`，地址来源标记为 `manual`。
+- 写入地址后异步触发 `SpeedTestRunner.refreshDevice(deviceId)`，用于尽快得到可用性和测速结果。
+- 扫描端使用 `mobile_scanner`；Android、iOS、macOS、Web 可用，Windows 不展示扫描能力，只保留二维码展示能力。
+
+当前实现状态（2026-05-14）：
+
+- [x] `connection_qr_constants.dart` 已集中二维码 payload 类型、协议版本和地址数量上限。
+- [x] `ConnectionQrPayload` / `ConnectionQrPayloadCodec` 已实现本机 payload 生成与扫描 payload 校验。
+- [x] `ConnectionQrController` 已实现扫码后的设备、地址写入和测速触发。
+- [x] `MinePage` 已提供“我的二维码”和“扫描二维码”入口。
+- [x] iOS / macOS 已补充相机权限说明，macOS 已补充 camera entitlement，Android 已声明 camera permission。
+- [ ] 扫码保存成功后跳转到目标设备聊天页，等待 `ChatRoute(deviceId)` 落地。
+
+### 5.4 发现状态 provider
 
 建议 provider：
 
@@ -1111,6 +1170,7 @@ flutter analyze
 
 - [x] `MinePage` 已先基于 `NetworkInterface.list()` 打通本机 profile 和基础局域网地址展示，作为网络发现落地前的诊断入口。
 - [x] 引入 `network_info_plus: ^8.1.0`。
+- [x] 引入 `qr_flutter: ^4.1.0` 和 `mobile_scanner: ^7.2.0`，完成二维码手动配对入口。
 - [x] `LocalNetworkAddressService` 合并 `NetworkInterface.list()` 的基础信息，并作为 `MinePage` 与广播服务的共享来源。
 - [x] `LocalNetworkAddressService` 合并 `network_info_plus` 信息，输出本机地址、网关、子网和广播地址。
 - [x] `DiscoveryBroadcastService` 实现 UDP 广播发送和多网卡轮询。
@@ -1118,6 +1178,7 @@ flutter analyze
 - [x] `DiscoverySocketService` 实现 UDP 监听。
 - [x] `DiscoveryController` 启停服务、写入设备和地址。
 - [x] 首页设备列表显示真实发现结果。
+- [x] 扫描二维码后写入设备和手动地址，并触发测速。
 
 ### P2：设备记忆和测速
 

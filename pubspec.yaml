@@ -37,6 +37,12 @@ dependencies:
   # https://pub.dev/packages/path_provider
   path_provider: ^2.1.5
 
+  # https://pub.dev/packages/qr_flutter
+  qr_flutter: ^4.1.0
+
+  # https://pub.dev/packages/mobile_scanner
+  mobile_scanner: ^7.2.0
+
   # https://pub.dev/packages/network_info_plus
   network_info_plus: ^8.1.0
 

@@ -460,7 +460,6 @@ class _IncomingFileTransfer {
     required this.randomAccessFile,
     required this.totalBytes,
     this.checksumSha256,
-    this.transferredBytes = 0,
   });
 
   final String attachmentId;
@@ -469,7 +468,7 @@ class _IncomingFileTransfer {
   final RandomAccessFile randomAccessFile;
   final int totalBytes;
   final String? checksumSha256;
-  int transferredBytes;
+  int transferredBytes = 0;
 }
 
 class FileTransferException implements Exception {

@@ -76,6 +76,7 @@ const _fakeMineOverviewState = MineOverviewState(
   displayName: 'Hydrop Mac',
   deviceId: 'hydrop_test_device_id',
   hostName: 'hydrop-host',
+  connectionQrPayload: 'hydrop-test-qr-payload',
   localAddresses: [
     LocalNetworkAddressInfo(
       interfaceName: 'en0',
