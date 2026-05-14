@@ -790,7 +790,7 @@ class TransferTask {
 - chunk size：默认 256KB。
 - 每个 chunk header 带 `offset`、`length`、`chunkIndex`。
 - 接收端按 offset 写入 `RandomAccessFile`，每写入一块更新 `transferredBytes`。
-- 进度更新节流：每 200ms 或每 1% 更新一次数据库，避免 Drift 高频写入。
+- 当前实现按 chunk 更新进度；后续可增加 200ms / 1% 节流以降低 Drift 高频写入。
 - 完成后计算 hash；有 `checksumSha256` 则必须匹配。
 
 ### 10.4 图片消息
@@ -1141,9 +1141,9 @@ flutter analyze
 ### P4：图片和视频
 
 - [x] 附件表已扩展媒体元数据、传输状态和任务标识字段。
-- [ ] `FileTransferCoordinator` 实现 offer/chunk/complete。
-- [ ] 图片选择、缩略图、发送、接收、预览。
-- [ ] 视频选择、封面、发送、接收、播放入口。
+- [x] `FileTransferCoordinator` 实现 offer/chunk/complete、进度回写、SHA-256 校验和本地保存。
+- [ ] 图片选择、缩略图、预览入口。
+- [ ] 视频选择、封面、播放入口。
 
 ### P5：发布质量
 
@@ -1164,7 +1164,7 @@ flutter analyze
 | connect timeout | `2s` | 单地址 TCP 连接超时 |
 | heartbeat interval | `5s` | 心跳间隔 |
 | heartbeat timeout | `15s` | 心跳超时 |
-| file chunk size | `256KB` | 兼顾内存和吞吐 |
+| file chunk size | `256KB` | 当前等于单 frame body 上限 |
 | progress throttle | `200ms / 1%` | 避免数据库高频写入 |
 | UDP payload limit | `1200 bytes` | 避免 UDP 分片 |
 | attachment root | `Downloads/hydrop/attachments` | 聊天附件默认保存位置 |
