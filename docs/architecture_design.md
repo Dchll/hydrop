@@ -35,8 +35,8 @@
 
 - 网络接口枚举已经共享到 `LocalNetworkAddressService`；基础地址过滤与排序已落地，Wi-Fi 场景下的广播地址、网关和子网元数据也已补齐，剩余风险主要在平台返回值差异。
 - UDP 广播发送/监听、payload 编解码、nonce 去重、自设备过滤、发现设备和地址回写、发现 TTL 扫描已经落地；生命周期调度仍待实现。
-- 没有连接管理器、连接状态机、心跳、断线重连和测速。
-- 设备记忆已有 `DeviceAddressItems` / `ConnectionSessionItems` 数据结构，discovery 回写和 TTL 过期标记已经落地，但还缺测速刷新和 UI 展示闭环。
+- TCP frame 编解码、基础 TCP server/client 和轻量测速服务已经落地；连接管理器、连接状态机、心跳和断线重连仍待实现。
+- 设备记忆已有 `DeviceAddressItems` / `ConnectionSessionItems` 数据结构，discovery 回写、TTL 过期标记和主动测速刷新已经落地，但还缺 UI 展示闭环。
 - 消息表和附件表的扩展字段已经落地，但缺少 ACK 协议、真实发送队列、收发链路和页面交互闭环。
 - 聊天页还没有按 `remoteDeviceId` 绑定会话，也没有发送 UI 和传输队列。
 
@@ -660,8 +660,8 @@ Header 通用字段：
 
 ### 8.1 快速探测
 
-- 对每个候选地址发送 3 次 `heartbeat` 或 `speedProbe` 空 body。
-- 记录最小 RTT 和平均 RTT。
+- 对每个候选地址先发送一次空 body `speedProbe` 获取 RTT。
+- 后续可扩展为 3 次探测并记录最小 RTT / 平均 RTT。
 - 超时 2 秒标记不可用。
 
 ### 8.2 轻量吞吐测速
@@ -673,8 +673,8 @@ Header 通用字段：
 
 ### 8.3 更新规则
 
-- 每次设备重新发现后，如果上次测速超过 5 分钟，则后台重新测速。
-- 用户点击设备进入聊天页时，优先对该设备快速刷新一次。
+- `DiscoveryController` 在发现设备并写入地址后会按 5 分钟冷却触发 `SpeedTestRunner.refreshDevice(deviceId)`；也可在进入聊天页时主动调用。
+- `TransferServerController` 随 app 启动监听 TCP `39176`，当前先响应 `speedProbe` 并返回 `speedProbeAck`；后续接入握手、消息和文件 frame。
 - UI 展示可读文案：`12 ms`、`3.2 MB/s`、`不可用`。
 
 ## 9. 消息设计
@@ -1125,13 +1125,14 @@ flutter analyze
 - [x] 新增 `DeviceAddressDao` / `DeviceAddressRepository`。
 - [x] 新增 `ConnectionSessionItems` / `ConnectionSessionDao` / `ConnectionSessionRepository`。
 - [x] 实现地址 TTL 和可用性过期标记。
-- [ ] 实现主动测速刷新。
+- [x] 实现主动测速刷新。
 - [ ] UI 展示速度、延迟、在线/离线。
 
 ### P3：连接与文本消息
 
-- [ ] `TransferSocketService` 实现 TCP server/client。
-- [ ] `FrameCodec` 实现二进制 frame。
+- [x] `TransferSocketService` 实现 TCP server/client。
+- [x] `TransferServerController` 启动 TCP server 并响应 `speedProbe`。
+- [x] `FrameCodec` 实现二进制 frame。
 - [ ] `ConnectionManager` 实现状态机、握手、心跳、重连。
 - [x] 消息表已支持 pending / sent / failed 状态、幂等 ID 和错误信息落库。
 - [ ] `OutboundMessageQueue` 实现 pending 消息发送和 ACK。
