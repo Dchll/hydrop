@@ -69,12 +69,13 @@ flowchart TD
 
 ### 依赖规则
 
-- `presentation` 只能依赖 `application` 或 `data/*/repository` 暴露的 provider，不依赖 DAO、Socket、Dio。
-- `application` 编排多个 repository/service，负责状态机、发送队列、重试和用户动作。
+- `presentation` 只依赖 `application` 暴露的页面状态和控制器 provider，不直接依赖 DAO、Socket、Dio 或 repository provider。
+- `application` 编排多个 repository/service，负责状态机、发送队列、重试和用户动作；UI 调用时优先使用无参或少量入参的方法。
 - `data/local` 负责 Drift、文件索引、本地持久化和本地查询。
 - `data/remote` 负责外部数据源，包括 UAPI、UDP/TCP Socket、平台网络接口。
 - `core` 放纯工具、错误类型、协议常量、日志封装、时间/ID 生成器。
 - 生成文件继续提交，但不要手改 `*.g.dart`。
+- repository provider 仍保留给 application 层组合使用，不再作为页面的首选入口。
 
 ### 建议目录结构
 
@@ -108,6 +109,13 @@ lib/
       repository/
         bing_wallpaper_repository.dart
   application/
+    app/
+      app_runtime.dart
+    home/
+      home_page_state.dart
+    mine/
+      mine_page_state.dart
+      connection_qr_controller.dart
     discovery/
       discovery_controller.dart
     connection/
@@ -127,7 +135,14 @@ lib/
 ```
 
 说明：`application` 是建议新增的逻辑层。它不破坏 `lib/data` 只能有 `local` / `remote` 两个顶层目录的约束。
-当前 `main` 已有 `lib/application/mine/mine_page_state.dart` 作为第一批落地代码；后续发现、连接、消息编排建议沿用同样边界继续扩展。
+当前 `main` 已开始按模块整理 application API：
+
+- `appRuntimeProvider` 统一启动发现和 TCP server，`MainApp` 不再直接 watch 底层 controller。
+- `appThemeModeProvider` 统一把设置表状态转换为 `MaterialApp` 可消费的 `ThemeMode`。
+- `homeDeviceListProvider`、`homeBackgroundImageProvider` 和 `homePageControllerProvider` 统一承接首页设备列表、背景图和页面动作。
+- `mineOverviewProvider`、`connectionQrControllerProvider` 和 `connectionQrScanSupportedProvider` 统一承接我的页本机信息和二维码连接动作。
+
+后续发现、连接、消息编排应沿用同样边界继续扩展，避免页面直接读取 repository 或 service。
 
 ## 4. 核心数据设计
 

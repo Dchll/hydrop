@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hydrop/application/mine/connection_qr_controller.dart';
@@ -160,13 +159,13 @@ class _MineOverviewBody extends StatelessWidget {
   }
 }
 
-class _ConnectionQrPanel extends StatelessWidget {
+class _ConnectionQrPanel extends ConsumerWidget {
   const _ConnectionQrPanel({required this.state});
 
   final MineOverviewState state;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
 
     return Column(
@@ -198,7 +197,7 @@ class _ConnectionQrPanel extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: FilledButton.tonalIcon(
-                onPressed: () => _scanConnectionQr(context),
+                onPressed: () => _scanConnectionQr(context, ref),
                 icon: const Icon(Icons.qr_code_scanner_rounded),
                 label: const Text('Scan QR'),
               ),
@@ -266,10 +265,10 @@ Future<void> _showConnectionQrDialog(
   );
 }
 
-Future<void> _scanConnectionQr(BuildContext context) async {
+Future<void> _scanConnectionQr(BuildContext context, WidgetRef ref) async {
   final messenger = ScaffoldMessenger.of(context);
 
-  if (!_isConnectionQrScanSupported) {
+  if (!ref.read(connectionQrScanSupportedProvider)) {
     messenger.showSnackBar(
       const SnackBar(
         content: Text(
@@ -295,21 +294,6 @@ Future<void> _scanConnectionQr(BuildContext context) async {
       ),
     ),
   );
-}
-
-bool get _isConnectionQrScanSupported {
-  if (kIsWeb) {
-    return true;
-  }
-
-  return switch (defaultTargetPlatform) {
-    TargetPlatform.android ||
-    TargetPlatform.iOS ||
-    TargetPlatform.macOS => true,
-    TargetPlatform.fuchsia ||
-    TargetPlatform.linux ||
-    TargetPlatform.windows => false,
-  };
 }
 
 class _ConnectionQrScannerDialog extends ConsumerStatefulWidget {

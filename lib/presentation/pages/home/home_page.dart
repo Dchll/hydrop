@@ -1,9 +1,8 @@
 import 'package:auto_route/annotations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hydrop/application/home/home_page_state.dart';
 import 'package:hydrop/core/utils/talker/talker.dart';
-import 'package:hydrop/data/local/repository/device_repository.dart';
-import 'package:hydrop/data/remote/repository/bing_wallpaper_repository.dart';
 import 'package:hydrop/presentation/widgets/hd_glass_components.dart';
 import 'package:hydrop/presentation/widgets/image_widget.dart';
 
@@ -28,7 +27,7 @@ class HomePage extends ConsumerWidget {
               Expanded(
                 child: Builder(
                   builder: (context) {
-                    final devices = ref.watch(deviceListProvider);
+                    final devices = ref.watch(homeDeviceListProvider);
                     return devices.when(
                       data: (deviceItems) {
                         if (deviceItems.isEmpty) {
@@ -76,14 +75,9 @@ class HomePage extends ConsumerWidget {
                   Expanded(
                     child: FilledButton.icon(
                       onPressed: () async {
-                        final uniqueId = DateTime.now().microsecondsSinceEpoch
-                            .toString();
                         await ref
-                            .read(deviceRepositoryProvider)
-                            .saveDiscoveredDevice(
-                              displayName: 'test',
-                              deviceId: 'test-$uniqueId',
-                            );
+                            .read(homePageControllerProvider)
+                            .addDebugDevice();
                       },
                       icon: const Icon(Icons.add_link_rounded),
                       label: const Text('Add device'),
@@ -102,7 +96,7 @@ class HomePage extends ConsumerWidget {
 class _DeviceTile extends StatelessWidget {
   const _DeviceTile({required this.deviceItem});
 
-  final DeviceSnapshot deviceItem;
+  final HomeDeviceListItem deviceItem;
 
   @override
   Widget build(BuildContext context) {
@@ -124,16 +118,13 @@ class _DeviceTile extends StatelessWidget {
                 ),
               ),
             ),
-            _StatusBadge(status: deviceItem.connectionStatus.name),
+            _StatusBadge(status: deviceItem.statusLabel),
           ],
         ),
         const SizedBox(height: 12),
         Text(deviceItem.deviceId, style: labelStyle),
         const SizedBox(height: 8),
-        Text(
-          'Local id ${deviceItem.id} · ${deviceItem.averageTransferSpeedBytesPerSecond} B/s',
-          style: labelStyle,
-        ),
+        Text(deviceItem.diagnosticsLabel, style: labelStyle),
       ],
     );
   }
@@ -170,34 +161,30 @@ class _Background extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final wallpaperPath = ref.watch(bingWallpaperProvider.future);
-    return FutureBuilder(
-      future: wallpaperPath,
-      builder: (context, asyncSnapshot) {
-        if (asyncSnapshot.hasData) {
-          final path = asyncSnapshot.data ?? '';
-          talker.debug('dchll $path');
-          return ImageWidget(
-            url: path,
-            fit: BoxFit.cover,
-            color: Colors.black.withValues(alpha: 0.08),
-            colorBlendMode: BlendMode.darken,
-          );
-        }
-        return DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
-                Theme.of(context).colorScheme.surface,
-                Theme.of(context).colorScheme.secondary.withValues(alpha: 0.12),
-              ],
-            ),
-          ),
-        );
-      },
+    final wallpaper = ref.watch(homeBackgroundImageProvider);
+    final path = wallpaper.maybeWhen(data: (value) => value, orElse: () => '');
+    if (path.isNotEmpty) {
+      talker.debug('dchll $path');
+      return ImageWidget(
+        url: path,
+        fit: BoxFit.cover,
+        color: Colors.black.withValues(alpha: 0.08),
+        colorBlendMode: BlendMode.darken,
+      );
+    }
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+            Theme.of(context).colorScheme.surface,
+            Theme.of(context).colorScheme.secondary.withValues(alpha: 0.12),
+          ],
+        ),
+      ),
     );
   }
 }

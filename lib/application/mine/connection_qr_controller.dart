@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hydrop/application/connection/speed_test_runner.dart';
 import 'package:hydrop/application/mine/connection_qr_payload.dart';
@@ -17,6 +18,10 @@ final connectionQrControllerProvider = Provider<ConnectionQrController>((ref) {
     deviceAddressRepository: ref.watch(deviceAddressRepositoryProvider),
     speedTestRunner: ref.watch(speedTestRunnerProvider),
   );
+});
+
+final connectionQrScanSupportedProvider = Provider<bool>((ref) {
+  return isConnectionQrScanSupported();
 });
 
 class ConnectionQrSaveResult {
@@ -115,6 +120,21 @@ class ConnectionQrController {
       lastSuccessAt: seenAt,
     );
   }
+}
+
+bool isConnectionQrScanSupported() {
+  if (kIsWeb) {
+    return true;
+  }
+
+  return switch (defaultTargetPlatform) {
+    TargetPlatform.android ||
+    TargetPlatform.iOS ||
+    TargetPlatform.macOS => true,
+    TargetPlatform.fuchsia ||
+    TargetPlatform.linux ||
+    TargetPlatform.windows => false,
+  };
 }
 
 String _defaultHostName() {

@@ -25,5 +25,4 @@ void main() {
       child: MainApp(),
     ),
   );
-  talker.debug("init end");
 }
