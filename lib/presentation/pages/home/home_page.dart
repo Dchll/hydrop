@@ -522,17 +522,17 @@ class _DeviceAvatar extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
           colors: [
-            colorScheme.primary.withValues(alpha: 0.82),
+            colorScheme.primary.withValues(alpha: 0.86),
             colorScheme.secondary.withValues(alpha: 0.58),
           ],
         ),
       ),
       child: Text(
-        label.trim().isEmpty
-            ? '?'
-            : String.fromCharCode(label.trim().runes.first).toUpperCase(),
-        style: theme.textTheme.titleMedium?.copyWith(
+        label,
+        style: Theme.of(context).textTheme.titleMedium?.copyWith(
           color: colorScheme.onPrimary,
           fontWeight: FontWeight.w900,
         ),
@@ -549,11 +549,11 @@ class _Background extends ConsumerWidget {
     final wallpaper = ref.watch(homeBackgroundImageProvider);
     final path = wallpaper.maybeWhen(data: (value) => value, orElse: () => '');
     if (path.isNotEmpty) {
-      talker.debug('dchll $path');
+      talker.debug('home background $path');
       return ImageWidget(
         url: path,
         fit: BoxFit.cover,
-        color: Colors.black.withValues(alpha: 0.08),
+        color: Colors.black.withValues(alpha: 0.12),
         colorBlendMode: BlendMode.darken,
       );
     }
