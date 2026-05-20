@@ -50,7 +50,7 @@ dependencies:
   mobile_scanner: ^7.2.0
 
   # https://pub.dev/packages/network_info_plus
-  network_info_plus: ^8.1.0
+  network_info_plus: ^7.0.0
 
   # https://pub.dev/packages/riverpod
   riverpod: ^3.2.1
@@ -59,22 +59,16 @@ dependencies:
   riverpod_annotation: ^4.0.2
 
   # https://pub.dev/packages/share_plus
-  share_plus: ^13.1.0
+  share_plus: ^12.0.2
 
   # https://pub.dev/packages/talker
-  talker: ^5.1.16
+  talker: 5.1.16
 
   # https://pub.dev/packages/talker_flutter
-  talker_flutter: ^5.1.17
+  talker_flutter: 5.1.16
 
   # https://pub.dev/packages/talker_riverpod_logger
-  talker_riverpod_logger: ^5.1.17
-
-dependency_overrides:
-  # file_picker 11.x constrains win32 to ^5.9.0 while talker_flutter/share_plus
-  # already require win32 ^6.0.1. Keep the requested file_picker version and
-  # force the shared transitive package to the version already used by the app.
-  win32: ^6.1.0
+  talker_riverpod_logger: 5.1.16
 
 dev_dependencies:
   flutter_test:
