@@ -28,7 +28,13 @@ void main() {
 
   testWidgets('ChatPage uses shared glass components', (tester) async {
     await tester.pumpWidget(
-      MaterialApp(theme: AppTheme.light(), home: const ChatPage()),
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: const ChatPage(
+          remoteDeviceId: 'device-1',
+          displayName: 'Hydrop Mac',
+        ),
+      ),
     );
 
     expect(find.byType(HdGlassHeader), findsOneWidget);

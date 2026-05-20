@@ -1,101 +1,109 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hydrop/application/messaging/chat_page_state.dart';
+import 'package:hydrop/application/chat/chat_page_state.dart';
+import 'package:hydrop/data/local/repository/message_repository.dart';
+import 'package:hydrop/presentation/pages/chat/widgets/chat_message_widgets.dart';
+import 'package:hydrop/presentation/widgets/hd_floating_components.dart';
 import 'package:hydrop/presentation/widgets/hd_glass_components.dart';
 
 @RoutePage()
 class ChatPage extends ConsumerStatefulWidget {
   const ChatPage({
     super.key,
-    @QueryParam('deviceId') this.remoteDeviceId,
-    @QueryParam('name') this.displayName,
+    required this.remoteDeviceId,
+    required this.displayName,
+    this.showBackButton = true,
   });
 
-  final String? remoteDeviceId;
-  final String? displayName;
+  final String remoteDeviceId;
+  final String displayName;
+  final bool showBackButton;
 
   @override
   ConsumerState<ChatPage> createState() => _ChatPageState();
 }
 
 class _ChatPageState extends ConsumerState<ChatPage> {
-  final _textController = TextEditingController();
+  final _messageController = TextEditingController();
   bool _isSending = false;
+  bool _isPickingFile = false;
 
   @override
   void dispose() {
-    _textController.dispose();
+    _messageController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final remoteDeviceId = widget.remoteDeviceId?.trim();
-    final hasDevice = remoteDeviceId != null && remoteDeviceId.isNotEmpty;
-    final title = widget.displayName?.trim().isNotEmpty == true
-        ? widget.displayName!.trim()
-        : 'Chat';
+    final padding = MediaQuery.paddingOf(context);
+    final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
+    final messages = ref.watch(conversationProvider(widget.remoteDeviceId));
 
     return HdPageScaffold(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Column(
         children: [
-          HdGlassHeader(
-            title: title,
-            subtitle: hasDevice
-                ? remoteDeviceId
-                : 'Select a device from Home to start a conversation',
-          ),
-          const SizedBox(height: 18),
-          Expanded(
-            child: hasDevice
-                ? _ConversationPanel(remoteDeviceId: remoteDeviceId)
-                : const _NoDevicePanel(),
-          ),
-          const SizedBox(height: 18),
-          HdGlassDock(
-            child: Row(
+          HdFloatingAppBar(
+            title: widget.displayName,
+            subtitle: 'Local conversation · ${widget.remoteDeviceId}',
+            leading: widget.showBackButton
+                ? HdFloatingIconButton(
+                    icon: Icons.arrow_back_ios_new_rounded,
+                    tooltip: 'Back to devices',
+                    onPressed: () => context.maybePop(),
+                  )
+                : _DeviceAvatar(label: widget.displayName),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Expanded(
-                  child: TextField(
-                    controller: _textController,
-                    enabled: hasDevice && !_isSending,
-                    minLines: 1,
-                    maxLines: 4,
-                    textInputAction: TextInputAction.send,
-                    onSubmitted: (_) => _send(remoteDeviceId),
-                    decoration: InputDecoration(
-                      hintText: hasDevice
-                          ? 'Type a message'
-                          : 'Choose a device before sending',
-                      filled: true,
-                      fillColor: Theme.of(
-                        context,
-                      ).colorScheme.surface.withValues(alpha: 0.4),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(18),
-                        borderSide: BorderSide.none,
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                    ),
-                  ),
+                HdFloatingIconButton(
+                  icon: Icons.search_rounded,
+                  tooltip: 'Search messages',
+                  onPressed: () {},
                 ),
-                const SizedBox(width: 12),
-                FilledButton(
-                  onPressed: hasDevice && !_isSending
-                      ? () => _send(remoteDeviceId)
-                      : null,
-                  child: _isSending
-                      ? const SizedBox.square(
-                          dimension: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Send'),
+                const SizedBox(width: 8),
+                HdFloatingIconButton(
+                  icon: Icons.info_outline_rounded,
+                  tooltip: 'Device info',
+                  onPressed: () {},
                 ),
               ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: messages.when(
+              data: (items) => ChatMessageTimeline(
+                messages: items,
+                onSaveAttachment: _saveAttachment,
+              ),
+              error: (error, stackTrace) => HdGlassPanel(
+                child: ChatCenteredState(
+                  icon: Icons.error_outline_rounded,
+                  title: 'Unable to load this conversation',
+                  message: error.toString(),
+                ),
+              ),
+              loading: () => const HdGlassPanel(
+                child: Center(child: CircularProgressIndicator()),
+              ),
+            ),
+          ),
+          AnimatedPadding(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOutCubic,
+            padding: EdgeInsets.only(
+              top: 14,
+              bottom: keyboardInset > 0 ? keyboardInset - padding.bottom : 0,
+            ),
+            child: ChatComposer(
+              controller: _messageController,
+              isSending: _isSending,
+              isPickingFile: _isPickingFile,
+              onSend: _sendText,
+              onAttachFile: _pickFile,
             ),
           ),
         ],
@@ -103,172 +111,103 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     );
   }
 
-  Future<void> _send(String? remoteDeviceId) async {
-    if (remoteDeviceId == null || remoteDeviceId.isEmpty || _isSending) {
+  Future<void> _sendText() async {
+    final text = _messageController.text;
+    if (text.trim().isEmpty || _isSending) {
       return;
     }
 
-    final text = _textController.text;
-    if (text.trim().isEmpty) {
-      return;
-    }
-
-    setState(() {
-      _isSending = true;
-    });
-
-    final messenger = ScaffoldMessenger.of(context);
-    ChatSendResult? result;
-    Object? error;
+    setState(() => _isSending = true);
     try {
-      result = await ref
-          .read(chatPageControllerProvider(remoteDeviceId))
+      await ref
+          .read(chatPageControllerProvider(widget.remoteDeviceId))
           .sendText(text);
-    } catch (sendError) {
-      error = sendError;
+      _messageController.clear();
+    } catch (error) {
+      _showSnackBar('Unable to send message: $error');
     } finally {
       if (mounted) {
-        setState(() {
-          _isSending = false;
-        });
+        setState(() => _isSending = false);
       }
     }
+  }
 
+  Future<void> _pickFile() async {
+    if (_isPickingFile) {
+      return;
+    }
+
+    setState(() => _isPickingFile = true);
+    try {
+      final didPick = await ref
+          .read(chatPageControllerProvider(widget.remoteDeviceId))
+          .pickAndCreateFileMessage();
+      if (didPick) {
+        _showSnackBar('File added to this conversation.');
+      }
+    } catch (error) {
+      _showSnackBar('Unable to attach file: $error');
+    } finally {
+      if (mounted) {
+        setState(() => _isPickingFile = false);
+      }
+    }
+  }
+
+  Future<void> _saveAttachment(MessageAttachmentSnapshot attachment) async {
+    try {
+      final savedPath = await ref
+          .read(chatPageControllerProvider(widget.remoteDeviceId))
+          .saveAttachmentAs(attachment);
+      if (savedPath != null) {
+        _showSnackBar('Saved to $savedPath');
+      }
+    } catch (error) {
+      _showSnackBar('Unable to save attachment: $error');
+    }
+  }
+
+  void _showSnackBar(String message) {
     if (!mounted) {
       return;
     }
-
-    if (error != null) {
-      messenger.showSnackBar(SnackBar(content: Text(error.toString())));
-      return;
-    }
-
-    if (result == null) {
-      return;
-    }
-    _textController.clear();
-    if (!result.delivered) {
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(result.errorMessage ?? 'Message delivery failed.'),
-        ),
-      );
-    }
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
-class _ConversationPanel extends ConsumerWidget {
-  const _ConversationPanel({required this.remoteDeviceId});
+class _DeviceAvatar extends StatelessWidget {
+  const _DeviceAvatar({required this.label});
 
-  final String remoteDeviceId;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final messages = ref.watch(chatConversationProvider(remoteDeviceId));
-    return messages.when(
-      data: (items) {
-        if (items.isEmpty) {
-          return const HdGlassPanel(
-            child: Center(child: Text('No messages yet')),
-          );
-        }
-
-        return ListView.separated(
-          reverse: true,
-          padding: const EdgeInsets.only(bottom: 8),
-          itemCount: items.length,
-          separatorBuilder: (context, index) => const SizedBox(height: 10),
-          itemBuilder: (context, index) {
-            final item = items[items.length - index - 1];
-            return _MessageBubble(item: item);
-          },
-        );
-      },
-      error: (error, stackTrace) => HdGlassPanel(child: Text(error.toString())),
-      loading: () => const HdGlassPanel(
-        child: SizedBox(
-          height: 180,
-          child: Center(child: CircularProgressIndicator()),
-        ),
-      ),
-    );
-  }
-}
-
-class _MessageBubble extends StatelessWidget {
-  const _MessageBubble({required this.item});
-
-  final ChatMessageListItem item;
+  final String label;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final bubbleColor = item.isOutgoing
-        ? colorScheme.primary.withValues(alpha: 0.88)
-        : colorScheme.surface.withValues(alpha: 0.58);
-    final textColor = item.isOutgoing
-        ? colorScheme.onPrimary
-        : colorScheme.onSurface;
+    final colorScheme = Theme.of(context).colorScheme;
+    final initial = label.trim().isEmpty
+        ? '?'
+        : String.fromCharCode(label.trim().runes.first).toUpperCase();
 
-    return Align(
-      alignment: item.isOutgoing ? Alignment.centerRight : Alignment.centerLeft,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 320),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: bubbleColor,
-            borderRadius: BorderRadius.only(
-              topLeft: const Radius.circular(22),
-              topRight: const Radius.circular(22),
-              bottomLeft: Radius.circular(item.isOutgoing ? 22 : 8),
-              bottomRight: Radius.circular(item.isOutgoing ? 8 : 22),
-            ),
-            border: Border.all(
-              color: colorScheme.outlineVariant.withValues(alpha: 0.2),
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.textContent,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: textColor,
-                    height: 1.28,
-                  ),
-                ),
-                if (item.isOutgoing) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    item.statusLabel,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: item.hasFailed
-                          ? colorScheme.error
-                          : textColor.withValues(alpha: 0.72),
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
+    return Container(
+      width: 46,
+      height: 46,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          colors: [
+            colorScheme.primary.withValues(alpha: 0.82),
+            colorScheme.secondary.withValues(alpha: 0.58),
+          ],
         ),
       ),
-    );
-  }
-}
-
-class _NoDevicePanel extends StatelessWidget {
-  const _NoDevicePanel();
-
-  @override
-  Widget build(BuildContext context) {
-    return const HdGlassPanel(
-      child: Center(
-        child: Text('Open a discovered device from Home to bind this chat.'),
+      child: Text(
+        initial,
+        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+          color: colorScheme.onPrimary,
+          fontWeight: FontWeight.w900,
+        ),
       ),
     );
   }

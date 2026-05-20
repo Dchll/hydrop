@@ -19,6 +19,9 @@ dependencies:
   # https://pub.dev/packages/dio
   dio: ^5.9.2
 
+  # https://pub.dev/packages/file_picker
+  file_picker: ^11.0.2
+
   # https://pub.dev/packages/crypto
   crypto: ^3.0.7
 
@@ -66,6 +69,12 @@ dependencies:
 
   # https://pub.dev/packages/talker_riverpod_logger
   talker_riverpod_logger: ^5.1.17
+
+dependency_overrides:
+  # file_picker 11.x constrains win32 to ^5.9.0 while talker_flutter/share_plus
+  # already require win32 ^6.0.1. Keep the requested file_picker version and
+  # force the shared transitive package to the version already used by the app.
+  win32: ^6.1.0
 
 dev_dependencies:
   flutter_test:

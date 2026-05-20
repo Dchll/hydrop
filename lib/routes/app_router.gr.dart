@@ -37,8 +37,9 @@ class AppRoute extends _i5.PageRouteInfo<void> {
 class ChatRoute extends _i5.PageRouteInfo<ChatRouteArgs> {
   ChatRoute({
     _i6.Key? key,
-    String? remoteDeviceId,
-    String? displayName,
+    required String remoteDeviceId,
+    required String displayName,
+    bool showBackButton = true,
     List<_i5.PageRouteInfo>? children,
   }) : super(
          ChatRoute.name,
@@ -46,8 +47,8 @@ class ChatRoute extends _i5.PageRouteInfo<ChatRouteArgs> {
            key: key,
            remoteDeviceId: remoteDeviceId,
            displayName: displayName,
+           showBackButton: showBackButton,
          ),
-         rawQueryParams: {'deviceId': remoteDeviceId, 'name': displayName},
          initialChildren: children,
        );
 
@@ -56,34 +57,36 @@ class ChatRoute extends _i5.PageRouteInfo<ChatRouteArgs> {
   static _i5.PageInfo page = _i5.PageInfo(
     name,
     builder: (data) {
-      final queryParams = data.queryParams;
-      final args = data.argsAs<ChatRouteArgs>(
-        orElse: () => ChatRouteArgs(
-          remoteDeviceId: queryParams.optString('deviceId'),
-          displayName: queryParams.optString('name'),
-        ),
-      );
+      final args = data.argsAs<ChatRouteArgs>();
       return _i2.ChatPage(
         key: args.key,
         remoteDeviceId: args.remoteDeviceId,
         displayName: args.displayName,
+        showBackButton: args.showBackButton,
       );
     },
   );
 }
 
 class ChatRouteArgs {
-  const ChatRouteArgs({this.key, this.remoteDeviceId, this.displayName});
+  const ChatRouteArgs({
+    this.key,
+    required this.remoteDeviceId,
+    required this.displayName,
+    this.showBackButton = true,
+  });
 
   final _i6.Key? key;
 
-  final String? remoteDeviceId;
+  final String remoteDeviceId;
 
-  final String? displayName;
+  final String displayName;
+
+  final bool showBackButton;
 
   @override
   String toString() {
-    return 'ChatRouteArgs{key: $key, remoteDeviceId: $remoteDeviceId, displayName: $displayName}';
+    return 'ChatRouteArgs{key: $key, remoteDeviceId: $remoteDeviceId, displayName: $displayName, showBackButton: $showBackButton}';
   }
 
   @override
@@ -92,12 +95,16 @@ class ChatRouteArgs {
     if (other is! ChatRouteArgs) return false;
     return key == other.key &&
         remoteDeviceId == other.remoteDeviceId &&
-        displayName == other.displayName;
+        displayName == other.displayName &&
+        showBackButton == other.showBackButton;
   }
 
   @override
   int get hashCode =>
-      key.hashCode ^ remoteDeviceId.hashCode ^ displayName.hashCode;
+      key.hashCode ^
+      remoteDeviceId.hashCode ^
+      displayName.hashCode ^
+      showBackButton.hashCode;
 }
 
 /// generated route for

@@ -46,8 +46,41 @@ class HomeDeviceListItem {
   final String statusLabel;
   final int averageTransferSpeedBytesPerSecond;
 
-  String get diagnosticsLabel =>
-      'Local id $localId · $averageTransferSpeedBytesPerSecond B/s';
+  bool get isConnected =>
+      statusLabel == 'localNetwork' || statusLabel == 'bluetooth';
+
+  String get initials {
+    final trimmed = displayName.trim();
+    if (trimmed.isEmpty) {
+      return '?';
+    }
+    return String.fromCharCode(trimmed.runes.first).toUpperCase();
+  }
+
+  String get connectionLabel {
+    return switch (statusLabel) {
+      'localNetwork' => 'Online',
+      'bluetooth' => 'Bluetooth',
+      'disconnected' => 'Offline',
+      _ => statusLabel,
+    };
+  }
+
+  String get speedLabel {
+    final bytes = averageTransferSpeedBytesPerSecond;
+    if (bytes <= 0) {
+      return 'No route';
+    }
+    if (bytes >= 1024 * 1024) {
+      return '${(bytes / 1024 / 1024).toStringAsFixed(1)} MB/s';
+    }
+    if (bytes >= 1024) {
+      return '${(bytes / 1024).toStringAsFixed(1)} KB/s';
+    }
+    return '$bytes B/s';
+  }
+
+  String get diagnosticsLabel => 'ID $deviceId · $speedLabel';
 }
 
 class HomePageController {

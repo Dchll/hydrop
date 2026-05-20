@@ -259,6 +259,40 @@ class MessageRepository {
     );
   }
 
+  Future<FileMessageRecord> createLocalFileMessage({
+    required String remoteDeviceId,
+    required String filePath,
+    required String fileName,
+    String? mimeType,
+    required int totalBytes,
+  }) async {
+    final localMessageId = _newLocalEntityId(prefix: 'msg');
+    final attachmentId = _newLocalEntityId(prefix: 'attachment');
+    final messageId = await _messageDao.insertMessageWithAttachments(
+      remoteDeviceId: remoteDeviceId,
+      direction: MessageDirection.sent,
+      messageType: MessageType.file,
+      sendStatus: MessageSendStatus.pending,
+      localMessageId: localMessageId,
+      attachments: [
+        MessageAttachmentDraft(
+          attachmentId: attachmentId,
+          filePath: filePath,
+          fileName: fileName,
+          mimeType: mimeType,
+          totalBytes: totalBytes,
+          transferStatus: MessageAttachmentTransferStatus.pending,
+          transferTaskId: _newLocalEntityId(prefix: 'local_file'),
+        ),
+      ],
+    );
+    return FileMessageRecord(
+      messageId: messageId,
+      localMessageId: localMessageId,
+      attachmentId: attachmentId,
+    );
+  }
+
   Future<FileMessageRecord> createOutgoingFileMessage({
     required String remoteDeviceId,
     required String attachmentId,

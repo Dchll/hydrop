@@ -1,15 +1,13 @@
-import 'dart:async';
-
 import 'package:auto_route/auto_route.dart';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hydrop/application/mine/connection_qr_controller.dart';
 import 'package:hydrop/application/mine/mine_page_state.dart';
 import 'package:hydrop/data/local/repository/setting_repository.dart';
+import 'package:hydrop/presentation/widgets/connection_qr_actions.dart';
+import 'package:hydrop/presentation/widgets/hd_floating_components.dart';
 import 'package:hydrop/presentation/widgets/hd_glass_components.dart';
-import 'package:hydrop/routes/app_router.gr.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
-import 'package:qr_flutter/qr_flutter.dart';
+import 'package:hydrop/presentation/widgets/hydrop_adaptive.dart';
 
 @RoutePage()
 class MinePage extends ConsumerWidget {
@@ -19,144 +17,122 @@ class MinePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final overview = ref.watch(mineOverviewProvider);
 
-    return HdPageScaffold(
-      child: Column(
-        children: [
-          HdGlassHeader(
-            title: 'Mine',
-            subtitle: 'Device profile, local addresses and diagnostics',
-            trailing: IconButton(
-              onPressed: () => ref.invalidate(mineOverviewProvider),
-              icon: const Icon(Icons.refresh_rounded),
-              tooltip: 'Refresh local info',
-            ),
-          ),
-          const SizedBox(height: 18),
-          Expanded(
-            child: overview.when(
-              data: (state) => _MineOverviewBody(state: state),
-              error: (error, stackTrace) => HdGlassPanel(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text('Unable to load local device information'),
-                    const SizedBox(height: 12),
-                    Text(error.toString()),
-                    const SizedBox(height: 16),
-                    FilledButton(
-                      onPressed: () => ref.invalidate(mineOverviewProvider),
-                      child: const Text('Retry'),
+    return HydropAdaptiveBuilder(
+      builder: (context, constraints, windowClass) {
+        return HdPageScaffold(
+          padding: windowClass.pagePadding,
+          child: Column(
+            children: [
+              HdFloatingAppBar(
+                title: 'Mine',
+                subtitle: 'Device profile, QR connection and LAN diagnostics',
+                trailing: HdFloatingIconButton(
+                  onPressed: () => ref.invalidate(mineOverviewProvider),
+                  icon: Icons.refresh_rounded,
+                  tooltip: 'Refresh local info',
+                ),
+              ),
+              const SizedBox(height: 18),
+              Expanded(
+                child: overview.when(
+                  data: (state) =>
+                      _MineOverviewBody(state: state, windowClass: windowClass),
+                  error: (error, stackTrace) => HdGlassPanel(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text('Unable to load local device information'),
+                        const SizedBox(height: 12),
+                        Text(error.toString()),
+                        const SizedBox(height: 16),
+                        FilledButton(
+                          onPressed: () => ref.invalidate(mineOverviewProvider),
+                          child: const Text('Retry'),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              ),
-              loading: () => const HdGlassPanel(
-                child: SizedBox(
-                  height: 220,
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 18),
-          HdGlassDock(
-            child: Row(
-              children: [
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: () {
-                      context.navigateTo(ChatRoute());
-                    },
-                    icon: const Icon(Icons.chat_bubble_outline_rounded),
-                    label: const Text('Open chat'),
+                  ),
+                  loading: () => const HdGlassPanel(
+                    child: SizedBox(
+                      height: 220,
+                      child: Center(child: CircularProgressIndicator()),
+                    ),
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
 
 class _MineOverviewBody extends StatelessWidget {
-  const _MineOverviewBody({required this.state});
+  const _MineOverviewBody({required this.state, required this.windowClass});
+
+  final MineOverviewState state;
+  final HydropWindowClass windowClass;
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomPadding = windowClass.usesBottomNavigation
+        ? MediaQuery.paddingOf(context).bottom + 110
+        : 16.0;
+    final cards = [
+      _ProfilePanel(state: state),
+      _ConnectionQrPanel(state: state),
+      const _TransferSettingsPanel(),
+      _LocalNetworkPanel(state: state),
+      _DiagnosticsPanel(state: state),
+    ];
+
+    if (windowClass.usesSideNavigation) {
+      return GridView.builder(
+        padding: EdgeInsets.only(bottom: bottomPadding),
+        gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+          maxCrossAxisExtent: windowClass.isLarge ? 420 : 520,
+          mainAxisExtent: 260,
+          crossAxisSpacing: 14,
+          mainAxisSpacing: 14,
+        ),
+        itemCount: cards.length,
+        itemBuilder: (context, index) => HdGlassPanel(child: cards[index]),
+      );
+    }
+
+    return ListView.separated(
+      padding: EdgeInsets.only(bottom: bottomPadding),
+      itemCount: cards.length,
+      separatorBuilder: (context, index) => const SizedBox(height: 14),
+      itemBuilder: (context, index) => HdGlassPanel(child: cards[index]),
+    );
+  }
+}
+
+class _ProfilePanel extends StatelessWidget {
+  const _ProfilePanel({required this.state});
 
   final MineOverviewState state;
 
   @override
   Widget build(BuildContext context) {
-    final bottomPadding = MediaQuery.paddingOf(context).bottom + 110;
-
-    return ListView(
-      padding: EdgeInsets.only(bottom: bottomPadding),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        HdGlassPanel(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Device profile',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 16),
-              _InfoRow(label: 'Display name', value: state.displayName),
-              const SizedBox(height: 12),
-              _InfoRow(label: 'Host name', value: state.hostName),
-              const SizedBox(height: 12),
-              _InfoRow(
-                label: 'Device ID',
-                value: state.deviceId,
-                selectable: true,
-              ),
-            ],
-          ),
+        Text(
+          'Device profile',
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
         ),
-        const SizedBox(height: 14),
-        HdGlassPanel(child: _ConnectionQrPanel(state: state)),
-        const SizedBox(height: 14),
-        const HdGlassPanel(child: _TransferSettingsPanel()),
-        const SizedBox(height: 14),
-        HdGlassPanel(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Local available IP',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                  Text(
-                    '${state.localAddresses.length} found',
-                    style: Theme.of(context).textTheme.labelMedium,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              if (state.localAddresses.isEmpty)
-                Text(
-                  'No local network addresses available right now.',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                )
-              else
-                ...state.localAddresses.map(
-                  (address) => Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: _AddressTile(address: address),
-                  ),
-                ),
-            ],
-          ),
-        ),
+        const SizedBox(height: 16),
+        _InfoRow(label: 'Display name', value: state.displayName),
+        const SizedBox(height: 12),
+        _InfoRow(label: 'Host name', value: state.hostName),
+        const SizedBox(height: 12),
+        _InfoRow(label: 'Device ID', value: state.deviceId, selectable: true),
       ],
     );
   }
@@ -229,6 +205,91 @@ class _TransferSettingsPanel extends ConsumerWidget {
   }
 }
 
+class _LocalNetworkPanel extends StatelessWidget {
+  const _LocalNetworkPanel({required this.state});
+
+  final MineOverviewState state;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Local available IP',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+              ),
+            ),
+            Text(
+              '${state.localAddresses.length} found',
+              style: Theme.of(context).textTheme.labelMedium,
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        if (state.localAddresses.isEmpty)
+          Text(
+            'No local network addresses available right now.',
+            style: Theme.of(context).textTheme.bodyMedium,
+          )
+        else ...[
+          ...state.localAddresses
+              .take(4)
+              .map(
+                (address) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: _AddressTile(address: address),
+                ),
+              ),
+          if (state.localAddresses.length > 4)
+            Text(
+              '+${state.localAddresses.length - 4} more addresses',
+              style: Theme.of(context).textTheme.labelMedium,
+            ),
+        ],
+      ],
+    );
+  }
+}
+
+class _DiagnosticsPanel extends StatelessWidget {
+  const _DiagnosticsPanel({required this.state});
+
+  final MineOverviewState state;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Diagnostics',
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 16),
+        _InfoRow(
+          label: 'QR payload',
+          value: '${state.connectionQrPayload.length} chars',
+        ),
+        const SizedBox(height: 12),
+        _InfoRow(
+          label: 'Address count',
+          value: state.localAddresses.length.toString(),
+        ),
+        const SizedBox(height: 12),
+        const _InfoRow(label: 'TCP server', value: 'Managed by app runtime'),
+      ],
+    );
+  }
+}
+
 class _ConnectionQrPanel extends ConsumerWidget {
   const _ConnectionQrPanel({required this.state});
 
@@ -259,7 +320,7 @@ class _ConnectionQrPanel extends ConsumerWidget {
           children: [
             Expanded(
               child: FilledButton.icon(
-                onPressed: () => _showConnectionQrDialog(context, state),
+                onPressed: () => showConnectionQrDialog(context, state),
                 icon: const Icon(Icons.qr_code_2_rounded),
                 label: const Text('My QR'),
               ),
@@ -267,7 +328,7 @@ class _ConnectionQrPanel extends ConsumerWidget {
             const SizedBox(width: 12),
             Expanded(
               child: FilledButton.tonalIcon(
-                onPressed: () => _scanConnectionQr(context, ref),
+                onPressed: () => scanConnectionQr(context, ref),
                 icon: const Icon(Icons.qr_code_scanner_rounded),
                 label: const Text('Scan QR'),
               ),
@@ -275,272 +336,6 @@ class _ConnectionQrPanel extends ConsumerWidget {
           ],
         ),
       ],
-    );
-  }
-}
-
-Future<void> _showConnectionQrDialog(
-  BuildContext context,
-  MineOverviewState state,
-) {
-  final theme = Theme.of(context);
-
-  return showDialog<void>(
-    context: context,
-    builder: (context) {
-      return AlertDialog(
-        title: const Text('My connection QR'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            DecoratedBox(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: QrImageView(
-                  data: state.connectionQrPayload,
-                  version: QrVersions.auto,
-                  size: 240,
-                  backgroundColor: Colors.white,
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              '${state.displayName} · ${state.localAddresses.length} addresses',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'The QR contains device ID, TCP port and local network addresses.',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.66),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
-          ),
-        ],
-      );
-    },
-  );
-}
-
-Future<void> _scanConnectionQr(BuildContext context, WidgetRef ref) async {
-  final messenger = ScaffoldMessenger.of(context);
-
-  if (!ref.read(connectionQrScanSupportedProvider)) {
-    messenger.showSnackBar(
-      const SnackBar(
-        content: Text(
-          'QR scanning is supported on Android, iOS, macOS and web. Windows is not supported.',
-        ),
-      ),
-    );
-    return;
-  }
-
-  final result = await showDialog<ConnectionQrSaveResult>(
-    context: context,
-    builder: (context) => const _ConnectionQrScannerDialog(),
-  );
-  if (result == null || !context.mounted) {
-    return;
-  }
-
-  messenger.showSnackBar(
-    SnackBar(
-      content: Text(
-        'Saved ${result.displayName} with ${result.addressCount} addresses.',
-      ),
-    ),
-  );
-}
-
-class _ConnectionQrScannerDialog extends ConsumerStatefulWidget {
-  const _ConnectionQrScannerDialog();
-
-  @override
-  ConsumerState<_ConnectionQrScannerDialog> createState() =>
-      _ConnectionQrScannerDialogState();
-}
-
-class _ConnectionQrScannerDialogState
-    extends ConsumerState<_ConnectionQrScannerDialog> {
-  late final MobileScannerController _controller = MobileScannerController(
-    formats: const [BarcodeFormat.qrCode],
-  );
-
-  bool _isHandling = false;
-  String? _errorMessage;
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Dialog(
-      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-      child: HdGlassPanel(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Scan peer QR',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                IconButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.close_rounded),
-                  tooltip: 'Close scanner',
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(22),
-              child: AspectRatio(
-                aspectRatio: 1,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    MobileScanner(
-                      controller: _controller,
-                      onDetect: _handleDetect,
-                    ),
-                    const _ScannerFrame(),
-                    if (_isHandling)
-                      ColoredBox(
-                        color: Colors.black.withValues(alpha: 0.38),
-                        child: const Center(child: CircularProgressIndicator()),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-            if (_errorMessage != null) ...[
-              const SizedBox(height: 12),
-              Text(
-                _errorMessage!,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.error,
-                ),
-              ),
-            ],
-            const SizedBox(height: 12),
-            Text(
-              'Point the camera at another Hydrop device QR code.',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.66),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _handleDetect(BarcodeCapture capture) {
-    if (_isHandling) {
-      return;
-    }
-
-    String? rawValue;
-    for (final barcode in capture.barcodes) {
-      final value = barcode.rawValue?.trim();
-      if (value != null && value.isNotEmpty) {
-        rawValue = value;
-        break;
-      }
-    }
-
-    if (rawValue == null) {
-      return;
-    }
-
-    unawaited(_saveScannedValue(rawValue));
-  }
-
-  Future<void> _saveScannedValue(String rawValue) async {
-    setState(() {
-      _isHandling = true;
-      _errorMessage = null;
-    });
-    await _controller.stop();
-
-    try {
-      final result = await ref
-          .read(connectionQrControllerProvider)
-          .saveScannedPayload(rawValue);
-      if (!mounted) {
-        return;
-      }
-      Navigator.of(context).pop(result);
-    } catch (error) {
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _isHandling = false;
-        _errorMessage = _formatScanError(error);
-      });
-      try {
-        await _controller.start();
-      } catch (_) {
-        // Permission or platform camera failures are already surfaced by scanner.
-      }
-    }
-  }
-
-  String _formatScanError(Object error) {
-    if (error is FormatException) {
-      return error.message;
-    }
-    if (error is StateError) {
-      return error.message;
-    }
-    return 'Unable to save this QR code.';
-  }
-}
-
-class _ScannerFrame extends StatelessWidget {
-  const _ScannerFrame();
-
-  @override
-  Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: Center(
-        child: Container(
-          width: 220,
-          height: 220,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: Colors.white, width: 3),
-          ),
-        ),
-      ),
     );
   }
 }
