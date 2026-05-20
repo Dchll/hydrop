@@ -10,17 +10,20 @@ class AppSettings {
   const AppSettings({
     required this.themeMode,
     required this.transferEncryptionEnabled,
+    required this.autoResumeTransfersEnabled,
   });
 
   factory AppSettings.fromRow(SettingItem row) {
     return AppSettings(
       themeMode: row.themeMode,
       transferEncryptionEnabled: row.transferEncryptionEnabled,
+      autoResumeTransfersEnabled: row.autoResumeTransfersEnabled,
     );
   }
 
   final AppThemeMode themeMode;
   final bool transferEncryptionEnabled;
+  final bool autoResumeTransfersEnabled;
 }
 
 class SettingRepository {
@@ -38,6 +41,10 @@ class SettingRepository {
 
   Future<void> setTransferEncryptionEnabled(bool enabled) {
     return _settingDao.setTransferEncryptionEnabled(enabled);
+  }
+
+  Future<void> setAutoResumeTransfersEnabled(bool enabled) {
+    return _settingDao.setAutoResumeTransfersEnabled(enabled);
   }
 }
 

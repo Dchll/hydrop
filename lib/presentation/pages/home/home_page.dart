@@ -1,10 +1,11 @@
-import 'package:auto_route/annotations.dart';
+import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hydrop/application/home/home_page_state.dart';
 import 'package:hydrop/core/utils/talker/talker.dart';
 import 'package:hydrop/presentation/widgets/hd_glass_components.dart';
 import 'package:hydrop/presentation/widgets/image_widget.dart';
+import 'package:hydrop/routes/app_router.gr.dart';
 
 @RoutePage()
 class HomePage extends ConsumerWidget {
@@ -48,7 +49,17 @@ class HomePage extends ConsumerWidget {
                           itemBuilder: (context, index) {
                             final deviceItem = deviceItems[index];
                             return HdGlassPanel(
-                              child: _DeviceTile(deviceItem: deviceItem),
+                              child: _DeviceTile(
+                                deviceItem: deviceItem,
+                                onTap: () {
+                                  context.navigateTo(
+                                    ChatRoute(
+                                      remoteDeviceId: deviceItem.deviceId,
+                                      displayName: deviceItem.displayName,
+                                    ),
+                                  );
+                                },
+                              ),
                             );
                           },
                         );
@@ -94,9 +105,10 @@ class HomePage extends ConsumerWidget {
 }
 
 class _DeviceTile extends StatelessWidget {
-  const _DeviceTile({required this.deviceItem});
+  const _DeviceTile({required this.deviceItem, required this.onTap});
 
   final HomeDeviceListItem deviceItem;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -105,27 +117,35 @@ class _DeviceTile extends StatelessWidget {
       color: theme.colorScheme.onSurface.withValues(alpha: 0.68),
     );
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
+    return GestureDetector(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: Text(
-                deviceItem.displayName,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    deviceItem.displayName,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
-              ),
+                _StatusBadge(status: deviceItem.statusLabel),
+              ],
             ),
-            _StatusBadge(status: deviceItem.statusLabel),
+            const SizedBox(height: 12),
+            Text(deviceItem.deviceId, style: labelStyle),
+            const SizedBox(height: 8),
+            Text(deviceItem.diagnosticsLabel, style: labelStyle),
+            const SizedBox(height: 8),
+            Text('Tap to open chat', style: labelStyle),
           ],
         ),
-        const SizedBox(height: 12),
-        Text(deviceItem.deviceId, style: labelStyle),
-        const SizedBox(height: 8),
-        Text(deviceItem.diagnosticsLabel, style: labelStyle),
-      ],
+      ),
     );
   }
 }

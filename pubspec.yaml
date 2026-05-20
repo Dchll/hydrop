@@ -13,6 +13,9 @@ dependencies:
   # https://pub.dev/packages/auto_route
   auto_route: ^11.1.0
 
+  # https://pub.dev/packages/cached_network_image
+  cached_network_image: ^3.4.1
+
   # https://pub.dev/packages/dio
   dio: ^5.9.2
 

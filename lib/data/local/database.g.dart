@@ -2322,11 +2322,27 @@ class $SettingItemsTable extends SettingItems
         ),
         clientDefault: () => false,
       );
+  static const VerificationMeta _autoResumeTransfersEnabledMeta =
+      const VerificationMeta('autoResumeTransfersEnabled');
+  @override
+  late final GeneratedColumn<bool> autoResumeTransfersEnabled =
+      GeneratedColumn<bool>(
+        'auto_resume_transfers_enabled',
+        aliasedName,
+        false,
+        type: DriftSqlType.bool,
+        requiredDuringInsert: false,
+        defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("auto_resume_transfers_enabled" IN (0, 1))',
+        ),
+        clientDefault: () => true,
+      );
   @override
   List<GeneratedColumn> get $columns => [
     id,
     themeMode,
     transferEncryptionEnabled,
+    autoResumeTransfersEnabled,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2349,6 +2365,15 @@ class $SettingItemsTable extends SettingItems
         transferEncryptionEnabled.isAcceptableOrUnknown(
           data['transfer_encryption_enabled']!,
           _transferEncryptionEnabledMeta,
+        ),
+      );
+    }
+    if (data.containsKey('auto_resume_transfers_enabled')) {
+      context.handle(
+        _autoResumeTransfersEnabledMeta,
+        autoResumeTransfersEnabled.isAcceptableOrUnknown(
+          data['auto_resume_transfers_enabled']!,
+          _autoResumeTransfersEnabledMeta,
         ),
       );
     }
@@ -2375,6 +2400,10 @@ class $SettingItemsTable extends SettingItems
         DriftSqlType.bool,
         data['${effectivePrefix}transfer_encryption_enabled'],
       )!,
+      autoResumeTransfersEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}auto_resume_transfers_enabled'],
+      )!,
     );
   }
 
@@ -2391,10 +2420,12 @@ class SettingItem extends DataClass implements Insertable<SettingItem> {
   final int id;
   final AppThemeMode themeMode;
   final bool transferEncryptionEnabled;
+  final bool autoResumeTransfersEnabled;
   const SettingItem({
     required this.id,
     required this.themeMode,
     required this.transferEncryptionEnabled,
+    required this.autoResumeTransfersEnabled,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2408,6 +2439,9 @@ class SettingItem extends DataClass implements Insertable<SettingItem> {
     map['transfer_encryption_enabled'] = Variable<bool>(
       transferEncryptionEnabled,
     );
+    map['auto_resume_transfers_enabled'] = Variable<bool>(
+      autoResumeTransfersEnabled,
+    );
     return map;
   }
 
@@ -2416,6 +2450,7 @@ class SettingItem extends DataClass implements Insertable<SettingItem> {
       id: Value(id),
       themeMode: Value(themeMode),
       transferEncryptionEnabled: Value(transferEncryptionEnabled),
+      autoResumeTransfersEnabled: Value(autoResumeTransfersEnabled),
     );
   }
 
@@ -2432,6 +2467,9 @@ class SettingItem extends DataClass implements Insertable<SettingItem> {
       transferEncryptionEnabled: serializer.fromJson<bool>(
         json['transferEncryptionEnabled'],
       ),
+      autoResumeTransfersEnabled: serializer.fromJson<bool>(
+        json['autoResumeTransfersEnabled'],
+      ),
     );
   }
   @override
@@ -2445,6 +2483,9 @@ class SettingItem extends DataClass implements Insertable<SettingItem> {
       'transferEncryptionEnabled': serializer.toJson<bool>(
         transferEncryptionEnabled,
       ),
+      'autoResumeTransfersEnabled': serializer.toJson<bool>(
+        autoResumeTransfersEnabled,
+      ),
     };
   }
 
@@ -2452,11 +2493,14 @@ class SettingItem extends DataClass implements Insertable<SettingItem> {
     int? id,
     AppThemeMode? themeMode,
     bool? transferEncryptionEnabled,
+    bool? autoResumeTransfersEnabled,
   }) => SettingItem(
     id: id ?? this.id,
     themeMode: themeMode ?? this.themeMode,
     transferEncryptionEnabled:
         transferEncryptionEnabled ?? this.transferEncryptionEnabled,
+    autoResumeTransfersEnabled:
+        autoResumeTransfersEnabled ?? this.autoResumeTransfersEnabled,
   );
   SettingItem copyWithCompanion(SettingItemsCompanion data) {
     return SettingItem(
@@ -2465,6 +2509,9 @@ class SettingItem extends DataClass implements Insertable<SettingItem> {
       transferEncryptionEnabled: data.transferEncryptionEnabled.present
           ? data.transferEncryptionEnabled.value
           : this.transferEncryptionEnabled,
+      autoResumeTransfersEnabled: data.autoResumeTransfersEnabled.present
+          ? data.autoResumeTransfersEnabled.value
+          : this.autoResumeTransfersEnabled,
     );
   }
 
@@ -2473,46 +2520,59 @@ class SettingItem extends DataClass implements Insertable<SettingItem> {
     return (StringBuffer('SettingItem(')
           ..write('id: $id, ')
           ..write('themeMode: $themeMode, ')
-          ..write('transferEncryptionEnabled: $transferEncryptionEnabled')
+          ..write('transferEncryptionEnabled: $transferEncryptionEnabled, ')
+          ..write('autoResumeTransfersEnabled: $autoResumeTransfersEnabled')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, themeMode, transferEncryptionEnabled);
+  int get hashCode => Object.hash(
+    id,
+    themeMode,
+    transferEncryptionEnabled,
+    autoResumeTransfersEnabled,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is SettingItem &&
           other.id == this.id &&
           other.themeMode == this.themeMode &&
-          other.transferEncryptionEnabled == this.transferEncryptionEnabled);
+          other.transferEncryptionEnabled == this.transferEncryptionEnabled &&
+          other.autoResumeTransfersEnabled == this.autoResumeTransfersEnabled);
 }
 
 class SettingItemsCompanion extends UpdateCompanion<SettingItem> {
   final Value<int> id;
   final Value<AppThemeMode> themeMode;
   final Value<bool> transferEncryptionEnabled;
+  final Value<bool> autoResumeTransfersEnabled;
   const SettingItemsCompanion({
     this.id = const Value.absent(),
     this.themeMode = const Value.absent(),
     this.transferEncryptionEnabled = const Value.absent(),
+    this.autoResumeTransfersEnabled = const Value.absent(),
   });
   SettingItemsCompanion.insert({
     this.id = const Value.absent(),
     this.themeMode = const Value.absent(),
     this.transferEncryptionEnabled = const Value.absent(),
+    this.autoResumeTransfersEnabled = const Value.absent(),
   });
   static Insertable<SettingItem> custom({
     Expression<int>? id,
     Expression<String>? themeMode,
     Expression<bool>? transferEncryptionEnabled,
+    Expression<bool>? autoResumeTransfersEnabled,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (themeMode != null) 'theme_mode': themeMode,
       if (transferEncryptionEnabled != null)
         'transfer_encryption_enabled': transferEncryptionEnabled,
+      if (autoResumeTransfersEnabled != null)
+        'auto_resume_transfers_enabled': autoResumeTransfersEnabled,
     });
   }
 
@@ -2520,12 +2580,15 @@ class SettingItemsCompanion extends UpdateCompanion<SettingItem> {
     Value<int>? id,
     Value<AppThemeMode>? themeMode,
     Value<bool>? transferEncryptionEnabled,
+    Value<bool>? autoResumeTransfersEnabled,
   }) {
     return SettingItemsCompanion(
       id: id ?? this.id,
       themeMode: themeMode ?? this.themeMode,
       transferEncryptionEnabled:
           transferEncryptionEnabled ?? this.transferEncryptionEnabled,
+      autoResumeTransfersEnabled:
+          autoResumeTransfersEnabled ?? this.autoResumeTransfersEnabled,
     );
   }
 
@@ -2545,6 +2608,11 @@ class SettingItemsCompanion extends UpdateCompanion<SettingItem> {
         transferEncryptionEnabled.value,
       );
     }
+    if (autoResumeTransfersEnabled.present) {
+      map['auto_resume_transfers_enabled'] = Variable<bool>(
+        autoResumeTransfersEnabled.value,
+      );
+    }
     return map;
   }
 
@@ -2553,7 +2621,8 @@ class SettingItemsCompanion extends UpdateCompanion<SettingItem> {
     return (StringBuffer('SettingItemsCompanion(')
           ..write('id: $id, ')
           ..write('themeMode: $themeMode, ')
-          ..write('transferEncryptionEnabled: $transferEncryptionEnabled')
+          ..write('transferEncryptionEnabled: $transferEncryptionEnabled, ')
+          ..write('autoResumeTransfersEnabled: $autoResumeTransfersEnabled')
           ..write(')'))
         .toString();
   }
@@ -6954,12 +7023,14 @@ typedef $$SettingItemsTableCreateCompanionBuilder =
       Value<int> id,
       Value<AppThemeMode> themeMode,
       Value<bool> transferEncryptionEnabled,
+      Value<bool> autoResumeTransfersEnabled,
     });
 typedef $$SettingItemsTableUpdateCompanionBuilder =
     SettingItemsCompanion Function({
       Value<int> id,
       Value<AppThemeMode> themeMode,
       Value<bool> transferEncryptionEnabled,
+      Value<bool> autoResumeTransfersEnabled,
     });
 
 class $$SettingItemsTableFilterComposer
@@ -6984,6 +7055,11 @@ class $$SettingItemsTableFilterComposer
 
   ColumnFilters<bool> get transferEncryptionEnabled => $composableBuilder(
     column: $table.transferEncryptionEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get autoResumeTransfersEnabled => $composableBuilder(
+    column: $table.autoResumeTransfersEnabled,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -7011,6 +7087,11 @@ class $$SettingItemsTableOrderingComposer
     column: $table.transferEncryptionEnabled,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get autoResumeTransfersEnabled => $composableBuilder(
+    column: $table.autoResumeTransfersEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SettingItemsTableAnnotationComposer
@@ -7030,6 +7111,11 @@ class $$SettingItemsTableAnnotationComposer
 
   GeneratedColumn<bool> get transferEncryptionEnabled => $composableBuilder(
     column: $table.transferEncryptionEnabled,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get autoResumeTransfersEnabled => $composableBuilder(
+    column: $table.autoResumeTransfersEnabled,
     builder: (column) => column,
   );
 }
@@ -7068,20 +7154,24 @@ class $$SettingItemsTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<AppThemeMode> themeMode = const Value.absent(),
                 Value<bool> transferEncryptionEnabled = const Value.absent(),
+                Value<bool> autoResumeTransfersEnabled = const Value.absent(),
               }) => SettingItemsCompanion(
                 id: id,
                 themeMode: themeMode,
                 transferEncryptionEnabled: transferEncryptionEnabled,
+                autoResumeTransfersEnabled: autoResumeTransfersEnabled,
               ),
           createCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
                 Value<AppThemeMode> themeMode = const Value.absent(),
                 Value<bool> transferEncryptionEnabled = const Value.absent(),
+                Value<bool> autoResumeTransfersEnabled = const Value.absent(),
               }) => SettingItemsCompanion.insert(
                 id: id,
                 themeMode: themeMode,
                 transferEncryptionEnabled: transferEncryptionEnabled,
+                autoResumeTransfersEnabled: autoResumeTransfersEnabled,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

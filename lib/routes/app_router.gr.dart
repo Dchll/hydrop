@@ -10,6 +10,7 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:auto_route/auto_route.dart' as _i5;
+import 'package:flutter/material.dart' as _i6;
 import 'package:hydrop/presentation/pages/app/app_page.dart' as _i1;
 import 'package:hydrop/presentation/pages/chat/chat_page.dart' as _i2;
 import 'package:hydrop/presentation/pages/home/home_page.dart' as _i3;
@@ -33,18 +34,70 @@ class AppRoute extends _i5.PageRouteInfo<void> {
 
 /// generated route for
 /// [_i2.ChatPage]
-class ChatRoute extends _i5.PageRouteInfo<void> {
-  const ChatRoute({List<_i5.PageRouteInfo>? children})
-    : super(ChatRoute.name, initialChildren: children);
+class ChatRoute extends _i5.PageRouteInfo<ChatRouteArgs> {
+  ChatRoute({
+    _i6.Key? key,
+    String? remoteDeviceId,
+    String? displayName,
+    List<_i5.PageRouteInfo>? children,
+  }) : super(
+         ChatRoute.name,
+         args: ChatRouteArgs(
+           key: key,
+           remoteDeviceId: remoteDeviceId,
+           displayName: displayName,
+         ),
+         rawQueryParams: {'deviceId': remoteDeviceId, 'name': displayName},
+         initialChildren: children,
+       );
 
   static const String name = 'ChatRoute';
 
   static _i5.PageInfo page = _i5.PageInfo(
     name,
     builder: (data) {
-      return const _i2.ChatPage();
+      final queryParams = data.queryParams;
+      final args = data.argsAs<ChatRouteArgs>(
+        orElse: () => ChatRouteArgs(
+          remoteDeviceId: queryParams.optString('deviceId'),
+          displayName: queryParams.optString('name'),
+        ),
+      );
+      return _i2.ChatPage(
+        key: args.key,
+        remoteDeviceId: args.remoteDeviceId,
+        displayName: args.displayName,
+      );
     },
   );
+}
+
+class ChatRouteArgs {
+  const ChatRouteArgs({this.key, this.remoteDeviceId, this.displayName});
+
+  final _i6.Key? key;
+
+  final String? remoteDeviceId;
+
+  final String? displayName;
+
+  @override
+  String toString() {
+    return 'ChatRouteArgs{key: $key, remoteDeviceId: $remoteDeviceId, displayName: $displayName}';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! ChatRouteArgs) return false;
+    return key == other.key &&
+        remoteDeviceId == other.remoteDeviceId &&
+        displayName == other.displayName;
+  }
+
+  @override
+  int get hashCode =>
+      key.hashCode ^ remoteDeviceId.hashCode ^ displayName.hashCode;
 }
 
 /// generated route for

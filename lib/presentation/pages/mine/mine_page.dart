@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hydrop/application/mine/connection_qr_controller.dart';
 import 'package:hydrop/application/mine/mine_page_state.dart';
+import 'package:hydrop/data/local/repository/setting_repository.dart';
 import 'package:hydrop/presentation/widgets/hd_glass_components.dart';
 import 'package:hydrop/routes/app_router.gr.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -65,7 +66,7 @@ class MinePage extends ConsumerWidget {
                 Expanded(
                   child: FilledButton.icon(
                     onPressed: () {
-                      context.navigateTo(const ChatRoute());
+                      context.navigateTo(ChatRoute());
                     },
                     icon: const Icon(Icons.chat_bubble_outline_rounded),
                     label: const Text('Open chat'),
@@ -118,6 +119,8 @@ class _MineOverviewBody extends StatelessWidget {
         const SizedBox(height: 14),
         HdGlassPanel(child: _ConnectionQrPanel(state: state)),
         const SizedBox(height: 14),
+        const HdGlassPanel(child: _TransferSettingsPanel()),
+        const SizedBox(height: 14),
         HdGlassPanel(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -155,6 +158,73 @@ class _MineOverviewBody extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _TransferSettingsPanel extends ConsumerWidget {
+  const _TransferSettingsPanel();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final settings = ref.watch(settingsProvider);
+
+    return settings.when(
+      data: (value) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Transfer settings',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Auto resume transfers',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Resume interrupted file transfers from the last received byte after reconnecting.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.68,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Switch.adaptive(
+                value: value.autoResumeTransfersEnabled,
+                onChanged: (enabled) {
+                  unawaited(
+                    ref
+                        .read(settingRepositoryProvider)
+                        .setAutoResumeTransfersEnabled(enabled),
+                  );
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
+      error: (error, stackTrace) => Text(error.toString()),
+      loading: () => const SizedBox(
+        height: 88,
+        child: Center(child: CircularProgressIndicator()),
+      ),
     );
   }
 }

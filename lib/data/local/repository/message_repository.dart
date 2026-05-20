@@ -169,6 +169,16 @@ class FileMessageRecord {
   final String attachmentId;
 }
 
+class TextMessageRecord {
+  const TextMessageRecord({
+    required this.messageId,
+    required this.localMessageId,
+  });
+
+  final int messageId;
+  final String localMessageId;
+}
+
 class MessageRepository {
   const MessageRepository(this._messageDao);
 
@@ -183,23 +193,50 @@ class MessageRepository {
         );
   }
 
+  Future<MessageAttachmentSnapshot?> getAttachmentByAttachmentId(
+    String attachmentId,
+  ) async {
+    final row = await _messageDao.getAttachmentByAttachmentId(attachmentId);
+    return row == null ? null : MessageAttachmentSnapshot.fromRow(row);
+  }
+
   Future<int> sendTextMessage({
+    required String remoteDeviceId,
+    required String textContent,
+    List<MessageAttachmentInput> attachments = const [],
+  }) async {
+    final record = await createOutgoingTextMessage(
+      remoteDeviceId: remoteDeviceId,
+      textContent: textContent,
+      attachments: attachments,
+    );
+    return record.messageId;
+  }
+
+  Future<TextMessageRecord> createOutgoingTextMessage({
     required String remoteDeviceId,
     required String textContent,
     List<MessageAttachmentInput> attachments = const [],
   }) {
     final localMessageId = _newLocalEntityId(prefix: 'msg');
-    return _messageDao.insertMessageWithAttachments(
-      remoteDeviceId: remoteDeviceId,
-      direction: MessageDirection.sent,
-      textContent: textContent,
-      messageType: MessageType.text,
-      sendStatus: MessageSendStatus.pending,
-      localMessageId: localMessageId,
-      attachments: attachments
-          .map((attachment) => attachment.toDraft())
-          .toList(),
-    );
+    return _messageDao
+        .insertMessageWithAttachments(
+          remoteDeviceId: remoteDeviceId,
+          direction: MessageDirection.sent,
+          textContent: textContent,
+          messageType: MessageType.text,
+          sendStatus: MessageSendStatus.pending,
+          localMessageId: localMessageId,
+          attachments: attachments
+              .map((attachment) => attachment.toDraft())
+              .toList(),
+        )
+        .then(
+          (messageId) => TextMessageRecord(
+            messageId: messageId,
+            localMessageId: localMessageId,
+          ),
+        );
   }
 
   Future<int> saveReceivedMessage({
@@ -266,7 +303,10 @@ class MessageRepository {
     required String fileName,
     String? mimeType,
     required int totalBytes,
+    int transferredBytes = 0,
     String? checksumSha256,
+    MessageAttachmentTransferStatus transferStatus =
+        MessageAttachmentTransferStatus.transferring,
     required String transferTaskId,
     String? remoteMessageId,
   }) {
@@ -283,8 +323,9 @@ class MessageRepository {
           fileName: fileName,
           mimeType: mimeType,
           totalBytes: totalBytes,
+          transferredBytes: transferredBytes,
           checksumSha256: checksumSha256,
-          transferStatus: MessageAttachmentTransferStatus.transferring,
+          transferStatus: transferStatus,
           transferTaskId: transferTaskId,
         ),
       ],
@@ -319,6 +360,14 @@ class MessageRepository {
       localMessageId: localMessageId,
       sendStatus: MessageSendStatus.sent,
       remoteMessageId: remoteMessageId,
+      errorMessage: null,
+    );
+  }
+
+  Future<int> markMessageSending({required String localMessageId}) {
+    return _messageDao.updateMessageStatus(
+      localMessageId: localMessageId,
+      sendStatus: MessageSendStatus.sending,
       errorMessage: null,
     );
   }
