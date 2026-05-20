@@ -24,7 +24,7 @@
 - `SettingRepository` 已接入 `AppThemeMode`，`MainApp` 通过 `settingsProvider` 驱动 `ThemeMode`。
 - `MineRepository` 已支持 `getMineProfile()`、`initializeMineProfile()`、`ensureMineProfile()`，可初始化并复用稳定 `deviceId`。
 - `bingWallpaperProvider` 已能请求 UAPI、下载 4K 图片到 Downloads/`bing_wallpaper`，并清理旧图。
-- `ImageWidget` 已支持网络、文件、asset、data URI 自动识别。
+- `ImageWidget` 已支持网络、文件、asset、data URI 自动识别；网络分支已接入 `cached_network_image`，空 URL、加载中和加载失败会显示灰色占位，失败态可通过可选回调重试。
 - `lib/application/mine/mine_page_state.dart` 已作为首个 application 层落地，负责编排本机 profile 与局域网地址概览。
 - `HdPageScaffold`、`HdGlassHeader`、`HdGlassPanel`、`HdGlassDock` 已完成抽象，并已用于 `AppPage`、`HomePage`、`ChatPage`、`MinePage` 的主视觉骨架。
 - `MinePage` 已能展示 `displayName`、`hostName`、`deviceId` 和基础本地可用 IP 列表，并支持手动刷新。
@@ -37,10 +37,10 @@
 - 网络接口枚举已经共享到 `LocalNetworkAddressService`；基础地址过滤与排序已落地，Wi-Fi 场景下的广播地址、网关和子网元数据也已补齐，剩余风险主要在平台返回值差异。
 - UDP 广播发送/监听、payload 编解码、nonce 去重、自设备过滤、发现设备和地址回写、发现 TTL 扫描已经落地；生命周期调度仍待实现。
 - 二维码连接已作为不依赖 UDP 广播的手动配对路径落地；后续仍需把扫描成功后的设备选择、聊天入口和连接状态 UI 打通。
-- TCP frame 编解码、基础 TCP server/client 和轻量测速服务已经落地；连接管理器、连接状态机、心跳和断线重连仍待实现。
+- TCP frame 编解码、基础 TCP server/client、轻量测速服务和文件传输断点续传已经落地；连接管理器、连接状态机、心跳和通用断线重连仍待实现。
 - 设备记忆已有 `DeviceAddressItems` / `ConnectionSessionItems` 数据结构，discovery 回写、TTL 过期标记和主动测速刷新已经落地，但还缺 UI 展示闭环。
-- 消息表和附件表的扩展字段已经落地，但缺少 ACK 协议、真实发送队列、收发链路和页面交互闭环。
-- 聊天页还没有按 `remoteDeviceId` 绑定会话，也没有发送 UI 和传输队列。
+- 消息表和附件表的扩展字段已经落地，文本消息已具备 `textMessage` / ACK 收发链路和页面交互闭环；后续仍缺统一发送队列、重试和连接状态机。
+- 聊天页已按 `remoteDeviceId` 绑定会话并提供文本发送 UI；后续需要补齐失败重试、连接状态和媒体入口。
 
 ### 规划新增依赖
 
@@ -51,7 +51,7 @@
 | `network_info_plus` | `^8.1.0` | 获取 Wi-Fi IP、网关、子网掩码、广播地址等信息 | 作为 `NetworkInterface.list()` 的补充，不作为唯一地址来源 |
 | `qr_flutter` | `^4.1.0` | 渲染本机连接二维码 | 只负责展示二维码，payload 编解码放在 application 层 |
 | `mobile_scanner` | `^7.2.0` | 扫描对方连接二维码 | Android / iOS / macOS / Web 可用；Windows 不启用扫描入口 |
-| `cached_network_image` | `^3.4.1` | 网络图片缓存、占位、错误态 | 只用于 `ImageWidget` 的网络分支，文件/asset/data URI 仍走对应原生 provider |
+| `cached_network_image` | `^3.4.1` | 网络图片缓存、占位、错误态 | 已接入 `ImageWidget` 的网络分支，文件/asset/data URI 仍走对应原生 provider |
 
 ## 3. 分层原则
 
@@ -160,7 +160,7 @@ lib/
 - `DeviceItems`：远端设备主表。`deviceId` 作为业务唯一键，展示名和整体连接状态写在这里。
 - `MessageItems`：消息主表。后续需要增加消息类型、发送状态、幂等字段。
 - `MessageAttachmentItems`：附件表。后续需要从“文件保存状态”扩展为“传输和媒体元数据”。
-- `SettingItems`：设置表。继续承载主题、传输加密等用户配置。
+- `SettingItems`：设置表。继续承载主题、传输加密、断点续传/自动继续等用户配置。
 - `PointItems`：统计表。用于产品内统计，不参与核心传输状态判断。
 
 ### 4.1.1 本机设备 ID 生成
@@ -347,13 +347,18 @@ deviceId = "hydrop_" + sha256("hydrop-device-id-v1:" + rawStableDeviceSeed).subs
 
 - [x] `MessageAttachmentItems` 已扩展 `attachmentId`、`fileName`、`mimeType`、`totalBytes`、`transferredBytes`、`checksumSha256`、`thumbnailPath`、`transferStatus`、`transferTaskId`、`createdAt`、`updatedAt`。
 - [x] 附件 Repository/DAO 写入链路已支持媒体元数据和传输状态持久化。
-- [ ] 分片传输、文件校验、重新下载和附件清理仍待实现。
+- [x] `FileTransferCoordinator` 已实现 offer/chunk/complete、文件校验、断点续传和断线后自动重连继续。
+- [ ] 图片/视频选择入口、重新下载和附件清理仍待实现。
 
 ### 4.6 迁移策略
 
 `schemaVersion` 从 1 升到 2 时：
 
 - 创建 `DeviceAddressItems`、`ConnectionSessionItems`。
+
+`schemaVersion` 从 2 升到 3 时：
+
+- `SettingItems` 增加 `autoResumeTransfersEnabled`，默认开启断点续传和文件传输自动继续。
 - `MessageItems` 增加 `messageType`、`sendStatus`、`localMessageId`、`updatedAt`、`errorMessage`。
 - `MessageAttachmentItems` 增加媒体和传输字段。
 - 旧消息的 `messageType` 推断：
@@ -697,7 +702,7 @@ Header 通用字段：
 | `heartbeat` | empty | 心跳 |
 | `heartbeatAck` | empty | 心跳确认 |
 | `textMessage` | UTF-8 text bytes | 文本消息 |
-| `messageAck` | empty | 消息确认 |
+| `textMessageAck` | empty | 文本消息确认 |
 | `fileOffer` | empty | 文件元数据协商 |
 | `fileOfferAck` | empty | 接受或拒绝 |
 | `fileChunk` | binary | 文件分片 |
@@ -748,7 +753,7 @@ Header 通用字段：
 ### 8.3 更新规则
 
 - `DiscoveryController` 在发现设备并写入地址后会按 5 分钟冷却触发 `SpeedTestRunner.refreshDevice(deviceId)`；也可在进入聊天页时主动调用。
-- `TransferServerController` 随 app 启动监听 TCP `39176`，当前先响应 `speedProbe` 并返回 `speedProbeAck`；后续接入握手、消息和文件 frame。
+- `TransferServerController` 随 app 启动监听 TCP `39176`，当前响应 `speedProbe` / `speedProbeAck`、文本消息 `textMessage` / `textMessageAck` 和文件传输 frame；后续接入握手、心跳和连接状态机。
 - UI 展示可读文案：`12 ms`、`3.2 MB/s`、`不可用`。
 
 ## 9. 消息设计
@@ -758,36 +763,35 @@ Header 通用字段：
 ```mermaid
 sequenceDiagram
   participant UI as "ChatPage"
-  participant C as "ChatController"
+  participant C as "ChatPageController"
   participant R as "MessageRepository"
-  participant Q as "OutboundQueue"
-  participant M as "ConnectionManager"
+  participant S as "TransferSocketService"
   participant DB as "Drift"
 
   UI->>C: "sendText(text)"
   C->>R: "insert pending message"
   R->>DB: "MessageItems insert"
-  C->>Q: "enqueue localMessageId"
-  Q->>M: "send textMessage frame"
-  M-->>Q: "messageAck"
-  Q->>R: "mark sent"
+  C->>S: "connect best address"
+  C->>S: "send textMessage frame"
+  S-->>C: "textMessageAck"
+  C->>R: "mark sent"
   R->>DB: "update sendStatus"
 ```
 
 关键点：
 
 - UI 点击发送后立即本地插入 pending，消息列表立刻显示。
-- 队列负责串行发送同一设备的消息，避免 ACK 顺序混乱。
-- 发送失败更新为 failed，用户点击重试只重发同一个 `localMessageId`。
+- 当前 MVP 由 `ChatPageController` 选择当前排序最优地址并发送 `textMessage`，收到 `textMessageAck` 后标记 sent。
+- 发送失败更新为 failed；后续再补用户点击重试并复用同一个 `localMessageId`。
 - 对端收到重复消息时只返回 ACK，不重复插入。
 
 ### 9.2 接收流程
 
-- `ConnectionManager` 解析 `textMessage`。
+- `TransferServerController` 解析 `textMessage`。
 - 校验 `remoteMessageId` 或 `requestId` 是否已处理。
 - 调用 `MessageRepository.saveReceivedMessage()` 写入本地。
-- 返回 `messageAck`。
-- `conversationProvider(remoteDeviceId)` 自动刷新 UI。
+- 返回 `textMessageAck`。
+- `chatConversationProvider(remoteDeviceId)` 自动刷新 UI。
 
 ### 9.3 URL 消息
 
@@ -859,6 +863,13 @@ class TransferTask {
 }
 ```
 
+实现状态：
+
+- 接收端收到 `fileOffer` 时会按附件 ID 定位 Downloads/`hydrop/attachments/{deviceId}/{attachmentId}` 下的本地文件。
+- `autoResumeTransfersEnabled` 开启时，接收端根据现有文件大小返回真实 `resumeFromByte`；关闭时会删除旧临时文件并从 0 开始。
+- 发送端在连接失败后最多重连 3 次，重连后复用同一个 `attachmentId` 再次协商，并从接收端返回的 `resumeFromByte` 继续发送。
+- 完成后仍以 SHA-256 校验为准，校验失败会把附件标记为 failed。
+
 ### 10.3 分片传输
 
 - chunk size：默认 256KB。
@@ -929,11 +940,13 @@ UI 规则：
 AutoRoute(page: ChatRoute.page, path: '/chat/:deviceId')
 ```
 
+当前实现使用 `/chat` 路由和 `deviceId` / `name` query 参数生成 `ChatRoute`，便于保留无设备时的占位页面。
+
 页面职责：
 
-- 读取 `conversationProvider(deviceId)`。
+- 读取 `chatConversationProvider(deviceId)`。
 - 读取 `connectionStateProvider(deviceId)`。
-- 发送按钮调用 `chatControllerProvider(deviceId).sendText(text)`。
+- 发送按钮调用 `chatPageControllerProvider(deviceId).sendText(text)`。
 - 附件按钮调用 picker，交给 `FileTransferCoordinator`。
 
 不要在 `ChatPage` 中：
@@ -950,6 +963,7 @@ AutoRoute(page: ChatRoute.page, path: '/chat/:deviceId')
 - 主题模式：system / light / dark。
 - 本机展示名。
 - 传输加密开关。
+- 断点续传和重连自动继续开关。
 - 发现服务开关。
 - 清理历史附件。
 - 当前设备 ID 展示和复制。
@@ -979,8 +993,8 @@ AutoRoute(page: ChatRoute.page, path: '/chat/:deviceId')
 
 - 调用方只传一个 URL/路径，不关心 provider 类型。
 - 支持 `http`、`https`、`//`、`data:`、`file://`、本地路径、asset。
-- `url` 改为 `String?`。
-- 网络分支接入 `cached_network_image: ^3.4.1`，提供磁盘/内存缓存能力。
+- `url` 已改为 `String?`。
+- 网络分支已接入 `cached_network_image: ^3.4.1`，提供磁盘/内存缓存能力。
 - 内置占位和错误 UI，但允许调用方覆盖。
 
 建议 API：
@@ -1173,9 +1187,9 @@ flutter analyze
 ### P0：基础稳定
 
 - [x] 已抽离 `HdPageScaffold` / `HdGlassHeader` / `HdGlassPanel` / `HdGlassDock`，统一首页、聊天页、我的页主视觉骨架。
-- [ ] `ImageWidget` 支持 nullable URL、灰色占位、失败点击重试。
-- [ ] `ImageWidget` 网络分支接入 `cached_network_image: ^3.4.1`，并保留非网络图片自动识别能力。
-- [ ] `ChatRoute` 增加 `deviceId` 参数。
+- [x] `ImageWidget` 支持 nullable URL、灰色占位、失败点击重试。
+- [x] `ImageWidget` 网络分支接入 `cached_network_image: ^3.4.1`，并保留非网络图片自动识别能力。
+- [x] `ChatRoute` 增加 `deviceId` 参数。
 - [x] Drift `schemaVersion` 已升级到 V2，并补齐迁移测试框架。
 - [x] 已提供稳定 `deviceId` 哈希生成工具，供 `DeviceIdentityService` 或初始化流程复用。
 - [x] `MineRepository.initializeMineProfile()` 已支持首次落库展示名和稳定 `deviceId`。
@@ -1211,13 +1225,16 @@ flutter analyze
 - [x] `FrameCodec` 实现二进制 frame。
 - [ ] `ConnectionManager` 实现状态机、握手、心跳、重连。
 - [x] 消息表已支持 pending / sent / failed 状态、幂等 ID 和错误信息落库。
-- [ ] `OutboundMessageQueue` 实现 pending 消息发送和 ACK。
-- [ ] `ChatController` 接入文本发送和失败重试。
+- [x] `ChatPageController` 接入文本发送和 ACK。
+- [x] `TransferServerController` 接收文本消息并落库。
+- [ ] `OutboundMessageQueue` 实现 pending 消息重试和 ACK 统一编排。
+- [ ] `ChatController` 接入失败重试。
 
 ### P4：图片和视频
 
 - [x] 附件表已扩展媒体元数据、传输状态和任务标识字段。
 - [x] `FileTransferCoordinator` 实现 offer/chunk/complete、进度回写、SHA-256 校验和本地保存。
+- [x] `FileTransferCoordinator` 实现断点续传、断线后重连自动继续和 Mine 页开关。
 - [ ] 图片选择、缩略图、预览入口。
 - [ ] 视频选择、封面、播放入口。
 

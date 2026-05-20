@@ -35,6 +35,15 @@ class SettingDao extends DatabaseAccessor<AppDataBase> with _$SettingDaoMixin {
     );
   }
 
+  Future<void> setAutoResumeTransfersEnabled(bool enabled) async {
+    await _ensureSettings();
+    await (update(
+      settingItems,
+    )..where((table) => table.id.equals(_settingsRowId))).write(
+      SettingItemsCompanion(autoResumeTransfersEnabled: Value(enabled)),
+    );
+  }
+
   Future<SettingItem> _ensureSettings() async {
     await into(settingItems).insertOnConflictUpdate(
       SettingItemsCompanion.insert(id: const Value(_settingsRowId)),

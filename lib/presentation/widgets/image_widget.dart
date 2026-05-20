@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -28,9 +29,10 @@ class ImageWidget extends StatelessWidget {
     this.frameBuilder,
     this.loadingBuilder,
     this.errorBuilder,
+    this.onRetry,
   });
 
-  final String url;
+  final String? url;
   final double? width;
   final double? height;
   final BoxFit? fit;
@@ -51,15 +53,13 @@ class ImageWidget extends StatelessWidget {
   final ImageFrameBuilder? frameBuilder;
   final ImageLoadingBuilder? loadingBuilder;
   final ImageErrorWidgetBuilder? errorBuilder;
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) {
-    final source = url.trim();
+    final source = url?.trim() ?? '';
     if (source.isEmpty) {
-      return _buildError(
-        context,
-        ArgumentError.value(url, 'url', 'Image url cannot be empty.'),
-      );
+      return _buildPlaceholder(context);
     }
 
     final memoryBytes = _tryParseDataImage(source);
@@ -69,9 +69,7 @@ class ImageWidget extends StatelessWidget {
 
     final networkUrl = _networkUrl(source);
     if (networkUrl != null) {
-      return _buildImage(
-        NetworkImage(networkUrl, scale: scale, headers: headers),
-      );
+      return _buildCachedNetworkImage(context, networkUrl);
     }
 
     if (_isFileSource(source)) {
@@ -104,6 +102,27 @@ class ImageWidget extends StatelessWidget {
     );
   }
 
+  Widget _buildCachedNetworkImage(BuildContext context, String imageUrl) {
+    return CachedNetworkImage(
+      imageUrl: imageUrl,
+      httpHeaders: headers,
+      scale: scale,
+      width: width,
+      height: height,
+      fit: fit,
+      alignment: alignment.resolve(Directionality.maybeOf(context)),
+      repeat: repeat,
+      matchTextDirection: matchTextDirection,
+      color: color,
+      colorBlendMode: colorBlendMode,
+      filterQuality: filterQuality,
+      useOldImageOnUrlChange: gaplessPlayback,
+      imageBuilder: (context, imageProvider) => _buildImage(imageProvider),
+      placeholder: (context, url) => _buildPlaceholder(context),
+      errorWidget: (context, url, error) => _buildError(context, error),
+    );
+  }
+
   Widget _buildImage(ImageProvider<Object> image) {
     return Image(
       image: image,
@@ -131,17 +150,22 @@ class ImageWidget extends StatelessWidget {
       return errorBuilder!(context, error, null);
     }
 
-    final iconTheme = IconTheme.of(context);
-    return SizedBox(
-      width: width,
-      height: height,
-      child: Center(
-        child: Icon(
-          Icons.broken_image_outlined,
-          color: iconTheme.color?.withValues(alpha: 0.64),
-          size: iconTheme.size,
-        ),
-      ),
+    final errorState = _buildPlaceholder(context);
+    if (onRetry == null) {
+      return errorState;
+    }
+
+    return Material(
+      type: MaterialType.transparency,
+      child: InkWell(onTap: onRetry, child: errorState),
+    );
+  }
+
+  Widget _buildPlaceholder(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return ColoredBox(
+      color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.72),
+      child: SizedBox(width: width, height: height),
     );
   }
 }

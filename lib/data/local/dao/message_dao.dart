@@ -65,6 +65,14 @@ class MessageDao extends DatabaseAccessor<AppDataBase> with _$MessageDaoMixin {
     return query.watch().map(_groupConversationRows);
   }
 
+  Future<MessageAttachmentItem?> getAttachmentByAttachmentId(
+    String attachmentId,
+  ) {
+    return (select(messageAttachmentItems)
+          ..where((table) => table.attachmentId.equals(attachmentId)))
+        .getSingleOrNull();
+  }
+
   Future<int> insertMessageWithAttachments({
     required String remoteDeviceId,
     required MessageDirection direction,

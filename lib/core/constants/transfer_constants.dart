@@ -5,6 +5,8 @@ const transferDefaultPort = 39176;
 
 /// TCP connect and probe ack timeout for lightweight LAN operations.
 const transferConnectTimeout = Duration(seconds: 2);
+const transferAutoResumeMaxAttempts = 3;
+const transferAutoResumeRetryDelay = Duration(seconds: 2);
 
 /// Frame header is JSON and must stay small enough to parse safely.
 const transferFrameMaxHeaderBytes = 16 * 1024;
@@ -14,6 +16,8 @@ const transferFrameMaxBodyBytes = 256 * 1024;
 
 const transferFrameTypeSpeedProbe = 'speedProbe';
 const transferFrameTypeSpeedProbeAck = 'speedProbeAck';
+const transferFrameTypeTextMessage = 'textMessage';
+const transferFrameTypeTextMessageAck = 'textMessageAck';
 
 const speedTestProbePayloadBytes = transferFrameMaxBodyBytes;
 const speedTestMaxCandidateCount = 3;

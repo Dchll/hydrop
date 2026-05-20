@@ -46,7 +46,7 @@ class AppDataBase extends _$AppDataBase {
   AppDataBase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration {
@@ -58,6 +58,9 @@ class AppDataBase extends _$AppDataBase {
       onUpgrade: (migrator, from, to) async {
         if (from < 2) {
           await _migrateFromV1ToV2(migrator);
+        }
+        if (from < 3) {
+          await _migrateFromV2ToV3(migrator);
         }
       },
       beforeOpen: (details) async {
@@ -176,6 +179,13 @@ class AppDataBase extends _$AppDataBase {
       ''');
 
     await _createCustomIndexes();
+  }
+
+  Future<void> _migrateFromV2ToV3(Migrator migrator) async {
+    await customStatement('''
+      ALTER TABLE setting_items
+      ADD COLUMN auto_resume_transfers_enabled INTEGER NOT NULL DEFAULT 1
+      ''');
   }
 
   Future<void> _createCustomIndexes() async {
