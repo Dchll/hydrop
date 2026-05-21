@@ -9,6 +9,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: any
 
   # https://pub.dev/packages/auto_route
   auto_route: ^11.1.0
@@ -21,6 +24,12 @@ dependencies:
 
   # https://pub.dev/packages/file_picker
   file_picker: ^11.0.2
+
+  # https://pub.dev/packages/url_launcher
+  url_launcher: ^6.3.2
+
+  # https://pub.dev/packages/video_player
+  video_player: ^2.11.1
 
   # https://pub.dev/packages/crypto
   crypto: ^3.0.7
@@ -69,6 +78,9 @@ dependencies:
 
   # https://pub.dev/packages/talker_riverpod_logger
   talker_riverpod_logger: 5.1.16
+  flutter_launcher_icons: ^0.14.4
+  flutter_local_notifications: ^21.0.0
+  fluttertoast: ^9.0.0
 
 dev_dependencies:
   flutter_test:
@@ -102,9 +114,14 @@ dev_dependencies:
   sqlite3: ^2.9.4
 
 flutter:
+  generate: true
   uses-material-design: true
   assets:
     - assets/
+  fonts:
+    - family: MiSans
+      fonts:
+        - asset: assets/fonts/MiSansVF.ttf
 
 flutter_gen:
   output: lib/gen/

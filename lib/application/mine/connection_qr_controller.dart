@@ -109,11 +109,6 @@ class ConnectionQrController {
           ? DeviceIpVersion.ipv4
           : DeviceIpVersion.ipv6,
       port: payload.tcpPort,
-      interfaceName: address.interfaceName,
-      networkSignature: address.networkSignature,
-      subnetMask: address.subnetMask,
-      gatewayAddress: address.gatewayAddress,
-      broadcastAddress: address.broadcastAddress,
       source: DeviceAddressSource.manual,
       isReachable: true,
       lastSeenAt: seenAt,

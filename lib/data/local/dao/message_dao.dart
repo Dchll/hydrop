@@ -65,6 +65,50 @@ class MessageDao extends DatabaseAccessor<AppDataBase> with _$MessageDaoMixin {
     return query.watch().map(_groupConversationRows);
   }
 
+  Stream<List<MessageWithAttachmentRows>> watchFileMessages() {
+    final query =
+        select(messageItems).join([
+            innerJoin(
+              messageAttachmentItems,
+              messageAttachmentItems.messageId.equalsExp(messageItems.id),
+            ),
+          ])
+          ..where(messageItems.messageType.equalsValue(MessageType.file))
+          ..orderBy([
+            OrderingTerm.desc(messageItems.updatedAt),
+            OrderingTerm.desc(messageItems.createdAt),
+            OrderingTerm.desc(messageItems.id),
+            OrderingTerm.asc(messageAttachmentItems.id),
+          ]);
+
+    return query.watch().map(_groupConversationRows);
+  }
+
+  Stream<List<MessageWithAttachmentRows>> watchLatestMessagesByDevice() {
+    final query =
+        select(messageItems).join([
+          leftOuterJoin(
+            messageAttachmentItems,
+            messageAttachmentItems.messageId.equalsExp(messageItems.id),
+          ),
+        ])..orderBy([
+          OrderingTerm.desc(messageItems.createdAt),
+          OrderingTerm.desc(messageItems.id),
+          OrderingTerm.asc(messageAttachmentItems.id),
+        ]);
+
+    return query.watch().map((rows) {
+      final latestByDevice = <String, MessageWithAttachmentRows>{};
+      for (final message in _groupConversationRows(rows)) {
+        latestByDevice.putIfAbsent(
+          message.message.remoteDeviceId,
+          () => message,
+        );
+      }
+      return latestByDevice.values.toList(growable: false);
+    });
+  }
+
   Future<MessageAttachmentItem?> getAttachmentByAttachmentId(
     String attachmentId,
   ) {
@@ -82,6 +126,7 @@ class MessageDao extends DatabaseAccessor<AppDataBase> with _$MessageDaoMixin {
     String? localMessageId,
     String? remoteMessageId,
     String? errorMessage,
+    DateTime? readAt,
     List<MessageAttachmentDraft> attachments = const [],
   }) {
     return transaction(() async {
@@ -97,6 +142,7 @@ class MessageDao extends DatabaseAccessor<AppDataBase> with _$MessageDaoMixin {
           localMessageId: Value(localMessageId),
           remoteMessageId: Value(remoteMessageId),
           errorMessage: Value(errorMessage),
+          readAt: Value(readAt),
         ),
       );
 
@@ -181,6 +227,79 @@ class MessageDao extends DatabaseAccessor<AppDataBase> with _$MessageDaoMixin {
         updatedAt: Value(DateTime.now()),
       ),
     );
+  }
+
+  Future<List<String>> deleteMessage(int messageId) {
+    return transaction(() async {
+      final attachments = await (select(
+        messageAttachmentItems,
+      )..where((table) => table.messageId.equals(messageId))).get();
+      await (delete(
+        messageItems,
+      )..where((table) => table.id.equals(messageId))).go();
+      return attachments
+          .map((attachment) => attachment.filePath)
+          .whereType<String>()
+          .toList(growable: false);
+    });
+  }
+
+  Future<List<String>> clearConversation(String remoteDeviceId) {
+    return transaction(() async {
+      final messageRows = await (select(
+        messageItems,
+      )..where((table) => table.remoteDeviceId.equals(remoteDeviceId))).get();
+      if (messageRows.isEmpty) {
+        return const <String>[];
+      }
+      final messageIds = messageRows.map((message) => message.id).toList();
+      final attachments = await (select(
+        messageAttachmentItems,
+      )..where((table) => table.messageId.isIn(messageIds))).get();
+      await (delete(
+        messageItems,
+      )..where((table) => table.remoteDeviceId.equals(remoteDeviceId))).go();
+      return attachments
+          .map((attachment) => attachment.filePath)
+          .whereType<String>()
+          .toList(growable: false);
+    });
+  }
+
+  Future<int> markConversationRead(String remoteDeviceId, DateTime readAt) {
+    return (update(messageItems)..where(
+          (table) =>
+              table.remoteDeviceId.equals(remoteDeviceId) &
+              table.direction.equalsValue(MessageDirection.received) &
+              table.readAt.isNull(),
+        ))
+        .write(
+          MessageItemsCompanion(
+            readAt: Value(readAt),
+            updatedAt: Value(readAt),
+          ),
+        );
+  }
+
+  Stream<Map<String, int>> watchUnreadCountsByDevice() {
+    final query = select(messageItems)
+      ..where(
+        (table) =>
+            table.direction.equalsValue(MessageDirection.received) &
+            table.readAt.isNull(),
+      );
+
+    return query.watch().map((rows) {
+      final counts = <String, int>{};
+      for (final row in rows) {
+        counts.update(
+          row.remoteDeviceId,
+          (count) => count + 1,
+          ifAbsent: () => 1,
+        );
+      }
+      return counts;
+    });
   }
 
   List<MessageWithAttachmentRows> _groupConversationRows(

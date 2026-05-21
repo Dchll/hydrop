@@ -46,7 +46,7 @@ class AppDataBase extends _$AppDataBase {
   AppDataBase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration {
@@ -61,6 +61,12 @@ class AppDataBase extends _$AppDataBase {
         }
         if (from < 3) {
           await _migrateFromV2ToV3(migrator);
+        }
+        if (from < 4) {
+          await _migrateFromV3ToV4(migrator);
+        }
+        if (from < 5) {
+          await _migrateFromV4ToV5(migrator);
         }
       },
       beforeOpen: (details) async {
@@ -185,6 +191,21 @@ class AppDataBase extends _$AppDataBase {
     await customStatement('''
       ALTER TABLE setting_items
       ADD COLUMN auto_resume_transfers_enabled INTEGER NOT NULL DEFAULT 1
+      ''');
+  }
+
+  Future<void> _migrateFromV3ToV4(Migrator migrator) async {
+    await migrator.addColumn(deviceItems, deviceItems.lastConnectedAt);
+    await migrator.addColumn(deviceItems, deviceItems.lastDisconnectedAt);
+    await migrator.addColumn(deviceItems, deviceItems.lastTransferAt);
+    await migrator.addColumn(deviceItems, deviceItems.lastError);
+    await migrator.addColumn(messageItems, messageItems.readAt);
+  }
+
+  Future<void> _migrateFromV4ToV5(Migrator migrator) async {
+    await customStatement('''
+      ALTER TABLE setting_items
+      ADD COLUMN language TEXT NOT NULL DEFAULT 'system'
       ''');
   }
 

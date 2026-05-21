@@ -1,7 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:hydrop/presentation/widgets/hd_container.dart';
-import 'package:hydrop/presentation/widgets/hd_glass_components.dart';
+import 'package:hydrop/gen/l10n/app_localizations.dart';
 import 'package:hydrop/presentation/widgets/hydrop_adaptive.dart';
 import 'package:hydrop/routes/app_router.gr.dart';
 
@@ -14,14 +13,19 @@ class AppPage extends StatelessWidget {
     return HydropAdaptiveBuilder(
       builder: (context, constraints, windowClass) {
         return AutoTabsRouter.builder(
-          routes: const [HomeRoute(), MineRoute()],
+          routes: const [
+            HomeRoute(),
+            TransfersRoute(),
+            MineRoute(),
+            SettingsRoute(),
+          ],
           builder: (context, children, tabsRouter) {
             if (windowClass.usesSideNavigation) {
               return Row(
                 children: [
                   SizedBox(
-                    width: windowClass.sideRailWidth + 28,
-                    child: _FloatingNavigationRail(
+                    width: 88,
+                    child: _DesktopNavigation(
                       activeIndex: tabsRouter.activeIndex,
                       onDestinationSelected: tabsRouter.setActiveIndex,
                     ),
@@ -31,37 +35,12 @@ class AppPage extends StatelessWidget {
               );
             }
 
-            final padding = MediaQuery.paddingOf(context);
-            return Stack(
-              children: [
-                children[tabsRouter.activeIndex],
-                Padding(
-                  padding: EdgeInsets.fromLTRB(20, 0, 20, padding.bottom + 18),
-                  child: HdGlassDock(
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: _DockButton(
-                            icon: Icons.chat_bubble_rounded,
-                            label: 'Chats',
-                            selected: tabsRouter.activeIndex == 0,
-                            onTap: () => tabsRouter.setActiveIndex(0),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _DockButton(
-                            icon: Icons.person_rounded,
-                            label: 'Mine',
-                            selected: tabsRouter.activeIndex == 1,
-                            onTap: () => tabsRouter.setActiveIndex(1),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+            return Scaffold(
+              body: children[tabsRouter.activeIndex],
+              bottomNavigationBar: _MobileNavigation(
+                activeIndex: tabsRouter.activeIndex,
+                onDestinationSelected: tabsRouter.setActiveIndex,
+              ),
             );
           },
         );
@@ -70,8 +49,8 @@ class AppPage extends StatelessWidget {
   }
 }
 
-class _FloatingNavigationRail extends StatelessWidget {
-  const _FloatingNavigationRail({
+class _DesktopNavigation extends StatelessWidget {
+  const _DesktopNavigation({
     required this.activeIndex,
     required this.onDestinationSelected,
   });
@@ -81,91 +60,118 @@ class _FloatingNavigationRail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final colorScheme = Theme.of(context).colorScheme;
     final padding = MediaQuery.paddingOf(context);
 
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        20,
-        padding.top + 20,
-        8,
-        padding.bottom + 20,
+    return Container(
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        border: Border(right: BorderSide(color: colorScheme.outline, width: 2)),
       ),
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: HdContainer(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 18),
-          borderRadius: 32,
-          blur: 22,
-          child: NavigationRail(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            selectedIndex: activeIndex,
-            onDestinationSelected: onDestinationSelected,
-            labelType: NavigationRailLabelType.all,
-            groupAlignment: 0,
-            destinations: const [
-              NavigationRailDestination(
-                icon: Icon(Icons.chat_bubble_outline_rounded),
-                selectedIcon: Icon(Icons.chat_bubble_rounded),
-                label: Text('Chats'),
+      child: Column(
+        children: [
+          SizedBox(height: padding.top + 6),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                l10n.appTitle.toUpperCase(),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
-              NavigationRailDestination(
-                icon: Icon(Icons.person_outline_rounded),
-                selectedIcon: Icon(Icons.person_rounded),
-                label: Text('Mine'),
-              ),
-            ],
+            ),
           ),
-        ),
+          Expanded(
+            child: NavigationRail(
+              selectedIndex: activeIndex,
+              onDestinationSelected: onDestinationSelected,
+              backgroundColor: colorScheme.surface,
+              labelType: NavigationRailLabelType.all,
+              groupAlignment: -1,
+              destinations: [
+                NavigationRailDestination(
+                  icon: const Icon(Icons.devices_outlined),
+                  selectedIcon: const Icon(Icons.devices),
+                  label: Text(l10n.navDevices),
+                ),
+                NavigationRailDestination(
+                  icon: const Icon(Icons.swap_horiz_outlined),
+                  selectedIcon: const Icon(Icons.swap_horiz),
+                  label: Text(l10n.navTransfers),
+                ),
+                NavigationRailDestination(
+                  icon: const Icon(Icons.person_outline),
+                  selectedIcon: const Icon(Icons.person),
+                  label: Text(l10n.navMine),
+                ),
+                NavigationRailDestination(
+                  icon: const Icon(Icons.settings_outlined),
+                  selectedIcon: const Icon(Icons.settings),
+                  label: Text(l10n.navSettings),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            width: double.infinity,
+            height: 2,
+            color: colorScheme.outline,
+          ),
+        ],
       ),
     );
   }
 }
 
-class _DockButton extends StatelessWidget {
-  const _DockButton({
-    required this.icon,
-    required this.label,
-    required this.selected,
-    required this.onTap,
+class _MobileNavigation extends StatelessWidget {
+  const _MobileNavigation({
+    required this.activeIndex,
+    required this.onDestinationSelected,
   });
 
-  final IconData icon;
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
+  final int activeIndex;
+  final ValueChanged<int> onDestinationSelected;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final l10n = AppLocalizations.of(context);
+    final colorScheme = Theme.of(context).colorScheme;
 
-    return AnimatedScale(
-      scale: selected ? 1 : 0.98,
-      duration: const Duration(milliseconds: 160),
-      curve: Curves.easeOutCubic,
-      child: FilledButton.tonal(
-        onPressed: onTap,
-        style: FilledButton.styleFrom(
-          backgroundColor: selected
-              ? colorScheme.primary.withValues(alpha: 0.2)
-              : colorScheme.surface.withValues(alpha: 0.01),
-          foregroundColor: selected
-              ? colorScheme.primary
-              : colorScheme.onSurface.withValues(alpha: 0.72),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(999),
+    return Container(
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        border: Border(top: BorderSide(color: colorScheme.outline, width: 2)),
+      ),
+      child: NavigationBar(
+        selectedIndex: activeIndex,
+        onDestinationSelected: onDestinationSelected,
+        height: 56,
+        destinations: [
+          NavigationDestination(
+            icon: const Icon(Icons.devices_outlined),
+            selectedIcon: const Icon(Icons.devices),
+            label: l10n.navDevices,
           ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 18),
-            const SizedBox(width: 8),
-            Text(label),
-          ],
-        ),
+          NavigationDestination(
+            icon: const Icon(Icons.swap_horiz_outlined),
+            selectedIcon: const Icon(Icons.swap_horiz),
+            label: l10n.navTransfers,
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.person_outline),
+            selectedIcon: const Icon(Icons.person),
+            label: l10n.navMine,
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.settings_outlined),
+            selectedIcon: const Icon(Icons.settings),
+            label: l10n.navSettings,
+          ),
+        ],
       ),
     );
   }

@@ -25,15 +25,14 @@ class HdFloatingAppBar extends StatelessWidget {
     );
 
     return HdContainer(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      borderRadius: 30,
-      blur: 22,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      borderRadius: 0,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             children: [
-              if (leading != null) ...[leading!, const SizedBox(width: 12)],
+              if (leading != null) ...[leading!, const SizedBox(width: 8)],
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -45,7 +44,6 @@ class HdFloatingAppBar extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w800,
-                        letterSpacing: -0.3,
                       ),
                     ),
                     if (subtitle != null && subtitle!.isNotEmpty) ...[
@@ -60,10 +58,10 @@ class HdFloatingAppBar extends StatelessWidget {
                   ],
                 ),
               ),
-              if (trailing != null) ...[const SizedBox(width: 12), trailing!],
+              if (trailing != null) ...[const SizedBox(width: 8), trailing!],
             ],
           ),
-          if (bottom != null) ...[const SizedBox(height: 12), bottom!],
+          if (bottom != null) ...[const SizedBox(height: 8), bottom!],
         ],
       ),
     );
@@ -89,14 +87,14 @@ class HdFloatingIconButton extends StatelessWidget {
     return Tooltip(
       message: tooltip,
       child: Material(
-        color: colorScheme.surface.withValues(alpha: 0.24),
-        borderRadius: BorderRadius.circular(999),
+        color: colorScheme.surface,
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
         child: InkWell(
           onTap: onPressed,
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: BorderRadius.zero,
           child: SizedBox(
-            width: 46,
-            height: 46,
+            width: 40,
+            height: 40,
             child: Icon(
               icon,
               size: 21,
@@ -112,7 +110,7 @@ class HdFloatingIconButton extends StatelessWidget {
 }
 
 class HdSearchPill extends StatelessWidget {
-  const HdSearchPill({super.key, this.hintText = 'Search devices or messages'});
+  const HdSearchPill({super.key, required this.hintText});
 
   final String hintText;
 
@@ -126,13 +124,7 @@ class HdSearchPill extends StatelessWidget {
       child: Container(
         height: 46,
         padding: const EdgeInsets.symmetric(horizontal: 14),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface.withValues(alpha: 0.28),
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.08),
-          ),
-        ),
+        decoration: BoxDecoration(color: theme.colorScheme.surface),
         child: Row(
           children: [
             Icon(
@@ -153,6 +145,32 @@ class HdSearchPill extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class HdSearchField extends StatelessWidget {
+  const HdSearchField({
+    super.key,
+    required this.controller,
+    required this.onChanged,
+    required this.hintText,
+  });
+
+  final TextEditingController controller;
+  final ValueChanged<String> onChanged;
+  final String hintText;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      onChanged: onChanged,
+      textInputAction: TextInputAction.search,
+      decoration: InputDecoration(
+        hintText: hintText,
+        prefixIcon: const Icon(Icons.search_rounded),
       ),
     );
   }

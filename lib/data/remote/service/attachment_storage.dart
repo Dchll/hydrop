@@ -14,14 +14,15 @@ class AttachmentStorage {
     required String fileName,
   }) async {
     final root = await _rootProvider();
-    final directory = Directory(
-      '${root.path}/hydrop/attachments/${_sanitizePathSegment(remoteDeviceId)}/${_sanitizePathSegment(attachmentId)}',
-    );
+    final directory = Directory('${root.path}/Hydrop');
     if (!directory.existsSync()) {
       await directory.create(recursive: true);
     }
 
-    return File('${directory.path}/${sanitizeFileName(fileName)}');
+    return _availableFile(
+      directory: directory,
+      fileName: sanitizeFileName(fileName),
+    );
   }
 
   String sanitizeFileName(String value) {
@@ -35,9 +36,31 @@ class AttachmentStorage {
     return sanitized;
   }
 
-  String _sanitizePathSegment(String value) {
-    final sanitized = value.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_').trim();
-    return sanitized.isEmpty ? 'unknown' : sanitized;
+  Future<File> _availableFile({
+    required Directory directory,
+    required String fileName,
+  }) async {
+    final candidate = File('${directory.path}/$fileName');
+    if (!await candidate.exists()) {
+      return candidate;
+    }
+
+    final extensionStart = fileName.lastIndexOf('.');
+    final hasExtension = extensionStart > 0 && extensionStart < fileName.length;
+    final baseName = hasExtension
+        ? fileName.substring(0, extensionStart)
+        : fileName;
+    final extension = hasExtension ? fileName.substring(extensionStart) : '';
+    for (var index = 1; index < 10000; index += 1) {
+      final renamed = File('${directory.path}/$baseName ($index)$extension');
+      if (!await renamed.exists()) {
+        return renamed;
+      }
+    }
+
+    return File(
+      '${directory.path}/${DateTime.now().microsecondsSinceEpoch}_$fileName',
+    );
   }
 }
 

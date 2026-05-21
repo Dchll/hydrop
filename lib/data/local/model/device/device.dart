@@ -25,6 +25,10 @@ class DeviceItems extends Table {
   late final averageTransferSpeedBytesPerSecond = integer().clientDefault(
     () => 0,
   )();
+  late final lastConnectedAt = dateTime().nullable()();
+  late final lastDisconnectedAt = dateTime().nullable()();
+  late final lastTransferAt = dateTime().nullable()();
+  late final lastError = text().nullable()();
 }
 
 @TableIndex(name: 'device_address_items_device_id', columns: {#deviceId})

@@ -5,6 +5,9 @@ const transferDefaultPort = 39176;
 
 /// TCP connect and probe ack timeout for lightweight LAN operations.
 const transferConnectTimeout = Duration(seconds: 2);
+const transferTextAckTimeout = Duration(seconds: 8);
+const transferHeartbeatInterval = Duration(seconds: 20);
+const transferHeartbeatTimeout = Duration(seconds: 45);
 const transferAutoResumeMaxAttempts = 3;
 const transferAutoResumeRetryDelay = Duration(seconds: 2);
 
@@ -18,6 +21,8 @@ const transferFrameTypeSpeedProbe = 'speedProbe';
 const transferFrameTypeSpeedProbeAck = 'speedProbeAck';
 const transferFrameTypeTextMessage = 'textMessage';
 const transferFrameTypeTextMessageAck = 'textMessageAck';
+const transferFrameTypeHeartbeat = 'heartbeat';
+const transferFrameTypeHeartbeatAck = 'heartbeatAck';
 
 const speedTestProbePayloadBytes = transferFrameMaxBodyBytes;
 const speedTestMaxCandidateCount = 3;
@@ -36,3 +41,5 @@ const transferFrameTypeError = 'error';
 const transferFileChunkBytes = transferFrameMaxBodyBytes;
 const transferFileFailedFailureReason = 'file_transfer_failed';
 const transferFileChecksumMismatchReason = 'file_checksum_mismatch';
+const transferProgressPersistInterval = Duration(milliseconds: 500);
+const transferProgressPersistMinBytes = 1024 * 1024;

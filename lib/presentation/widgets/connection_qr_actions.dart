@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hydrop/application/mine/connection_qr_controller.dart';
 import 'package:hydrop/application/mine/mine_page_state.dart';
+import 'package:hydrop/core/feedback/transient_feedback.dart';
+import 'package:hydrop/gen/l10n/app_localizations.dart';
 import 'package:hydrop/presentation/widgets/hd_glass_components.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -13,6 +15,7 @@ Future<void> showConnectionQrDialog(
   MineOverviewState state,
 ) {
   final theme = Theme.of(context);
+  final l10n = AppLocalizations.of(context);
   final mediaQuery = MediaQuery.of(context);
   final maxHeight = mediaQuery.size.height * 0.82;
 
@@ -37,7 +40,7 @@ Future<void> showConnectionQrDialog(
                       children: [
                         Expanded(
                           child: Text(
-                            'My connection QR',
+                            l10n.myConnectionQr,
                             style: theme.textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.w700,
                             ),
@@ -46,7 +49,7 @@ Future<void> showConnectionQrDialog(
                         IconButton(
                           onPressed: () => Navigator.of(context).pop(),
                           icon: const Icon(Icons.close_rounded),
-                          tooltip: 'Close QR',
+                          tooltip: l10n.closeQr,
                         ),
                       ],
                     ),
@@ -57,7 +60,7 @@ Future<void> showConnectionQrDialog(
                         borderRadius: BorderRadius.circular(24),
                       ),
                       child: Padding(
-                        padding: const EdgeInsets.all(14),
+                        padding: const EdgeInsets.all(10),
                         child: QrImageView(
                           data: state.connectionQrPayload,
                           version: QrVersions.auto,
@@ -68,19 +71,12 @@ Future<void> showConnectionQrDialog(
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      '${state.displayName} · ${state.localAddresses.length} addresses',
+                      l10n.qrAddressSummary(
+                        state.displayName,
+                        state.localAddresses.length,
+                      ),
                       textAlign: TextAlign.center,
                       style: theme.textTheme.bodyMedium,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'The QR contains device ID, TCP port and local network addresses.',
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues(
-                          alpha: 0.66,
-                        ),
-                      ),
                     ),
                   ],
                 ),
@@ -97,15 +93,10 @@ Future<ConnectionQrSaveResult?> scanConnectionQr(
   BuildContext context,
   WidgetRef ref,
 ) async {
-  final messenger = ScaffoldMessenger.of(context);
-
   if (!ref.read(connectionQrScanSupportedProvider)) {
-    messenger.showSnackBar(
-      const SnackBar(
-        content: Text(
-          'QR scanning is supported on Android, iOS, macOS and web. Windows is not supported.',
-        ),
-      ),
+    await TransientFeedback.show(
+      context,
+      AppLocalizations.of(context).qrScanningUnsupported,
     );
     return null;
   }
@@ -121,12 +112,11 @@ Future<ConnectionQrSaveResult?> scanConnectionQr(
     return result;
   }
 
-  messenger.showSnackBar(
-    SnackBar(
-      content: Text(
-        'Saved ${result.displayName} with ${result.addressCount} addresses.',
-      ),
-    ),
+  await TransientFeedback.show(
+    context,
+    AppLocalizations.of(
+      context,
+    ).qrSavedDevice(result.displayName, result.addressCount),
   );
   return result;
 }
@@ -157,6 +147,7 @@ class _ConnectionQrScannerDialogState
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final mediaQuery = MediaQuery.of(context);
     final maxHeight = mediaQuery.size.height * 0.88;
 
@@ -164,7 +155,7 @@ class _ConnectionQrScannerDialogState
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
         child: HdGlassPanel(
-          padding: const EdgeInsets.all(18),
+          padding: const EdgeInsets.all(10),
           child: ConstrainedBox(
             constraints: BoxConstraints(maxHeight: maxHeight),
             child: SingleChildScrollView(
@@ -176,7 +167,7 @@ class _ConnectionQrScannerDialogState
                     children: [
                       Expanded(
                         child: Text(
-                          'Scan peer QR',
+                          l10n.scanPeerQr,
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w700,
                           ),
@@ -185,7 +176,7 @@ class _ConnectionQrScannerDialogState
                       IconButton(
                         onPressed: () => Navigator.of(context).pop(),
                         icon: const Icon(Icons.close_rounded),
-                        tooltip: 'Close scanner',
+                        tooltip: l10n.closeScanner,
                       ),
                     ],
                   ),
@@ -222,15 +213,6 @@ class _ConnectionQrScannerDialogState
                       ),
                     ),
                   ],
-                  const SizedBox(height: 12),
-                  Text(
-                    'Point the camera at another Hydrop device QR code.',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withValues(
-                        alpha: 0.66,
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -299,7 +281,7 @@ class _ConnectionQrScannerDialogState
     if (error is StateError) {
       return error.message;
     }
-    return 'Unable to save this QR code.';
+    return AppLocalizations.of(context).unableToSaveQr;
   }
 }
 
