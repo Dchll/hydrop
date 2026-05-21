@@ -45,6 +45,7 @@ class MessageItems extends Table {
   late final localMessageId = text().nullable()();
   late final remoteMessageId = text().nullable()();
   late final errorMessage = text().nullable()();
+  late final readAt = dateTime().nullable()();
 }
 
 @TableIndex(name: 'message_attachment_items_message_id', columns: {#messageId})

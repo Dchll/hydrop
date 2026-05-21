@@ -1,5 +1,5 @@
-const connectionQrPayloadType = 'hydrop.connection.qr';
+const connectionQrPayloadType = 'hqr';
 const connectionQrPayloadProtocolVersion = 1;
 
 /// Keep the QR payload compact enough for reliable camera scanning.
-const connectionQrMaxAddressCount = 16;
+const connectionQrMaxAddressCount = 4;

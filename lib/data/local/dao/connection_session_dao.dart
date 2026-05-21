@@ -20,7 +20,7 @@ class ConnectionSessionDao extends DatabaseAccessor<AppDataBase>
     DateTime? disconnectedAt,
     String? lastError,
   }) {
-    return into(connectionSessionItems).insertOnConflictUpdate(
+    return into(connectionSessionItems).insert(
       ConnectionSessionItemsCompanion.insert(
         sessionId: sessionId,
         deviceId: deviceId,
@@ -31,6 +31,19 @@ class ConnectionSessionDao extends DatabaseAccessor<AppDataBase>
         lastHeartbeatAt: Value(lastHeartbeatAt),
         disconnectedAt: Value(disconnectedAt),
         lastError: Value(lastError),
+      ),
+      onConflict: DoUpdate(
+        (old) => ConnectionSessionItemsCompanion(
+          deviceId: Value(deviceId),
+          deviceAddressId: Value(deviceAddressId),
+          state: Value(state),
+          protocolVersion: Value(protocolVersion),
+          connectedAt: Value(connectedAt),
+          lastHeartbeatAt: Value(lastHeartbeatAt),
+          disconnectedAt: Value(disconnectedAt),
+          lastError: Value(lastError),
+        ),
+        target: [connectionSessionItems.sessionId],
       ),
     );
   }

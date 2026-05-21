@@ -78,6 +78,52 @@ class $DeviceItemsTable extends DeviceItems
         requiredDuringInsert: false,
         clientDefault: () => 0,
       );
+  static const VerificationMeta _lastConnectedAtMeta = const VerificationMeta(
+    'lastConnectedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastConnectedAt =
+      GeneratedColumn<DateTime>(
+        'last_connected_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _lastDisconnectedAtMeta =
+      const VerificationMeta('lastDisconnectedAt');
+  @override
+  late final GeneratedColumn<DateTime> lastDisconnectedAt =
+      GeneratedColumn<DateTime>(
+        'last_disconnected_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _lastTransferAtMeta = const VerificationMeta(
+    'lastTransferAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastTransferAt =
+      GeneratedColumn<DateTime>(
+        'last_transfer_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _lastErrorMeta = const VerificationMeta(
+    'lastError',
+  );
+  @override
+  late final GeneratedColumn<String> lastError = GeneratedColumn<String>(
+    'last_error',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -85,6 +131,10 @@ class $DeviceItemsTable extends DeviceItems
     deviceId,
     connectionStatus,
     averageTransferSpeedBytesPerSecond,
+    lastConnectedAt,
+    lastDisconnectedAt,
+    lastTransferAt,
+    lastError,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -129,6 +179,39 @@ class $DeviceItemsTable extends DeviceItems
         ),
       );
     }
+    if (data.containsKey('last_connected_at')) {
+      context.handle(
+        _lastConnectedAtMeta,
+        lastConnectedAt.isAcceptableOrUnknown(
+          data['last_connected_at']!,
+          _lastConnectedAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_disconnected_at')) {
+      context.handle(
+        _lastDisconnectedAtMeta,
+        lastDisconnectedAt.isAcceptableOrUnknown(
+          data['last_disconnected_at']!,
+          _lastDisconnectedAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_transfer_at')) {
+      context.handle(
+        _lastTransferAtMeta,
+        lastTransferAt.isAcceptableOrUnknown(
+          data['last_transfer_at']!,
+          _lastTransferAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_error')) {
+      context.handle(
+        _lastErrorMeta,
+        lastError.isAcceptableOrUnknown(data['last_error']!, _lastErrorMeta),
+      );
+    }
     return context;
   }
 
@@ -160,6 +243,22 @@ class $DeviceItemsTable extends DeviceItems
         DriftSqlType.int,
         data['${effectivePrefix}average_transfer_speed_bytes_per_second'],
       )!,
+      lastConnectedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_connected_at'],
+      ),
+      lastDisconnectedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_disconnected_at'],
+      ),
+      lastTransferAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_transfer_at'],
+      ),
+      lastError: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}last_error'],
+      ),
     );
   }
 
@@ -180,12 +279,20 @@ class DeviceItem extends DataClass implements Insertable<DeviceItem> {
   final String deviceId;
   final DeviceConnectionStatus connectionStatus;
   final int averageTransferSpeedBytesPerSecond;
+  final DateTime? lastConnectedAt;
+  final DateTime? lastDisconnectedAt;
+  final DateTime? lastTransferAt;
+  final String? lastError;
   const DeviceItem({
     required this.id,
     required this.displayName,
     required this.deviceId,
     required this.connectionStatus,
     required this.averageTransferSpeedBytesPerSecond,
+    this.lastConnectedAt,
+    this.lastDisconnectedAt,
+    this.lastTransferAt,
+    this.lastError,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -201,6 +308,18 @@ class DeviceItem extends DataClass implements Insertable<DeviceItem> {
     map['average_transfer_speed_bytes_per_second'] = Variable<int>(
       averageTransferSpeedBytesPerSecond,
     );
+    if (!nullToAbsent || lastConnectedAt != null) {
+      map['last_connected_at'] = Variable<DateTime>(lastConnectedAt);
+    }
+    if (!nullToAbsent || lastDisconnectedAt != null) {
+      map['last_disconnected_at'] = Variable<DateTime>(lastDisconnectedAt);
+    }
+    if (!nullToAbsent || lastTransferAt != null) {
+      map['last_transfer_at'] = Variable<DateTime>(lastTransferAt);
+    }
+    if (!nullToAbsent || lastError != null) {
+      map['last_error'] = Variable<String>(lastError);
+    }
     return map;
   }
 
@@ -213,6 +332,18 @@ class DeviceItem extends DataClass implements Insertable<DeviceItem> {
       averageTransferSpeedBytesPerSecond: Value(
         averageTransferSpeedBytesPerSecond,
       ),
+      lastConnectedAt: lastConnectedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastConnectedAt),
+      lastDisconnectedAt: lastDisconnectedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastDisconnectedAt),
+      lastTransferAt: lastTransferAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastTransferAt),
+      lastError: lastError == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastError),
     );
   }
 
@@ -231,6 +362,12 @@ class DeviceItem extends DataClass implements Insertable<DeviceItem> {
       averageTransferSpeedBytesPerSecond: serializer.fromJson<int>(
         json['averageTransferSpeedBytesPerSecond'],
       ),
+      lastConnectedAt: serializer.fromJson<DateTime?>(json['lastConnectedAt']),
+      lastDisconnectedAt: serializer.fromJson<DateTime?>(
+        json['lastDisconnectedAt'],
+      ),
+      lastTransferAt: serializer.fromJson<DateTime?>(json['lastTransferAt']),
+      lastError: serializer.fromJson<String?>(json['lastError']),
     );
   }
   @override
@@ -246,6 +383,10 @@ class DeviceItem extends DataClass implements Insertable<DeviceItem> {
       'averageTransferSpeedBytesPerSecond': serializer.toJson<int>(
         averageTransferSpeedBytesPerSecond,
       ),
+      'lastConnectedAt': serializer.toJson<DateTime?>(lastConnectedAt),
+      'lastDisconnectedAt': serializer.toJson<DateTime?>(lastDisconnectedAt),
+      'lastTransferAt': serializer.toJson<DateTime?>(lastTransferAt),
+      'lastError': serializer.toJson<String?>(lastError),
     };
   }
 
@@ -255,6 +396,10 @@ class DeviceItem extends DataClass implements Insertable<DeviceItem> {
     String? deviceId,
     DeviceConnectionStatus? connectionStatus,
     int? averageTransferSpeedBytesPerSecond,
+    Value<DateTime?> lastConnectedAt = const Value.absent(),
+    Value<DateTime?> lastDisconnectedAt = const Value.absent(),
+    Value<DateTime?> lastTransferAt = const Value.absent(),
+    Value<String?> lastError = const Value.absent(),
   }) => DeviceItem(
     id: id ?? this.id,
     displayName: displayName ?? this.displayName,
@@ -263,6 +408,16 @@ class DeviceItem extends DataClass implements Insertable<DeviceItem> {
     averageTransferSpeedBytesPerSecond:
         averageTransferSpeedBytesPerSecond ??
         this.averageTransferSpeedBytesPerSecond,
+    lastConnectedAt: lastConnectedAt.present
+        ? lastConnectedAt.value
+        : this.lastConnectedAt,
+    lastDisconnectedAt: lastDisconnectedAt.present
+        ? lastDisconnectedAt.value
+        : this.lastDisconnectedAt,
+    lastTransferAt: lastTransferAt.present
+        ? lastTransferAt.value
+        : this.lastTransferAt,
+    lastError: lastError.present ? lastError.value : this.lastError,
   );
   DeviceItem copyWithCompanion(DeviceItemsCompanion data) {
     return DeviceItem(
@@ -278,6 +433,16 @@ class DeviceItem extends DataClass implements Insertable<DeviceItem> {
           data.averageTransferSpeedBytesPerSecond.present
           ? data.averageTransferSpeedBytesPerSecond.value
           : this.averageTransferSpeedBytesPerSecond,
+      lastConnectedAt: data.lastConnectedAt.present
+          ? data.lastConnectedAt.value
+          : this.lastConnectedAt,
+      lastDisconnectedAt: data.lastDisconnectedAt.present
+          ? data.lastDisconnectedAt.value
+          : this.lastDisconnectedAt,
+      lastTransferAt: data.lastTransferAt.present
+          ? data.lastTransferAt.value
+          : this.lastTransferAt,
+      lastError: data.lastError.present ? data.lastError.value : this.lastError,
     );
   }
 
@@ -289,8 +454,12 @@ class DeviceItem extends DataClass implements Insertable<DeviceItem> {
           ..write('deviceId: $deviceId, ')
           ..write('connectionStatus: $connectionStatus, ')
           ..write(
-            'averageTransferSpeedBytesPerSecond: $averageTransferSpeedBytesPerSecond',
+            'averageTransferSpeedBytesPerSecond: $averageTransferSpeedBytesPerSecond, ',
           )
+          ..write('lastConnectedAt: $lastConnectedAt, ')
+          ..write('lastDisconnectedAt: $lastDisconnectedAt, ')
+          ..write('lastTransferAt: $lastTransferAt, ')
+          ..write('lastError: $lastError')
           ..write(')'))
         .toString();
   }
@@ -302,6 +471,10 @@ class DeviceItem extends DataClass implements Insertable<DeviceItem> {
     deviceId,
     connectionStatus,
     averageTransferSpeedBytesPerSecond,
+    lastConnectedAt,
+    lastDisconnectedAt,
+    lastTransferAt,
+    lastError,
   );
   @override
   bool operator ==(Object other) =>
@@ -312,7 +485,11 @@ class DeviceItem extends DataClass implements Insertable<DeviceItem> {
           other.deviceId == this.deviceId &&
           other.connectionStatus == this.connectionStatus &&
           other.averageTransferSpeedBytesPerSecond ==
-              this.averageTransferSpeedBytesPerSecond);
+              this.averageTransferSpeedBytesPerSecond &&
+          other.lastConnectedAt == this.lastConnectedAt &&
+          other.lastDisconnectedAt == this.lastDisconnectedAt &&
+          other.lastTransferAt == this.lastTransferAt &&
+          other.lastError == this.lastError);
 }
 
 class DeviceItemsCompanion extends UpdateCompanion<DeviceItem> {
@@ -321,12 +498,20 @@ class DeviceItemsCompanion extends UpdateCompanion<DeviceItem> {
   final Value<String> deviceId;
   final Value<DeviceConnectionStatus> connectionStatus;
   final Value<int> averageTransferSpeedBytesPerSecond;
+  final Value<DateTime?> lastConnectedAt;
+  final Value<DateTime?> lastDisconnectedAt;
+  final Value<DateTime?> lastTransferAt;
+  final Value<String?> lastError;
   const DeviceItemsCompanion({
     this.id = const Value.absent(),
     this.displayName = const Value.absent(),
     this.deviceId = const Value.absent(),
     this.connectionStatus = const Value.absent(),
     this.averageTransferSpeedBytesPerSecond = const Value.absent(),
+    this.lastConnectedAt = const Value.absent(),
+    this.lastDisconnectedAt = const Value.absent(),
+    this.lastTransferAt = const Value.absent(),
+    this.lastError = const Value.absent(),
   });
   DeviceItemsCompanion.insert({
     this.id = const Value.absent(),
@@ -334,6 +519,10 @@ class DeviceItemsCompanion extends UpdateCompanion<DeviceItem> {
     required String deviceId,
     this.connectionStatus = const Value.absent(),
     this.averageTransferSpeedBytesPerSecond = const Value.absent(),
+    this.lastConnectedAt = const Value.absent(),
+    this.lastDisconnectedAt = const Value.absent(),
+    this.lastTransferAt = const Value.absent(),
+    this.lastError = const Value.absent(),
   }) : displayName = Value(displayName),
        deviceId = Value(deviceId);
   static Insertable<DeviceItem> custom({
@@ -342,6 +531,10 @@ class DeviceItemsCompanion extends UpdateCompanion<DeviceItem> {
     Expression<String>? deviceId,
     Expression<String>? connectionStatus,
     Expression<int>? averageTransferSpeedBytesPerSecond,
+    Expression<DateTime>? lastConnectedAt,
+    Expression<DateTime>? lastDisconnectedAt,
+    Expression<DateTime>? lastTransferAt,
+    Expression<String>? lastError,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -351,6 +544,11 @@ class DeviceItemsCompanion extends UpdateCompanion<DeviceItem> {
       if (averageTransferSpeedBytesPerSecond != null)
         'average_transfer_speed_bytes_per_second':
             averageTransferSpeedBytesPerSecond,
+      if (lastConnectedAt != null) 'last_connected_at': lastConnectedAt,
+      if (lastDisconnectedAt != null)
+        'last_disconnected_at': lastDisconnectedAt,
+      if (lastTransferAt != null) 'last_transfer_at': lastTransferAt,
+      if (lastError != null) 'last_error': lastError,
     });
   }
 
@@ -360,6 +558,10 @@ class DeviceItemsCompanion extends UpdateCompanion<DeviceItem> {
     Value<String>? deviceId,
     Value<DeviceConnectionStatus>? connectionStatus,
     Value<int>? averageTransferSpeedBytesPerSecond,
+    Value<DateTime?>? lastConnectedAt,
+    Value<DateTime?>? lastDisconnectedAt,
+    Value<DateTime?>? lastTransferAt,
+    Value<String?>? lastError,
   }) {
     return DeviceItemsCompanion(
       id: id ?? this.id,
@@ -369,6 +571,10 @@ class DeviceItemsCompanion extends UpdateCompanion<DeviceItem> {
       averageTransferSpeedBytesPerSecond:
           averageTransferSpeedBytesPerSecond ??
           this.averageTransferSpeedBytesPerSecond,
+      lastConnectedAt: lastConnectedAt ?? this.lastConnectedAt,
+      lastDisconnectedAt: lastDisconnectedAt ?? this.lastDisconnectedAt,
+      lastTransferAt: lastTransferAt ?? this.lastTransferAt,
+      lastError: lastError ?? this.lastError,
     );
   }
 
@@ -396,6 +602,20 @@ class DeviceItemsCompanion extends UpdateCompanion<DeviceItem> {
         averageTransferSpeedBytesPerSecond.value,
       );
     }
+    if (lastConnectedAt.present) {
+      map['last_connected_at'] = Variable<DateTime>(lastConnectedAt.value);
+    }
+    if (lastDisconnectedAt.present) {
+      map['last_disconnected_at'] = Variable<DateTime>(
+        lastDisconnectedAt.value,
+      );
+    }
+    if (lastTransferAt.present) {
+      map['last_transfer_at'] = Variable<DateTime>(lastTransferAt.value);
+    }
+    if (lastError.present) {
+      map['last_error'] = Variable<String>(lastError.value);
+    }
     return map;
   }
 
@@ -407,8 +627,12 @@ class DeviceItemsCompanion extends UpdateCompanion<DeviceItem> {
           ..write('deviceId: $deviceId, ')
           ..write('connectionStatus: $connectionStatus, ')
           ..write(
-            'averageTransferSpeedBytesPerSecond: $averageTransferSpeedBytesPerSecond',
+            'averageTransferSpeedBytesPerSecond: $averageTransferSpeedBytesPerSecond, ',
           )
+          ..write('lastConnectedAt: $lastConnectedAt, ')
+          ..write('lastDisconnectedAt: $lastDisconnectedAt, ')
+          ..write('lastTransferAt: $lastTransferAt, ')
+          ..write('lastError: $lastError')
           ..write(')'))
         .toString();
   }
@@ -2307,6 +2531,16 @@ class $SettingItemsTable extends SettingItems
         requiredDuringInsert: false,
         clientDefault: () => AppThemeMode.system.name,
       ).withConverter<AppThemeMode>($SettingItemsTable.$converterthemeMode);
+  @override
+  late final GeneratedColumnWithTypeConverter<AppLanguage, String> language =
+      GeneratedColumn<String>(
+        'language',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        clientDefault: () => AppLanguage.system.name,
+      ).withConverter<AppLanguage>($SettingItemsTable.$converterlanguage);
   static const VerificationMeta _transferEncryptionEnabledMeta =
       const VerificationMeta('transferEncryptionEnabled');
   @override
@@ -2341,6 +2575,7 @@ class $SettingItemsTable extends SettingItems
   List<GeneratedColumn> get $columns => [
     id,
     themeMode,
+    language,
     transferEncryptionEnabled,
     autoResumeTransfersEnabled,
   ];
@@ -2396,6 +2631,12 @@ class $SettingItemsTable extends SettingItems
           data['${effectivePrefix}theme_mode'],
         )!,
       ),
+      language: $SettingItemsTable.$converterlanguage.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}language'],
+        )!,
+      ),
       transferEncryptionEnabled: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}transfer_encryption_enabled'],
@@ -2414,16 +2655,20 @@ class $SettingItemsTable extends SettingItems
 
   static JsonTypeConverter2<AppThemeMode, String, String> $converterthemeMode =
       const EnumNameConverter<AppThemeMode>(AppThemeMode.values);
+  static JsonTypeConverter2<AppLanguage, String, String> $converterlanguage =
+      const EnumNameConverter<AppLanguage>(AppLanguage.values);
 }
 
 class SettingItem extends DataClass implements Insertable<SettingItem> {
   final int id;
   final AppThemeMode themeMode;
+  final AppLanguage language;
   final bool transferEncryptionEnabled;
   final bool autoResumeTransfersEnabled;
   const SettingItem({
     required this.id,
     required this.themeMode,
+    required this.language,
     required this.transferEncryptionEnabled,
     required this.autoResumeTransfersEnabled,
   });
@@ -2434,6 +2679,11 @@ class SettingItem extends DataClass implements Insertable<SettingItem> {
     {
       map['theme_mode'] = Variable<String>(
         $SettingItemsTable.$converterthemeMode.toSql(themeMode),
+      );
+    }
+    {
+      map['language'] = Variable<String>(
+        $SettingItemsTable.$converterlanguage.toSql(language),
       );
     }
     map['transfer_encryption_enabled'] = Variable<bool>(
@@ -2449,6 +2699,7 @@ class SettingItem extends DataClass implements Insertable<SettingItem> {
     return SettingItemsCompanion(
       id: Value(id),
       themeMode: Value(themeMode),
+      language: Value(language),
       transferEncryptionEnabled: Value(transferEncryptionEnabled),
       autoResumeTransfersEnabled: Value(autoResumeTransfersEnabled),
     );
@@ -2463,6 +2714,9 @@ class SettingItem extends DataClass implements Insertable<SettingItem> {
       id: serializer.fromJson<int>(json['id']),
       themeMode: $SettingItemsTable.$converterthemeMode.fromJson(
         serializer.fromJson<String>(json['themeMode']),
+      ),
+      language: $SettingItemsTable.$converterlanguage.fromJson(
+        serializer.fromJson<String>(json['language']),
       ),
       transferEncryptionEnabled: serializer.fromJson<bool>(
         json['transferEncryptionEnabled'],
@@ -2480,6 +2734,9 @@ class SettingItem extends DataClass implements Insertable<SettingItem> {
       'themeMode': serializer.toJson<String>(
         $SettingItemsTable.$converterthemeMode.toJson(themeMode),
       ),
+      'language': serializer.toJson<String>(
+        $SettingItemsTable.$converterlanguage.toJson(language),
+      ),
       'transferEncryptionEnabled': serializer.toJson<bool>(
         transferEncryptionEnabled,
       ),
@@ -2492,11 +2749,13 @@ class SettingItem extends DataClass implements Insertable<SettingItem> {
   SettingItem copyWith({
     int? id,
     AppThemeMode? themeMode,
+    AppLanguage? language,
     bool? transferEncryptionEnabled,
     bool? autoResumeTransfersEnabled,
   }) => SettingItem(
     id: id ?? this.id,
     themeMode: themeMode ?? this.themeMode,
+    language: language ?? this.language,
     transferEncryptionEnabled:
         transferEncryptionEnabled ?? this.transferEncryptionEnabled,
     autoResumeTransfersEnabled:
@@ -2506,6 +2765,7 @@ class SettingItem extends DataClass implements Insertable<SettingItem> {
     return SettingItem(
       id: data.id.present ? data.id.value : this.id,
       themeMode: data.themeMode.present ? data.themeMode.value : this.themeMode,
+      language: data.language.present ? data.language.value : this.language,
       transferEncryptionEnabled: data.transferEncryptionEnabled.present
           ? data.transferEncryptionEnabled.value
           : this.transferEncryptionEnabled,
@@ -2520,6 +2780,7 @@ class SettingItem extends DataClass implements Insertable<SettingItem> {
     return (StringBuffer('SettingItem(')
           ..write('id: $id, ')
           ..write('themeMode: $themeMode, ')
+          ..write('language: $language, ')
           ..write('transferEncryptionEnabled: $transferEncryptionEnabled, ')
           ..write('autoResumeTransfersEnabled: $autoResumeTransfersEnabled')
           ..write(')'))
@@ -2530,6 +2791,7 @@ class SettingItem extends DataClass implements Insertable<SettingItem> {
   int get hashCode => Object.hash(
     id,
     themeMode,
+    language,
     transferEncryptionEnabled,
     autoResumeTransfersEnabled,
   );
@@ -2539,6 +2801,7 @@ class SettingItem extends DataClass implements Insertable<SettingItem> {
       (other is SettingItem &&
           other.id == this.id &&
           other.themeMode == this.themeMode &&
+          other.language == this.language &&
           other.transferEncryptionEnabled == this.transferEncryptionEnabled &&
           other.autoResumeTransfersEnabled == this.autoResumeTransfersEnabled);
 }
@@ -2546,29 +2809,34 @@ class SettingItem extends DataClass implements Insertable<SettingItem> {
 class SettingItemsCompanion extends UpdateCompanion<SettingItem> {
   final Value<int> id;
   final Value<AppThemeMode> themeMode;
+  final Value<AppLanguage> language;
   final Value<bool> transferEncryptionEnabled;
   final Value<bool> autoResumeTransfersEnabled;
   const SettingItemsCompanion({
     this.id = const Value.absent(),
     this.themeMode = const Value.absent(),
+    this.language = const Value.absent(),
     this.transferEncryptionEnabled = const Value.absent(),
     this.autoResumeTransfersEnabled = const Value.absent(),
   });
   SettingItemsCompanion.insert({
     this.id = const Value.absent(),
     this.themeMode = const Value.absent(),
+    this.language = const Value.absent(),
     this.transferEncryptionEnabled = const Value.absent(),
     this.autoResumeTransfersEnabled = const Value.absent(),
   });
   static Insertable<SettingItem> custom({
     Expression<int>? id,
     Expression<String>? themeMode,
+    Expression<String>? language,
     Expression<bool>? transferEncryptionEnabled,
     Expression<bool>? autoResumeTransfersEnabled,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (themeMode != null) 'theme_mode': themeMode,
+      if (language != null) 'language': language,
       if (transferEncryptionEnabled != null)
         'transfer_encryption_enabled': transferEncryptionEnabled,
       if (autoResumeTransfersEnabled != null)
@@ -2579,12 +2847,14 @@ class SettingItemsCompanion extends UpdateCompanion<SettingItem> {
   SettingItemsCompanion copyWith({
     Value<int>? id,
     Value<AppThemeMode>? themeMode,
+    Value<AppLanguage>? language,
     Value<bool>? transferEncryptionEnabled,
     Value<bool>? autoResumeTransfersEnabled,
   }) {
     return SettingItemsCompanion(
       id: id ?? this.id,
       themeMode: themeMode ?? this.themeMode,
+      language: language ?? this.language,
       transferEncryptionEnabled:
           transferEncryptionEnabled ?? this.transferEncryptionEnabled,
       autoResumeTransfersEnabled:
@@ -2601,6 +2871,11 @@ class SettingItemsCompanion extends UpdateCompanion<SettingItem> {
     if (themeMode.present) {
       map['theme_mode'] = Variable<String>(
         $SettingItemsTable.$converterthemeMode.toSql(themeMode.value),
+      );
+    }
+    if (language.present) {
+      map['language'] = Variable<String>(
+        $SettingItemsTable.$converterlanguage.toSql(language.value),
       );
     }
     if (transferEncryptionEnabled.present) {
@@ -2621,6 +2896,7 @@ class SettingItemsCompanion extends UpdateCompanion<SettingItem> {
     return (StringBuffer('SettingItemsCompanion(')
           ..write('id: $id, ')
           ..write('themeMode: $themeMode, ')
+          ..write('language: $language, ')
           ..write('transferEncryptionEnabled: $transferEncryptionEnabled, ')
           ..write('autoResumeTransfersEnabled: $autoResumeTransfersEnabled')
           ..write(')'))
@@ -3027,6 +3303,15 @@ class $MessageItemsTable extends MessageItems
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _readAtMeta = const VerificationMeta('readAt');
+  @override
+  late final GeneratedColumn<DateTime> readAt = GeneratedColumn<DateTime>(
+    'read_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -3040,6 +3325,7 @@ class $MessageItemsTable extends MessageItems
     localMessageId,
     remoteMessageId,
     errorMessage,
+    readAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -3115,6 +3401,12 @@ class $MessageItemsTable extends MessageItems
         ),
       );
     }
+    if (data.containsKey('read_at')) {
+      context.handle(
+        _readAtMeta,
+        readAt.isAcceptableOrUnknown(data['read_at']!, _readAtMeta),
+      );
+    }
     return context;
   }
 
@@ -3174,6 +3466,10 @@ class $MessageItemsTable extends MessageItems
         DriftSqlType.string,
         data['${effectivePrefix}error_message'],
       ),
+      readAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}read_at'],
+      ),
     );
   }
 
@@ -3206,6 +3502,7 @@ class MessageItem extends DataClass implements Insertable<MessageItem> {
   final String? localMessageId;
   final String? remoteMessageId;
   final String? errorMessage;
+  final DateTime? readAt;
   const MessageItem({
     required this.id,
     required this.remoteDeviceId,
@@ -3218,6 +3515,7 @@ class MessageItem extends DataClass implements Insertable<MessageItem> {
     this.localMessageId,
     this.remoteMessageId,
     this.errorMessage,
+    this.readAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -3253,6 +3551,9 @@ class MessageItem extends DataClass implements Insertable<MessageItem> {
     if (!nullToAbsent || errorMessage != null) {
       map['error_message'] = Variable<String>(errorMessage);
     }
+    if (!nullToAbsent || readAt != null) {
+      map['read_at'] = Variable<DateTime>(readAt);
+    }
     return map;
   }
 
@@ -3277,6 +3578,9 @@ class MessageItem extends DataClass implements Insertable<MessageItem> {
       errorMessage: errorMessage == null && nullToAbsent
           ? const Value.absent()
           : Value(errorMessage),
+      readAt: readAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(readAt),
     );
   }
 
@@ -3303,6 +3607,7 @@ class MessageItem extends DataClass implements Insertable<MessageItem> {
       localMessageId: serializer.fromJson<String?>(json['localMessageId']),
       remoteMessageId: serializer.fromJson<String?>(json['remoteMessageId']),
       errorMessage: serializer.fromJson<String?>(json['errorMessage']),
+      readAt: serializer.fromJson<DateTime?>(json['readAt']),
     );
   }
   @override
@@ -3326,6 +3631,7 @@ class MessageItem extends DataClass implements Insertable<MessageItem> {
       'localMessageId': serializer.toJson<String?>(localMessageId),
       'remoteMessageId': serializer.toJson<String?>(remoteMessageId),
       'errorMessage': serializer.toJson<String?>(errorMessage),
+      'readAt': serializer.toJson<DateTime?>(readAt),
     };
   }
 
@@ -3341,6 +3647,7 @@ class MessageItem extends DataClass implements Insertable<MessageItem> {
     Value<String?> localMessageId = const Value.absent(),
     Value<String?> remoteMessageId = const Value.absent(),
     Value<String?> errorMessage = const Value.absent(),
+    Value<DateTime?> readAt = const Value.absent(),
   }) => MessageItem(
     id: id ?? this.id,
     remoteDeviceId: remoteDeviceId ?? this.remoteDeviceId,
@@ -3357,6 +3664,7 @@ class MessageItem extends DataClass implements Insertable<MessageItem> {
         ? remoteMessageId.value
         : this.remoteMessageId,
     errorMessage: errorMessage.present ? errorMessage.value : this.errorMessage,
+    readAt: readAt.present ? readAt.value : this.readAt,
   );
   MessageItem copyWithCompanion(MessageItemsCompanion data) {
     return MessageItem(
@@ -3385,6 +3693,7 @@ class MessageItem extends DataClass implements Insertable<MessageItem> {
       errorMessage: data.errorMessage.present
           ? data.errorMessage.value
           : this.errorMessage,
+      readAt: data.readAt.present ? data.readAt.value : this.readAt,
     );
   }
 
@@ -3401,7 +3710,8 @@ class MessageItem extends DataClass implements Insertable<MessageItem> {
           ..write('sendStatus: $sendStatus, ')
           ..write('localMessageId: $localMessageId, ')
           ..write('remoteMessageId: $remoteMessageId, ')
-          ..write('errorMessage: $errorMessage')
+          ..write('errorMessage: $errorMessage, ')
+          ..write('readAt: $readAt')
           ..write(')'))
         .toString();
   }
@@ -3419,6 +3729,7 @@ class MessageItem extends DataClass implements Insertable<MessageItem> {
     localMessageId,
     remoteMessageId,
     errorMessage,
+    readAt,
   );
   @override
   bool operator ==(Object other) =>
@@ -3434,7 +3745,8 @@ class MessageItem extends DataClass implements Insertable<MessageItem> {
           other.sendStatus == this.sendStatus &&
           other.localMessageId == this.localMessageId &&
           other.remoteMessageId == this.remoteMessageId &&
-          other.errorMessage == this.errorMessage);
+          other.errorMessage == this.errorMessage &&
+          other.readAt == this.readAt);
 }
 
 class MessageItemsCompanion extends UpdateCompanion<MessageItem> {
@@ -3449,6 +3761,7 @@ class MessageItemsCompanion extends UpdateCompanion<MessageItem> {
   final Value<String?> localMessageId;
   final Value<String?> remoteMessageId;
   final Value<String?> errorMessage;
+  final Value<DateTime?> readAt;
   const MessageItemsCompanion({
     this.id = const Value.absent(),
     this.remoteDeviceId = const Value.absent(),
@@ -3461,6 +3774,7 @@ class MessageItemsCompanion extends UpdateCompanion<MessageItem> {
     this.localMessageId = const Value.absent(),
     this.remoteMessageId = const Value.absent(),
     this.errorMessage = const Value.absent(),
+    this.readAt = const Value.absent(),
   });
   MessageItemsCompanion.insert({
     this.id = const Value.absent(),
@@ -3474,6 +3788,7 @@ class MessageItemsCompanion extends UpdateCompanion<MessageItem> {
     this.localMessageId = const Value.absent(),
     this.remoteMessageId = const Value.absent(),
     this.errorMessage = const Value.absent(),
+    this.readAt = const Value.absent(),
   }) : remoteDeviceId = Value(remoteDeviceId),
        direction = Value(direction);
   static Insertable<MessageItem> custom({
@@ -3488,6 +3803,7 @@ class MessageItemsCompanion extends UpdateCompanion<MessageItem> {
     Expression<String>? localMessageId,
     Expression<String>? remoteMessageId,
     Expression<String>? errorMessage,
+    Expression<DateTime>? readAt,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -3501,6 +3817,7 @@ class MessageItemsCompanion extends UpdateCompanion<MessageItem> {
       if (localMessageId != null) 'local_message_id': localMessageId,
       if (remoteMessageId != null) 'remote_message_id': remoteMessageId,
       if (errorMessage != null) 'error_message': errorMessage,
+      if (readAt != null) 'read_at': readAt,
     });
   }
 
@@ -3516,6 +3833,7 @@ class MessageItemsCompanion extends UpdateCompanion<MessageItem> {
     Value<String?>? localMessageId,
     Value<String?>? remoteMessageId,
     Value<String?>? errorMessage,
+    Value<DateTime?>? readAt,
   }) {
     return MessageItemsCompanion(
       id: id ?? this.id,
@@ -3529,6 +3847,7 @@ class MessageItemsCompanion extends UpdateCompanion<MessageItem> {
       localMessageId: localMessageId ?? this.localMessageId,
       remoteMessageId: remoteMessageId ?? this.remoteMessageId,
       errorMessage: errorMessage ?? this.errorMessage,
+      readAt: readAt ?? this.readAt,
     );
   }
 
@@ -3574,6 +3893,9 @@ class MessageItemsCompanion extends UpdateCompanion<MessageItem> {
     if (errorMessage.present) {
       map['error_message'] = Variable<String>(errorMessage.value);
     }
+    if (readAt.present) {
+      map['read_at'] = Variable<DateTime>(readAt.value);
+    }
     return map;
   }
 
@@ -3590,7 +3912,8 @@ class MessageItemsCompanion extends UpdateCompanion<MessageItem> {
           ..write('sendStatus: $sendStatus, ')
           ..write('localMessageId: $localMessageId, ')
           ..write('remoteMessageId: $remoteMessageId, ')
-          ..write('errorMessage: $errorMessage')
+          ..write('errorMessage: $errorMessage, ')
+          ..write('readAt: $readAt')
           ..write(')'))
         .toString();
   }
@@ -5180,6 +5503,10 @@ typedef $$DeviceItemsTableCreateCompanionBuilder =
       required String deviceId,
       Value<DeviceConnectionStatus> connectionStatus,
       Value<int> averageTransferSpeedBytesPerSecond,
+      Value<DateTime?> lastConnectedAt,
+      Value<DateTime?> lastDisconnectedAt,
+      Value<DateTime?> lastTransferAt,
+      Value<String?> lastError,
     });
 typedef $$DeviceItemsTableUpdateCompanionBuilder =
     DeviceItemsCompanion Function({
@@ -5188,6 +5515,10 @@ typedef $$DeviceItemsTableUpdateCompanionBuilder =
       Value<String> deviceId,
       Value<DeviceConnectionStatus> connectionStatus,
       Value<int> averageTransferSpeedBytesPerSecond,
+      Value<DateTime?> lastConnectedAt,
+      Value<DateTime?> lastDisconnectedAt,
+      Value<DateTime?> lastTransferAt,
+      Value<String?> lastError,
     });
 
 final class $$DeviceItemsTableReferences
@@ -5318,6 +5649,26 @@ class $$DeviceItemsTableFilterComposer
         builder: (column) => ColumnFilters(column),
       );
 
+  ColumnFilters<DateTime> get lastConnectedAt => $composableBuilder(
+    column: $table.lastConnectedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastDisconnectedAt => $composableBuilder(
+    column: $table.lastDisconnectedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastTransferAt => $composableBuilder(
+    column: $table.lastTransferAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get lastError => $composableBuilder(
+    column: $table.lastError,
+    builder: (column) => ColumnFilters(column),
+  );
+
   Expression<bool> deviceAddressItemsRefs(
     Expression<bool> Function($$DeviceAddressItemsTableFilterComposer f) f,
   ) {
@@ -5429,6 +5780,26 @@ class $$DeviceItemsTableOrderingComposer
         column: $table.averageTransferSpeedBytesPerSecond,
         builder: (column) => ColumnOrderings(column),
       );
+
+  ColumnOrderings<DateTime> get lastConnectedAt => $composableBuilder(
+    column: $table.lastConnectedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastDisconnectedAt => $composableBuilder(
+    column: $table.lastDisconnectedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastTransferAt => $composableBuilder(
+    column: $table.lastTransferAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get lastError => $composableBuilder(
+    column: $table.lastError,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$DeviceItemsTableAnnotationComposer
@@ -5462,6 +5833,24 @@ class $$DeviceItemsTableAnnotationComposer
         column: $table.averageTransferSpeedBytesPerSecond,
         builder: (column) => column,
       );
+
+  GeneratedColumn<DateTime> get lastConnectedAt => $composableBuilder(
+    column: $table.lastConnectedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get lastDisconnectedAt => $composableBuilder(
+    column: $table.lastDisconnectedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get lastTransferAt => $composableBuilder(
+    column: $table.lastTransferAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get lastError =>
+      $composableBuilder(column: $table.lastError, builder: (column) => column);
 
   Expression<T> deviceAddressItemsRefs<T extends Object>(
     Expression<T> Function($$DeviceAddressItemsTableAnnotationComposer a) f,
@@ -5580,6 +5969,10 @@ class $$DeviceItemsTableTableManager
                     const Value.absent(),
                 Value<int> averageTransferSpeedBytesPerSecond =
                     const Value.absent(),
+                Value<DateTime?> lastConnectedAt = const Value.absent(),
+                Value<DateTime?> lastDisconnectedAt = const Value.absent(),
+                Value<DateTime?> lastTransferAt = const Value.absent(),
+                Value<String?> lastError = const Value.absent(),
               }) => DeviceItemsCompanion(
                 id: id,
                 displayName: displayName,
@@ -5587,6 +5980,10 @@ class $$DeviceItemsTableTableManager
                 connectionStatus: connectionStatus,
                 averageTransferSpeedBytesPerSecond:
                     averageTransferSpeedBytesPerSecond,
+                lastConnectedAt: lastConnectedAt,
+                lastDisconnectedAt: lastDisconnectedAt,
+                lastTransferAt: lastTransferAt,
+                lastError: lastError,
               ),
           createCompanionCallback:
               ({
@@ -5597,6 +5994,10 @@ class $$DeviceItemsTableTableManager
                     const Value.absent(),
                 Value<int> averageTransferSpeedBytesPerSecond =
                     const Value.absent(),
+                Value<DateTime?> lastConnectedAt = const Value.absent(),
+                Value<DateTime?> lastDisconnectedAt = const Value.absent(),
+                Value<DateTime?> lastTransferAt = const Value.absent(),
+                Value<String?> lastError = const Value.absent(),
               }) => DeviceItemsCompanion.insert(
                 id: id,
                 displayName: displayName,
@@ -5604,6 +6005,10 @@ class $$DeviceItemsTableTableManager
                 connectionStatus: connectionStatus,
                 averageTransferSpeedBytesPerSecond:
                     averageTransferSpeedBytesPerSecond,
+                lastConnectedAt: lastConnectedAt,
+                lastDisconnectedAt: lastDisconnectedAt,
+                lastTransferAt: lastTransferAt,
+                lastError: lastError,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -7022,6 +7427,7 @@ typedef $$SettingItemsTableCreateCompanionBuilder =
     SettingItemsCompanion Function({
       Value<int> id,
       Value<AppThemeMode> themeMode,
+      Value<AppLanguage> language,
       Value<bool> transferEncryptionEnabled,
       Value<bool> autoResumeTransfersEnabled,
     });
@@ -7029,6 +7435,7 @@ typedef $$SettingItemsTableUpdateCompanionBuilder =
     SettingItemsCompanion Function({
       Value<int> id,
       Value<AppThemeMode> themeMode,
+      Value<AppLanguage> language,
       Value<bool> transferEncryptionEnabled,
       Value<bool> autoResumeTransfersEnabled,
     });
@@ -7050,6 +7457,12 @@ class $$SettingItemsTableFilterComposer
   ColumnWithTypeConverterFilters<AppThemeMode, AppThemeMode, String>
   get themeMode => $composableBuilder(
     column: $table.themeMode,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<AppLanguage, AppLanguage, String>
+  get language => $composableBuilder(
+    column: $table.language,
     builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 
@@ -7083,6 +7496,11 @@ class $$SettingItemsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get language => $composableBuilder(
+    column: $table.language,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get transferEncryptionEnabled => $composableBuilder(
     column: $table.transferEncryptionEnabled,
     builder: (column) => ColumnOrderings(column),
@@ -7108,6 +7526,9 @@ class $$SettingItemsTableAnnotationComposer
 
   GeneratedColumnWithTypeConverter<AppThemeMode, String> get themeMode =>
       $composableBuilder(column: $table.themeMode, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<AppLanguage, String> get language =>
+      $composableBuilder(column: $table.language, builder: (column) => column);
 
   GeneratedColumn<bool> get transferEncryptionEnabled => $composableBuilder(
     column: $table.transferEncryptionEnabled,
@@ -7153,11 +7574,13 @@ class $$SettingItemsTableTableManager
               ({
                 Value<int> id = const Value.absent(),
                 Value<AppThemeMode> themeMode = const Value.absent(),
+                Value<AppLanguage> language = const Value.absent(),
                 Value<bool> transferEncryptionEnabled = const Value.absent(),
                 Value<bool> autoResumeTransfersEnabled = const Value.absent(),
               }) => SettingItemsCompanion(
                 id: id,
                 themeMode: themeMode,
+                language: language,
                 transferEncryptionEnabled: transferEncryptionEnabled,
                 autoResumeTransfersEnabled: autoResumeTransfersEnabled,
               ),
@@ -7165,11 +7588,13 @@ class $$SettingItemsTableTableManager
               ({
                 Value<int> id = const Value.absent(),
                 Value<AppThemeMode> themeMode = const Value.absent(),
+                Value<AppLanguage> language = const Value.absent(),
                 Value<bool> transferEncryptionEnabled = const Value.absent(),
                 Value<bool> autoResumeTransfersEnabled = const Value.absent(),
               }) => SettingItemsCompanion.insert(
                 id: id,
                 themeMode: themeMode,
+                language: language,
                 transferEncryptionEnabled: transferEncryptionEnabled,
                 autoResumeTransfersEnabled: autoResumeTransfersEnabled,
               ),
@@ -7363,6 +7788,7 @@ typedef $$MessageItemsTableCreateCompanionBuilder =
       Value<String?> localMessageId,
       Value<String?> remoteMessageId,
       Value<String?> errorMessage,
+      Value<DateTime?> readAt,
     });
 typedef $$MessageItemsTableUpdateCompanionBuilder =
     MessageItemsCompanion Function({
@@ -7377,6 +7803,7 @@ typedef $$MessageItemsTableUpdateCompanionBuilder =
       Value<String?> localMessageId,
       Value<String?> remoteMessageId,
       Value<String?> errorMessage,
+      Value<DateTime?> readAt,
     });
 
 final class $$MessageItemsTableReferences
@@ -7496,6 +7923,11 @@ class $$MessageItemsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<DateTime> get readAt => $composableBuilder(
+    column: $table.readAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$DeviceItemsTableFilterComposer get remoteDeviceId {
     final $$DeviceItemsTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -7605,6 +8037,11 @@ class $$MessageItemsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<DateTime> get readAt => $composableBuilder(
+    column: $table.readAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$DeviceItemsTableOrderingComposer get remoteDeviceId {
     final $$DeviceItemsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -7681,6 +8118,9 @@ class $$MessageItemsTableAnnotationComposer
     column: $table.errorMessage,
     builder: (column) => column,
   );
+
+  GeneratedColumn<DateTime> get readAt =>
+      $composableBuilder(column: $table.readAt, builder: (column) => column);
 
   $$DeviceItemsTableAnnotationComposer get remoteDeviceId {
     final $$DeviceItemsTableAnnotationComposer composer = $composerBuilder(
@@ -7774,6 +8214,7 @@ class $$MessageItemsTableTableManager
                 Value<String?> localMessageId = const Value.absent(),
                 Value<String?> remoteMessageId = const Value.absent(),
                 Value<String?> errorMessage = const Value.absent(),
+                Value<DateTime?> readAt = const Value.absent(),
               }) => MessageItemsCompanion(
                 id: id,
                 remoteDeviceId: remoteDeviceId,
@@ -7786,6 +8227,7 @@ class $$MessageItemsTableTableManager
                 localMessageId: localMessageId,
                 remoteMessageId: remoteMessageId,
                 errorMessage: errorMessage,
+                readAt: readAt,
               ),
           createCompanionCallback:
               ({
@@ -7800,6 +8242,7 @@ class $$MessageItemsTableTableManager
                 Value<String?> localMessageId = const Value.absent(),
                 Value<String?> remoteMessageId = const Value.absent(),
                 Value<String?> errorMessage = const Value.absent(),
+                Value<DateTime?> readAt = const Value.absent(),
               }) => MessageItemsCompanion.insert(
                 id: id,
                 remoteDeviceId: remoteDeviceId,
@@ -7812,6 +8255,7 @@ class $$MessageItemsTableTableManager
                 localMessageId: localMessageId,
                 remoteMessageId: remoteMessageId,
                 errorMessage: errorMessage,
+                readAt: readAt,
               ),
           withReferenceMapper: (p0) => p0
               .map(

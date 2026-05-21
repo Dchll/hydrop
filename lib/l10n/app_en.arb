@@ -1,0 +1,384 @@
+{
+  "@@locale": "en",
+  "appTitle": "Hydrop",
+  "navDevices": "Devices",
+  "navTransfers": "Transfers",
+  "navMine": "Mine",
+  "navSettings": "Settings",
+  "settingsTitle": "Settings",
+  "settingsSubtitle": "Appearance, transfer behavior, and app details",
+  "settingsUnableToLoad": "Unable to load settings",
+  "settingsAppearance": "Appearance",
+  "settingsAppearanceSubtitle": "Theme, language, and visual density",
+  "settingsTransfer": "Transfer",
+  "settingsTransferSubtitle": "Encryption and resumable file tasks",
+  "settingsDiscovery": "Discovery",
+  "settingsDiscoverySubtitle": "Nearby discovery behavior",
+  "settingsPrivacy": "Privacy",
+  "settingsPrivacySubtitle": "Local-first data handling",
+  "settingsAbout": "About",
+  "settingsAboutSubtitle": "Version and project information",
+  "themeModeTitle": "Theme mode",
+  "themeModeSubtitle": "Choose system, light, or dark appearance",
+  "themeSystem": "System",
+  "themeLight": "Light",
+  "themeDark": "Dark",
+  "languageTitle": "Language",
+  "languageSubtitle": "Choose the display language",
+  "languageSystem": "System",
+  "languageEn": "English",
+  "languageZhHans": "简体中文",
+  "languageZhHant": "繁體中文",
+  "interfaceTitle": "Interface",
+  "interfaceValue": "Square controls, two-pixel borders, black and white palette",
+  "transferEncryption": "Transfer encryption",
+  "transferEncryptionSubtitle": "Store the preference used by transfer controllers",
+  "autoResumeTransfers": "Auto resume transfers",
+  "autoResumeTransfersSubtitle": "Retry and continue interrupted file transfers when possible",
+  "nearbyDevices": "Nearby devices",
+  "savedOrDiscoveredDevices": "{count} saved or discovered devices",
+  "@savedOrDiscoveredDevices": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "loadingDeviceDiscoveryState": "Loading device discovery state",
+  "localAddresses": "Local addresses",
+  "networkAddressesAvailable": "{count} network addresses available",
+  "@networkAddressesAvailable": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "loadingLocalNetworkAddresses": "Loading local network addresses",
+  "qrPairing": "QR pairing",
+  "qrPairingValue": "Use Mine or Devices to show and scan connection QR codes",
+  "storage": "Storage",
+  "storageValue": "Device, message, and transfer records are kept locally",
+  "localIdentity": "Local identity",
+  "deviceIdValue": "Device ID {deviceId}",
+  "@deviceIdValue": {
+    "placeholders": {
+      "deviceId": {
+        "type": "String"
+      }
+    }
+  },
+  "loadingLocalIdentity": "Loading local identity",
+  "network": "Network",
+  "networkValue": "Transfers target discovered local network peers",
+  "appLabel": "App",
+  "versionLabel": "Version",
+  "uiLabel": "UI",
+  "uiValue": "Material grayscale desktop/mobile UI",
+  "devicesTitle": "Devices",
+  "homeUnableToLoadDevices": "Unable to load devices",
+  "noNearbyDevices": "No nearby devices",
+  "noMatchingDevices": "No matching devices",
+  "deviceCountSummary": "{count} of {total} devices",
+  "@deviceCountSummary": {
+    "placeholders": {
+      "count": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "refreshDevicesTooltip": "Refresh devices",
+  "scanQr": "Scan QR",
+  "searchDevices": "Search devices",
+  "noDevices": "No devices",
+  "refreshDiscoveryOrScanQr": "Refresh discovery or scan a QR code.",
+  "tryDifferentDeviceSearch": "Try a different name, ID, status, or speed.",
+  "refresh": "Refresh",
+  "clearSearch": "Clear search",
+  "noMessagesYet": "No messages yet",
+  "wallpaperOffline": "Wallpaper offline",
+  "dailyWallpaperFallback": "Daily wallpaper fallback",
+  "dailyWallpaperReady": "Daily wallpaper ready",
+  "mineTitle": "Mine",
+  "mineSubtitle": "Local device, QR connection, and network diagnostics",
+  "refreshLocalInfo": "Refresh local info",
+  "unableToLoadLocalDeviceInfo": "Unable to load local device information",
+  "deviceProfile": "Device profile",
+  "displayName": "Display name",
+  "displayNameSaved": "Display name saved.",
+  "hostName": "Host name",
+  "transferSettings": "Transfer settings",
+  "autoResumeTransferDescription": "Resume interrupted file transfers from the last received byte after reconnecting.",
+  "localNetwork": "Local network",
+  "noLocalNetworkAddresses": "No local network addresses available right now.",
+  "diagnostics": "Diagnostics",
+  "qrPayload": "QR payload",
+  "characterCount": "{count} chars",
+  "@characterCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "addressCount": "Address count",
+  "tcpServer": "TCP server",
+  "tcpServerManaged": "Managed by app runtime",
+  "qrConnection": "QR connection",
+  "qrConnectionDescription": "Show your QR code or scan a peer code to save device addresses.",
+  "myQr": "My QR",
+  "copyLabel": "Copy {label}",
+  "@copyLabel": {
+    "placeholders": {
+      "label": { "type": "String" }
+    }
+  },
+  "copiedLabel": "Copied {label}",
+  "@copiedLabel": {
+    "placeholders": {
+      "label": { "type": "String" }
+    }
+  },
+  "copyAddress": "Copy address",
+  "copiedAddress": "Copied address",
+  "myConnectionQr": "My connection QR",
+  "closeQr": "Close QR",
+  "qrAddressSummary": "{displayName} · {count} addresses",
+  "@qrAddressSummary": {
+    "placeholders": {
+      "displayName": { "type": "String" },
+      "count": { "type": "int" }
+    }
+  },
+  "qrPayloadDescription": "The QR contains device ID, TCP port and local network addresses.",
+  "qrScanningUnsupported": "QR scanning is supported on Android, iOS, macOS and web. Windows is not supported.",
+  "qrSavedDevice": "Saved {displayName} with {count} addresses.",
+  "@qrSavedDevice": {
+    "placeholders": {
+      "displayName": { "type": "String" },
+      "count": { "type": "int" }
+    }
+  },
+  "scanPeerQr": "Scan peer QR",
+  "closeScanner": "Close scanner",
+  "scanPeerQrHint": "Point the camera at another Hydrop device QR code.",
+  "unableToSaveQr": "Unable to save this QR code.",
+  "chatNoActive": "No active chat",
+  "chatNoActiveMessage": "Select a device from the left column to open a conversation.",
+  "deviceIdPrefix": "Device ID: {deviceId}",
+  "@deviceIdPrefix": {
+    "placeholders": {
+      "deviceId": { "type": "String" }
+    }
+  },
+  "backToDevices": "Back to devices",
+  "closeSearch": "Close search",
+  "searchMessages": "Search messages",
+  "deviceInfo": "Device info",
+  "clearConversation": "Clear conversation",
+  "searchConversation": "Search this conversation",
+  "noMatchingMessages": "No matching messages",
+  "emptyConversationMessage": "Send a message or attach a file to start this transfer log.",
+  "tryDifferentSearchTerm": "Try a different search term.",
+  "unableToLoadConversation": "Unable to load this conversation",
+  "messageSavedLocally": "Message saved locally: {message}",
+  "@messageSavedLocally": {
+    "placeholders": {
+      "message": { "type": "String" }
+    }
+  },
+  "unableToSendMessage": "Unable to send message: {error}",
+  "@unableToSendMessage": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "fileSent": "File sent.",
+  "fileSendingStarted": "File transfer started.",
+  "fileSavedLocally": "File saved locally: {message}",
+  "@fileSavedLocally": {
+    "placeholders": {
+      "message": { "type": "String" }
+    }
+  },
+  "unableToAttachFile": "Unable to attach file: {error}",
+  "@unableToAttachFile": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "attachmentFile": "File",
+  "attachmentImage": "Image",
+  "attachmentVideo": "Video",
+  "chooseFileToSend": "Choose a file to send",
+  "chooseImageToSend": "Choose an image to send",
+  "chooseVideoToSend": "Choose a video to send",
+  "sendAnyLocalFile": "Send any local file",
+  "sendImageWithPreview": "Send an image with preview",
+  "sendVideoWithPreview": "Send a video with playback preview",
+  "savedTo": "Saved to {path}",
+  "@savedTo": {
+    "placeholders": {
+      "path": { "type": "String" }
+    }
+  },
+  "unableToSaveAttachment": "Unable to save attachment: {error}",
+  "@unableToSaveAttachment": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "copiedMessage": "Copied message",
+  "messageResent": "Message resent.",
+  "retrySavedLocally": "Retry saved locally: {message}",
+  "@retrySavedLocally": {
+    "placeholders": {
+      "message": { "type": "String" }
+    }
+  },
+  "unableToRetryMessage": "Unable to retry message: {error}",
+  "@unableToRetryMessage": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "deleteMessage": "Delete message",
+  "deleteMessageDescription": "This removes the message and any local attachment file.",
+  "delete": "Delete",
+  "messageDeleted": "Message deleted.",
+  "clearConversationDescription": "This removes all local messages and attachment files for this device.",
+  "deleteDevice": "Delete device",
+  "deleteDeviceDescription": "Remove {displayName} from Devices.",
+  "@deleteDeviceDescription": {
+    "placeholders": {
+      "displayName": { "type": "String" }
+    }
+  },
+  "deviceDeleted": "Device deleted.",
+  "clear": "Clear",
+  "conversationCleared": "Conversation cleared.",
+  "openLink": "Open link",
+  "open": "Open",
+  "unableToOpenLinkCopied": "Unable to open link. Copied instead.",
+  "cancel": "Cancel",
+  "actionFailed": "Action failed: {error}",
+  "@actionFailed": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "addresses": "Addresses",
+  "noSavedAddress": "No saved address for this device.",
+  "reachable": "Reachable",
+  "unreachable": "Unreachable",
+  "copy": "Copy",
+  "copied": "Copied",
+  "loadOlderMessages": "Load older messages",
+  "copyMessage": "Copy message",
+  "retryMessage": "Retry message",
+  "fileAttachment": "File attachment",
+  "saveAttachmentDialogTitle": "Save attachment",
+  "save": "Save",
+  "status": "Status",
+  "progress": "Progress",
+  "mimeType": "MIME type",
+  "localPath": "Local path",
+  "attachmentId": "Attachment ID",
+  "taskId": "Task ID",
+  "noLocalVideoFile": "No local video file available.",
+  "unableToPreviewVideo": "Unable to preview video: {error}",
+  "@unableToPreviewVideo": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "pause": "Pause",
+  "transferPaused": "Transfer paused.",
+  "play": "Play",
+  "attachFile": "Attach file",
+  "messageOrAttachFile": "Message or attach a file",
+  "transfersTitle": "Transfers",
+  "transfersSubtitle": "File queue and transfer history",
+  "refreshTransfers": "Refresh transfers",
+  "unableToLoadTransfers": "Unable to load transfers",
+  "filterAll": "All",
+  "filterActive": "Active",
+  "filterDone": "Done",
+  "filterFailed": "Failed",
+  "noTransfers": "No transfers",
+  "noMatchingTransfers": "No matching transfers",
+  "noTransfersMessage": "Send or receive a file to populate this queue.",
+  "noMatchingTransfersMessage": "Try a different search term or status filter.",
+  "searchTransfers": "Search transfers",
+  "selectTransfer": "Select a transfer",
+  "selectTransferMessage": "Open a task to inspect file, status, and path.",
+  "direction": "Direction",
+  "device": "Device",
+  "message": "Message",
+  "saveStatus": "Save status",
+  "updated": "Updated",
+  "unableToSave": "Unable to save: {error}",
+  "@unableToSave": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "directionOutgoing": "Outgoing",
+  "directionIncoming": "Incoming",
+  "statusPending": "Pending",
+  "statusTransferring": "Transferring",
+  "statusDone": "Done",
+  "statusFailed": "Failed",
+  "statusSending": "Sending",
+  "statusSent": "Sent",
+  "statusReceived": "Received",
+  "statusSaving": "Saving",
+  "statusSaved": "Saved",
+  "byteUnitB": "B",
+  "byteUnitKb": "KB",
+  "byteUnitMb": "MB",
+  "byteUnitGb": "GB",
+  "byteProgress": "{transferred} / {total}",
+  "@byteProgress": {
+    "placeholders": {
+      "transferred": { "type": "String" },
+      "total": { "type": "String" }
+    }
+  },
+  "attachmentStatusProgress": "{status} · {progress}",
+  "@attachmentStatusProgress": {
+    "placeholders": {
+      "status": { "type": "String" },
+      "progress": { "type": "String" }
+    }
+  },
+  "transferRowMeta": "{direction} · {deviceId}",
+  "@transferRowMeta": {
+    "placeholders": {
+      "direction": { "type": "String" },
+      "deviceId": { "type": "String" }
+    }
+  },
+  "transferProgressUpdated": "{progress} · {updated}",
+  "@transferProgressUpdated": {
+    "placeholders": {
+      "progress": { "type": "String" },
+      "updated": { "type": "String" }
+    }
+  },
+  "transferNotificationSendingTitle": "Sending file",
+  "transferNotificationReceivingTitle": "Receiving file",
+  "transferNotificationSentTitle": "File sent",
+  "transferNotificationReceivedTitle": "File received",
+  "transferNotificationFailedTitle": "Transfer failed",
+  "transferNotificationProgress": "{fileName} · {progress}",
+  "@transferNotificationProgress": {
+    "placeholders": {
+      "fileName": { "type": "String" },
+      "progress": { "type": "String" }
+    }
+  },
+  "transferNotificationFailed": "{fileName} could not be transferred.",
+  "@transferNotificationFailed": {
+    "placeholders": {
+      "fileName": { "type": "String" }
+    }
+  }
+}

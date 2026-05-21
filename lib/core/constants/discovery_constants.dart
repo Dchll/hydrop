@@ -9,6 +9,8 @@ const discoveryTransferPort = 39176;
 
 /// Broadcast every 10 seconds so all active LANs keep seeing the device.
 const discoveryBroadcastInterval = Duration(seconds: 10);
+const discoveryBackgroundMaintenanceInterval = Duration(minutes: 5);
+const discoveryBackgroundMaintenanceWindow = Duration(seconds: 15);
 
 const discoveryBroadcastCapabilities = <String>[
   'text',

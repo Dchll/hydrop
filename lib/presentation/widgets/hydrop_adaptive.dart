@@ -31,20 +31,20 @@ extension HydropWindowClassX on HydropWindowClass {
   EdgeInsets get pagePadding {
     return switch (this) {
       HydropWindowClass.compact => const EdgeInsets.symmetric(
-        horizontal: 20,
-        vertical: 16,
+        horizontal: 6,
+        vertical: 6,
       ),
       HydropWindowClass.medium => const EdgeInsets.symmetric(
-        horizontal: 24,
-        vertical: 18,
+        horizontal: 6,
+        vertical: 6,
       ),
       HydropWindowClass.expanded => const EdgeInsets.symmetric(
-        horizontal: 28,
-        vertical: 20,
+        horizontal: 8,
+        vertical: 8,
       ),
       HydropWindowClass.large => const EdgeInsets.symmetric(
-        horizontal: 32,
-        vertical: 24,
+        horizontal: 8,
+        vertical: 8,
       ),
     };
   }
@@ -53,12 +53,12 @@ extension HydropWindowClassX on HydropWindowClass {
     return switch (this) {
       HydropWindowClass.compact => double.infinity,
       HydropWindowClass.medium => double.infinity,
-      HydropWindowClass.expanded => 340,
-      HydropWindowClass.large => 392,
+      HydropWindowClass.expanded => 320,
+      HydropWindowClass.large => 360,
     };
   }
 
-  double get sideRailWidth => isLarge ? 88 : 80;
+  double get sideRailWidth => isLarge ? 72 : 68;
 }
 
 class HydropAdaptiveBuilder extends StatelessWidget {

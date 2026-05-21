@@ -27,11 +27,52 @@ final mineOverviewProvider = FutureProvider<MineOverviewState>((ref) async {
     connectionQrPayload: ConnectionQrPayload.localDevice(
       deviceId: profile.deviceId,
       displayName: profile.displayName,
-      hostName: hostName,
       localAddresses: localAddresses,
     ).encode(),
   );
 });
+
+final minePageControllerProvider = Provider<MinePageController>((ref) {
+  return MinePageController(
+    repository: ref.watch(mineRepositoryProvider),
+    invalidateOverview: () => ref.invalidate(mineOverviewProvider),
+  );
+});
+
+class MinePageController {
+  const MinePageController({
+    required MineRepository repository,
+    required void Function() invalidateOverview,
+  }) : _repository = repository,
+       _invalidateOverview = invalidateOverview;
+
+  final MineRepository _repository;
+  final void Function() _invalidateOverview;
+
+  Future<void> updateDisplayName(String displayName) async {
+    final trimmed = displayName.trim();
+    if (trimmed.isEmpty) {
+      throw ArgumentError.value(displayName, 'displayName');
+    }
+    final profile = await _repository.getMineProfile();
+    if (profile == null) {
+      final hostName = _defaultHostName();
+      await _repository.ensureMineProfile(
+        displayName: hostName,
+        stableSeed: hostName,
+      );
+      return updateDisplayName(trimmed);
+    }
+    if (profile.displayName == trimmed) {
+      return;
+    }
+    await _repository.saveMineProfile(
+      displayName: trimmed,
+      deviceId: profile.deviceId,
+    );
+    _invalidateOverview();
+  }
+}
 
 class MineOverviewState {
   const MineOverviewState({

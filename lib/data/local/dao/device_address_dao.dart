@@ -67,7 +67,7 @@ class DeviceAddressDao extends DatabaseAccessor<AppDataBase>
 
   Future<int> upsertAddress(DeviceAddressUpsert address) {
     final now = address.updatedAt ?? DateTime.now();
-    return into(deviceAddressItems).insertOnConflictUpdate(
+    return into(deviceAddressItems).insert(
       DeviceAddressItemsCompanion.insert(
         deviceId: address.deviceId,
         ipAddress: address.ipAddress,
@@ -90,6 +90,35 @@ class DeviceAddressDao extends DatabaseAccessor<AppDataBase>
         failureReason: Value(address.failureReason),
         createdAt: Value(address.createdAt ?? now),
         updatedAt: Value(now),
+      ),
+      onConflict: DoUpdate(
+        (old) => DeviceAddressItemsCompanion(
+          deviceId: Value(address.deviceId),
+          ipAddress: Value(address.ipAddress),
+          ipVersion: Value(address.ipVersion),
+          port: Value(address.port),
+          interfaceName: Value(address.interfaceName),
+          networkSignature: Value(address.networkSignature),
+          subnetMask: Value(address.subnetMask),
+          gatewayAddress: Value(address.gatewayAddress),
+          broadcastAddress: Value(address.broadcastAddress),
+          source: Value(address.source),
+          isReachable: Value(address.isReachable),
+          latencyMs: Value(address.latencyMs),
+          averageTransferSpeedBytesPerSecond: Value(
+            address.averageTransferSpeedBytesPerSecond,
+          ),
+          lastSeenAt: Value(address.lastSeenAt),
+          lastSuccessAt: Value(address.lastSuccessAt),
+          lastFailureAt: Value(address.lastFailureAt),
+          failureReason: Value(address.failureReason),
+          updatedAt: Value(now),
+        ),
+        target: [
+          deviceAddressItems.deviceId,
+          deviceAddressItems.ipAddress,
+          deviceAddressItems.port,
+        ],
       ),
     );
   }

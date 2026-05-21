@@ -139,10 +139,6 @@ class DiscoveryBroadcastService {
       capabilities: List.unmodifiable(capabilities),
     );
     await _openSockets();
-    if (_sockets.isEmpty) {
-      return;
-    }
-
     await _broadcastOnce();
     _timerHandle = _timerFactory(discoveryBroadcastInterval, _broadcastOnce);
   }
@@ -172,7 +168,14 @@ class DiscoveryBroadcastService {
   }
 
   Future<void> _broadcastOnce() async {
-    if (_session == null || _sockets.isEmpty || _broadcasting) {
+    if (_session == null || _broadcasting) {
+      return;
+    }
+
+    if (_sockets.isEmpty) {
+      await _openSockets();
+    }
+    if (_sockets.isEmpty) {
       return;
     }
 
@@ -204,13 +207,18 @@ class DiscoveryBroadcastService {
             .toList(growable: false),
       );
 
-      final payload = utf8.encode(jsonEncode(announcement.toJson()));
+      final payloadContent = jsonEncode(announcement.toJson());
+      final payload = utf8.encode(payloadContent);
       for (final socket in _sockets) {
-        socket.send(
-          payload,
-          socket.source.broadcastAddress,
-          discoveryBroadcastPort,
-        );
+        try {
+          socket.send(
+            payload,
+            socket.source.broadcastAddress,
+            discoveryBroadcastPort,
+          );
+        } catch (_) {
+          // Best-effort: keep broadcasting on the sockets that do send.
+        }
       }
     } finally {
       _broadcasting = false;
@@ -242,8 +250,8 @@ class _ManagedDiscoveryBroadcastSocket {
     socket.close();
   }
 
-  void send(List<int> data, String targetAddress, int targetPort) {
-    socket.send(data, targetAddress, targetPort);
+  int send(List<int> data, String targetAddress, int targetPort) {
+    return socket.send(data, targetAddress, targetPort);
   }
 }
 

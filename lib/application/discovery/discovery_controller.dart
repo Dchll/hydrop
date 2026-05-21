@@ -85,6 +85,11 @@ class DiscoveryController {
     return _startFuture ??= _startInternal();
   }
 
+  Future<void> restart() async {
+    await stop();
+    await start();
+  }
+
   Future<void> stop() async {
     _startFuture = null;
     _ttlTimerHandle?.cancel();

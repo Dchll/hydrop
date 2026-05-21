@@ -11,6 +11,12 @@ class DeviceDao extends DatabaseAccessor<AppDataBase> with _$DeviceDaoMixin {
   Stream<List<DeviceItem>> watchDevices() {
     final query = select(deviceItems)
       ..orderBy([
+        (table) => OrderingTerm.desc(
+          table.connectionStatus.equalsValue(
+            DeviceConnectionStatus.localNetwork,
+          ),
+        ),
+        (table) => OrderingTerm.desc(table.averageTransferSpeedBytesPerSecond),
         (table) => OrderingTerm.asc(table.displayName),
         (table) => OrderingTerm.asc(table.id),
       ]);
@@ -22,8 +28,12 @@ class DeviceDao extends DatabaseAccessor<AppDataBase> with _$DeviceDaoMixin {
     required String deviceId,
     required DeviceConnectionStatus connectionStatus,
     required int averageTransferSpeedBytesPerSecond,
+    DateTime? lastConnectedAt,
+    DateTime? lastDisconnectedAt,
+    DateTime? lastTransferAt,
+    String? lastError,
   }) {
-    return into(deviceItems).insertOnConflictUpdate(
+    return into(deviceItems).insert(
       DeviceItemsCompanion.insert(
         displayName: displayName,
         deviceId: deviceId,
@@ -31,6 +41,24 @@ class DeviceDao extends DatabaseAccessor<AppDataBase> with _$DeviceDaoMixin {
         averageTransferSpeedBytesPerSecond: Value(
           averageTransferSpeedBytesPerSecond,
         ),
+        lastConnectedAt: Value(lastConnectedAt),
+        lastDisconnectedAt: Value(lastDisconnectedAt),
+        lastTransferAt: Value(lastTransferAt),
+        lastError: Value(lastError),
+      ),
+      onConflict: DoUpdate(
+        (old) => DeviceItemsCompanion(
+          displayName: Value(displayName),
+          connectionStatus: Value(connectionStatus),
+          averageTransferSpeedBytesPerSecond: Value(
+            averageTransferSpeedBytesPerSecond,
+          ),
+          lastConnectedAt: Value.absentIfNull(lastConnectedAt),
+          lastDisconnectedAt: Value.absentIfNull(lastDisconnectedAt),
+          lastTransferAt: Value.absentIfNull(lastTransferAt),
+          lastError: Value.absentIfNull(lastError),
+        ),
+        target: [deviceItems.deviceId],
       ),
     );
   }
@@ -53,9 +81,27 @@ class DeviceDao extends DatabaseAccessor<AppDataBase> with _$DeviceDaoMixin {
   Future<int> updateConnectionStatus({
     required String deviceId,
     required DeviceConnectionStatus connectionStatus,
+    DateTime? lastConnectedAt,
+    DateTime? lastDisconnectedAt,
+    DateTime? lastTransferAt,
+    String? lastError,
   }) {
-    return (update(deviceItems)
-          ..where((table) => table.deviceId.equals(deviceId)))
-        .write(DeviceItemsCompanion(connectionStatus: Value(connectionStatus)));
+    return (update(
+      deviceItems,
+    )..where((table) => table.deviceId.equals(deviceId))).write(
+      DeviceItemsCompanion(
+        connectionStatus: Value(connectionStatus),
+        lastConnectedAt: Value.absentIfNull(lastConnectedAt),
+        lastDisconnectedAt: Value.absentIfNull(lastDisconnectedAt),
+        lastTransferAt: Value.absentIfNull(lastTransferAt),
+        lastError: Value(lastError),
+      ),
+    );
+  }
+
+  Future<int> deleteDevice(String deviceId) {
+    return (delete(
+      deviceItems,
+    )..where((table) => table.deviceId.equals(deviceId))).go();
   }
 }

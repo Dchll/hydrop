@@ -132,3 +132,126 @@ final class ConversationFamily extends $Family
   @override
   String toString() => r'conversationProvider';
 }
+
+@ProviderFor(fileMessages)
+final fileMessagesProvider = FileMessagesProvider._();
+
+final class FileMessagesProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<ConversationMessage>>,
+          List<ConversationMessage>,
+          Stream<List<ConversationMessage>>
+        >
+    with
+        $FutureModifier<List<ConversationMessage>>,
+        $StreamProvider<List<ConversationMessage>> {
+  FileMessagesProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'fileMessagesProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$fileMessagesHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<List<ConversationMessage>> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<ConversationMessage>> create(Ref ref) {
+    return fileMessages(ref);
+  }
+}
+
+String _$fileMessagesHash() => r'75d01db7d1900a389904b83a0d0776aaa1389a26';
+
+@ProviderFor(latestMessagesByDevice)
+final latestMessagesByDeviceProvider = LatestMessagesByDeviceProvider._();
+
+final class LatestMessagesByDeviceProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<Map<String, ConversationMessage>>,
+          Map<String, ConversationMessage>,
+          Stream<Map<String, ConversationMessage>>
+        >
+    with
+        $FutureModifier<Map<String, ConversationMessage>>,
+        $StreamProvider<Map<String, ConversationMessage>> {
+  LatestMessagesByDeviceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'latestMessagesByDeviceProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$latestMessagesByDeviceHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<Map<String, ConversationMessage>> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<Map<String, ConversationMessage>> create(Ref ref) {
+    return latestMessagesByDevice(ref);
+  }
+}
+
+String _$latestMessagesByDeviceHash() =>
+    r'70a09db2572d97911cd911423f8034b0a31d52c2';
+
+@ProviderFor(unreadCountsByDevice)
+final unreadCountsByDeviceProvider = UnreadCountsByDeviceProvider._();
+
+final class UnreadCountsByDeviceProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<Map<String, int>>,
+          Map<String, int>,
+          Stream<Map<String, int>>
+        >
+    with $FutureModifier<Map<String, int>>, $StreamProvider<Map<String, int>> {
+  UnreadCountsByDeviceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'unreadCountsByDeviceProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$unreadCountsByDeviceHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<Map<String, int>> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<Map<String, int>> create(Ref ref) {
+    return unreadCountsByDevice(ref);
+  }
+}
+
+String _$unreadCountsByDeviceHash() =>
+    r'3cd8b56df949588e57083cc81c1f5d19c6ce8ee2';

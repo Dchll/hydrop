@@ -9,6 +9,7 @@ part 'setting_repository.g.dart';
 class AppSettings {
   const AppSettings({
     required this.themeMode,
+    required this.language,
     required this.transferEncryptionEnabled,
     required this.autoResumeTransfersEnabled,
   });
@@ -16,12 +17,14 @@ class AppSettings {
   factory AppSettings.fromRow(SettingItem row) {
     return AppSettings(
       themeMode: row.themeMode,
+      language: row.language,
       transferEncryptionEnabled: row.transferEncryptionEnabled,
       autoResumeTransfersEnabled: row.autoResumeTransfersEnabled,
     );
   }
 
   final AppThemeMode themeMode;
+  final AppLanguage language;
   final bool transferEncryptionEnabled;
   final bool autoResumeTransfersEnabled;
 }
@@ -37,6 +40,10 @@ class SettingRepository {
 
   Future<void> setThemeMode(AppThemeMode themeMode) {
     return _settingDao.setThemeMode(themeMode);
+  }
+
+  Future<void> setLanguage(AppLanguage language) {
+    return _settingDao.setLanguage(language);
   }
 
   Future<void> setTransferEncryptionEnabled(bool enabled) {

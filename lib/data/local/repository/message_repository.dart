@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:math';
 
 import 'package:hydrop/data/local/dao/dao_providers.dart';
@@ -121,6 +122,7 @@ class ConversationMessage {
     required this.localMessageId,
     required this.remoteMessageId,
     required this.errorMessage,
+    required this.readAt,
     required this.attachments,
   });
 
@@ -137,6 +139,7 @@ class ConversationMessage {
       localMessageId: rows.message.localMessageId,
       remoteMessageId: rows.message.remoteMessageId,
       errorMessage: rows.message.errorMessage,
+      readAt: rows.message.readAt,
       attachments: rows.attachments
           .map(MessageAttachmentSnapshot.fromRow)
           .toList(growable: false),
@@ -154,6 +157,7 @@ class ConversationMessage {
   final String? localMessageId;
   final String? remoteMessageId;
   final String? errorMessage;
+  final DateTime? readAt;
   final List<MessageAttachmentSnapshot> attachments;
 }
 
@@ -191,6 +195,25 @@ class MessageRepository {
           (rows) =>
               rows.map(ConversationMessage.fromRows).toList(growable: false),
         );
+  }
+
+  Stream<List<ConversationMessage>> watchFileMessages() {
+    return _messageDao.watchFileMessages().map(
+      (rows) => rows.map(ConversationMessage.fromRows).toList(growable: false),
+    );
+  }
+
+  Stream<Map<String, ConversationMessage>> watchLatestMessagesByDevice() {
+    return _messageDao.watchLatestMessagesByDevice().map((rows) {
+      return {
+        for (final row in rows)
+          row.message.remoteDeviceId: ConversationMessage.fromRows(row),
+      };
+    });
+  }
+
+  Stream<Map<String, int>> watchUnreadCountsByDevice() {
+    return _messageDao.watchUnreadCountsByDevice();
   }
 
   Future<MessageAttachmentSnapshot?> getAttachmentByAttachmentId(
@@ -416,6 +439,43 @@ class MessageRepository {
       errorMessage: errorMessage,
     );
   }
+
+  Future<void> deleteMessage(
+    int messageId, {
+    bool deleteLocalFiles = false,
+  }) async {
+    final filePaths = await _messageDao.deleteMessage(messageId);
+    if (deleteLocalFiles) {
+      await _deleteFiles(filePaths);
+    }
+  }
+
+  Future<void> clearConversation(
+    String remoteDeviceId, {
+    bool deleteLocalFiles = false,
+  }) async {
+    final filePaths = await _messageDao.clearConversation(remoteDeviceId);
+    if (deleteLocalFiles) {
+      await _deleteFiles(filePaths);
+    }
+  }
+
+  Future<int> markConversationRead(String remoteDeviceId) {
+    return _messageDao.markConversationRead(remoteDeviceId, DateTime.now());
+  }
+
+  Future<void> _deleteFiles(List<String> filePaths) async {
+    for (final path in filePaths) {
+      try {
+        final file = File(path);
+        if (await file.exists()) {
+          await file.delete();
+        }
+      } on FileSystemException {
+        // Best-effort cleanup. The database record has already been removed.
+      }
+    }
+  }
 }
 
 @Riverpod(keepAlive: true)
@@ -426,6 +486,21 @@ MessageRepository messageRepository(Ref ref) {
 @Riverpod()
 Stream<List<ConversationMessage>> conversation(Ref ref, String remoteDeviceId) {
   return ref.watch(messageRepositoryProvider).watchConversation(remoteDeviceId);
+}
+
+@Riverpod()
+Stream<List<ConversationMessage>> fileMessages(Ref ref) {
+  return ref.watch(messageRepositoryProvider).watchFileMessages();
+}
+
+@Riverpod()
+Stream<Map<String, ConversationMessage>> latestMessagesByDevice(Ref ref) {
+  return ref.watch(messageRepositoryProvider).watchLatestMessagesByDevice();
+}
+
+@Riverpod()
+Stream<Map<String, int>> unreadCountsByDevice(Ref ref) {
+  return ref.watch(messageRepositoryProvider).watchUnreadCountsByDevice();
 }
 
 String _newLocalEntityId({required String prefix}) {

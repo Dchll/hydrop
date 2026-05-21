@@ -26,6 +26,13 @@ class SettingDao extends DatabaseAccessor<AppDataBase> with _$SettingDaoMixin {
         .write(SettingItemsCompanion(themeMode: Value(themeMode)));
   }
 
+  Future<void> setLanguage(AppLanguage language) async {
+    await _ensureSettings();
+    await (update(settingItems)
+          ..where((table) => table.id.equals(_settingsRowId)))
+        .write(SettingItemsCompanion(language: Value(language)));
+  }
+
   Future<void> setTransferEncryptionEnabled(bool enabled) async {
     await _ensureSettings();
     await (update(
