@@ -17,22 +17,31 @@ class AttachmentActionController {
     MessageAttachmentSnapshot attachment, {
     required String dialogTitle,
   }) async {
-    final path = attachment.filePath;
-    if (path == null || path.isEmpty) {
+    final sourcePath = attachment.filePath;
+    if (sourcePath == null || sourcePath.isEmpty) {
       throw StateError('This attachment does not have a local file path.');
     }
 
-    final file = File(path);
-    if (!await file.exists()) {
+    final sourceFile = File(sourcePath);
+    if (!await sourceFile.exists()) {
       throw StateError('The local file no longer exists.');
     }
 
-    final bytes = await file.readAsBytes();
-    return FilePicker.saveFile(
+    final targetPath = await FilePicker.saveFile(
       dialogTitle: dialogTitle,
-      fileName: attachment.fileName ?? file.uri.pathSegments.last,
-      bytes: bytes,
+      fileName: attachment.fileName ?? sourceFile.uri.pathSegments.last,
       lockParentWindow: true,
     );
+    if (targetPath == null || targetPath.isEmpty) {
+      return null;
+    }
+    if (targetPath == sourceFile.path) {
+      return targetPath;
+    }
+
+    final targetFile = File(targetPath);
+    await targetFile.parent.create(recursive: true);
+    await sourceFile.copy(targetFile.path);
+    return targetPath;
   }
 }

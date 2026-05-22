@@ -19,4 +19,8 @@ class TransferActionController {
   Future<void> pauseTransfer(String attachmentId) {
     return _fileTransferCoordinator.pauseTransfer(attachmentId);
   }
+
+  Future<void> cancelTransfer(String attachmentId) {
+    return _fileTransferCoordinator.cancelTransfer(attachmentId);
+  }
 }

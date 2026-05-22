@@ -173,6 +173,20 @@ class FileMessageRecord {
   final String attachmentId;
 }
 
+class RecoverableOutgoingTransferSnapshot {
+  const RecoverableOutgoingTransferSnapshot({
+    required this.remoteDeviceId,
+    required this.localMessageId,
+    required this.attachment,
+    required this.errorMessage,
+  });
+
+  final String remoteDeviceId;
+  final String localMessageId;
+  final MessageAttachmentSnapshot attachment;
+  final String? errorMessage;
+}
+
 class TextMessageRecord {
   const TextMessageRecord({
     required this.messageId,
@@ -221,6 +235,32 @@ class MessageRepository {
   ) async {
     final row = await _messageDao.getAttachmentByAttachmentId(attachmentId);
     return row == null ? null : MessageAttachmentSnapshot.fromRow(row);
+  }
+
+  Future<String?> getLocalMessageIdByAttachmentId(String attachmentId) async {
+    final row = await _messageDao.getMessageByAttachmentId(attachmentId);
+    return row?.localMessageId;
+  }
+
+  Future<List<RecoverableOutgoingTransferSnapshot>>
+  listRecoverableOutgoingTransfers() async {
+    final rows = await _messageDao.listRecoverableOutgoingTransfers();
+    return rows
+        .where(
+          (row) =>
+              row.message.localMessageId != null &&
+              row.attachment.attachmentId != null &&
+              row.attachment.filePath != null,
+        )
+        .map(
+          (row) => RecoverableOutgoingTransferSnapshot(
+            remoteDeviceId: row.message.remoteDeviceId,
+            localMessageId: row.message.localMessageId!,
+            attachment: MessageAttachmentSnapshot.fromRow(row.attachment),
+            errorMessage: row.message.errorMessage,
+          ),
+        )
+        .toList(growable: false);
   }
 
   Future<int> sendTextMessage({
@@ -324,6 +364,7 @@ class MessageRepository {
     String? mimeType,
     required int totalBytes,
     String? checksumSha256,
+    String? thumbnailPath,
     required String transferTaskId,
   }) async {
     final localMessageId = _newLocalEntityId(prefix: 'msg');
@@ -341,6 +382,7 @@ class MessageRepository {
           mimeType: mimeType,
           totalBytes: totalBytes,
           checksumSha256: checksumSha256,
+          thumbnailPath: thumbnailPath,
           transferStatus: MessageAttachmentTransferStatus.transferring,
           transferTaskId: transferTaskId,
         ),
@@ -362,6 +404,7 @@ class MessageRepository {
     required int totalBytes,
     int transferredBytes = 0,
     String? checksumSha256,
+    String? thumbnailPath,
     MessageAttachmentTransferStatus transferStatus =
         MessageAttachmentTransferStatus.transferring,
     required String transferTaskId,
@@ -382,6 +425,7 @@ class MessageRepository {
           totalBytes: totalBytes,
           transferredBytes: transferredBytes,
           checksumSha256: checksumSha256,
+          thumbnailPath: thumbnailPath,
           transferStatus: transferStatus,
           transferTaskId: transferTaskId,
         ),

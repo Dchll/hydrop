@@ -94,20 +94,30 @@ class SpeedTestRunner {
   }
 
   Future<int> _probeThroughput(TransferConnection connection) async {
-    final payload = _payloadFactory();
-    final requestId = _requestIdGenerator();
-    final ackFuture = _waitForProbeAck(connection, requestId);
-    final stopwatch = Stopwatch()..start();
-    await connection.sendFrame(
-      TransferFrame(header: _probeHeader(requestId), body: payload),
-    );
-    final ack = await ackFuture;
-    stopwatch.stop();
+    final samples = <int>[];
+    for (var round = 0; round < speedTestProbeRounds; round += 1) {
+      final payload = round == speedTestProbeRounds - 1
+          ? Uint8List(speedTestLargeProbePayloadBytes)
+          : _payloadFactory();
+      final requestId = _requestIdGenerator();
+      final ackFuture = _waitForProbeAck(connection, requestId);
+      final stopwatch = Stopwatch()..start();
+      await connection.sendFrame(
+        TransferFrame(header: _probeHeader(requestId), body: payload),
+      );
+      final ack = await ackFuture;
+      stopwatch.stop();
 
-    final receivedBytes = ack.header['receivedBytes'];
-    final measuredBytes = receivedBytes is int ? receivedBytes : payload.length;
-    final elapsedMs = max(1, stopwatch.elapsedMilliseconds);
-    return (measuredBytes * 1000) ~/ elapsedMs;
+      final receivedBytes = ack.header['receivedBytes'];
+      final measuredBytes = receivedBytes is int
+          ? receivedBytes
+          : payload.length;
+      final elapsedMs = max(1, stopwatch.elapsedMilliseconds);
+      samples.add((measuredBytes * 1000) ~/ elapsedMs);
+    }
+
+    samples.sort();
+    return samples[samples.length ~/ 2];
   }
 
   Map<String, Object?> _probeHeader(String requestId) {

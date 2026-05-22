@@ -38,7 +38,7 @@ abstract class TransferConnection {
 
   Stream<TransferFrame> get frames;
 
-  Future<void> sendFrame(TransferFrame frame);
+  Future<void> sendFrame(TransferFrame frame, {bool flush = true});
 
   Future<void> close();
 }
@@ -50,7 +50,7 @@ abstract class TransferDuplexSocket {
 
   Stream<List<int>> get bytes;
 
-  void add(List<int> data);
+  Future<void> add(List<int> data, {bool flush = true});
 
   Future<void> close();
 }
@@ -130,8 +130,8 @@ class _SocketTransferConnection implements TransferConnection {
   Stream<TransferFrame> get frames => _frames;
 
   @override
-  Future<void> sendFrame(TransferFrame frame) async {
-    _socket.add(_codec.encode(frame));
+  Future<void> sendFrame(TransferFrame frame, {bool flush = true}) async {
+    await _socket.add(_codec.encode(frame), flush: flush);
   }
 
   @override
@@ -155,8 +155,11 @@ class _IoTransferDuplexSocket implements TransferDuplexSocket {
   Stream<List<int>> get bytes => _socket;
 
   @override
-  void add(List<int> data) {
+  Future<void> add(List<int> data, {bool flush = true}) async {
     _socket.add(data);
+    if (flush) {
+      await _socket.flush();
+    }
   }
 
   @override
