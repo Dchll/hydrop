@@ -5,10 +5,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hydrop/application/chat/chat_page_state.dart';
+import 'package:hydrop/application/chat/chat_search_state.dart';
+import 'package:hydrop/application/transfer/transfer_progress_state.dart';
 import 'package:hydrop/core/feedback/transient_feedback.dart';
+import 'package:hydrop/data/local/model/message/message.dart';
 import 'package:hydrop/data/local/repository/device_address_repository.dart';
 import 'package:hydrop/data/local/repository/message_repository.dart';
 import 'package:hydrop/gen/l10n/app_localizations.dart';
+import 'package:hydrop/presentation/pages/chat/widgets/chat_image_viewer.dart';
 import 'package:hydrop/presentation/pages/chat/widgets/chat_message_widgets.dart';
 import 'package:hydrop/presentation/widgets/hd_floating_components.dart';
 import 'package:hydrop/presentation/widgets/hd_glass_components.dart';
@@ -38,9 +42,9 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   final _searchController = TextEditingController();
   bool _isSending = false;
   bool _isPickingFile = false;
-  bool _isSearching = false;
-  String _query = '';
   int _visibleMessageLimit = _chatPageSize;
+  List<ConversationMessage> _lastRenderedMessages = const [];
+  List<ConversationMessage> _lastFilteredMessages = const [];
 
   @override
   void dispose() {
@@ -62,6 +66,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     final padding = MediaQuery.paddingOf(context);
     final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
     final messages = ref.watch(conversationProvider(widget.remoteDeviceId));
+    final searchState = ref.watch(chatSearchProvider(widget.remoteDeviceId));
     final l10n = AppLocalizations.of(context);
 
     return HdPageScaffold(
@@ -81,10 +86,10 @@ class _ChatPageState extends ConsumerState<ChatPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 HdFloatingIconButton(
-                  icon: _isSearching
+                  icon: searchState.isSearching
                       ? Icons.close_rounded
                       : Icons.search_rounded,
-                  tooltip: _isSearching
+                  tooltip: searchState.isSearching
                       ? l10n.closeSearch
                       : l10n.searchMessages,
                   onPressed: _toggleSearch,
@@ -103,11 +108,23 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                 ),
               ],
             ),
-            bottom: _isSearching
-                ? HdSearchField(
+            bottom: searchState.isSearching
+                ? _ChatSearchBar(
                     controller: _searchController,
-                    hintText: l10n.searchConversation,
-                    onChanged: (query) => setState(() => _query = query),
+                    query: searchState.query,
+                    selectedIndex: searchState.selectedIndex,
+                    resultCount: _searchResultCount(
+                      messages.asData?.value ?? const [],
+                    ),
+                    onChanged: (query) {
+                      ref
+                          .read(
+                            chatSearchProvider(widget.remoteDeviceId).notifier,
+                          )
+                          .updateQuery(query);
+                    },
+                    onPrevious: _selectPreviousSearchResult,
+                    onNext: _selectNextSearchResult,
                   )
                 : null,
           ),
@@ -115,25 +132,31 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           Expanded(
             child: messages.when(
               data: (items) {
-                final filtered = _filterMessages(items);
-                final visibleItems = _pagedMessages(filtered);
+                final matches = _matchingMessages(items, searchState.query);
+                final isSearching = searchState.query.trim().isNotEmpty;
+                final visibleItems = isSearching
+                    ? items
+                    : _pagedMessages(items);
+                _lastFilteredMessages = matches;
+                _lastRenderedMessages = visibleItems;
+                final highlightedMessageId = _highlightedMessageId(
+                  matches,
+                  searchState,
+                );
                 return ChatMessageTimeline(
                   messages: visibleItems,
-                  hasOlderMessages: filtered.length > visibleItems.length,
+                  hasOlderMessages:
+                      !isSearching && items.length > visibleItems.length,
                   onLoadOlder: _loadOlderMessages,
-                  onSaveAttachment: _saveAttachment,
-                  onPauseAttachment: _pauseAttachment,
+                  searchQuery: searchState.query,
+                  highlightedMessageId: highlightedMessageId,
+                  peerDisplayName: widget.displayName,
+                  onShowAttachmentActions: _showAttachmentActions,
                   onOpenAttachment: _showAttachmentDetail,
-                  onCopyMessage: _copyMessage,
-                  onRetryMessage: _retryMessage,
-                  onDeleteMessage: _confirmDeleteMessage,
+                  onShowMessageActions: _showMessageActions,
                   onOpenLink: _confirmOpenLink,
-                  emptyTitle: _query.trim().isEmpty
-                      ? l10n.noMessagesYet
-                      : l10n.noMatchingMessages,
-                  emptyMessage: _query.trim().isEmpty
-                      ? l10n.emptyConversationMessage
-                      : l10n.tryDifferentSearchTerm,
+                  emptyTitle: l10n.noMessagesYet,
+                  emptyMessage: l10n.emptyConversationMessage,
                 );
               },
               error: (error, stackTrace) => HdGlassPanel(
@@ -162,6 +185,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
               isPickingFile: _isPickingFile,
               onSend: _sendText,
               onAttachFile: _pickFile,
+              onPickEmoji: _insertEmoji,
             ),
           ),
         ],
@@ -228,6 +252,26 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         setState(() => _isPickingFile = false);
       }
     }
+  }
+
+  void _insertEmoji(String emoji) {
+    final selection = _messageController.selection;
+    final text = _messageController.text;
+    final start = selection.start >= 0 ? selection.start : text.length;
+    final end = selection.end >= 0 ? selection.end : text.length;
+    final newText = text.replaceRange(start, end, emoji);
+    final newOffset = start + emoji.length;
+    _messageController.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: newOffset),
+    );
+  }
+
+  int _searchResultCount(List<ConversationMessage> items) {
+    return _matchingMessages(
+      items,
+      ref.read(chatSearchProvider(widget.remoteDeviceId)).query,
+    ).length;
   }
 
   Future<ChatAttachmentPickMode?> _chooseAttachmentMode() {
@@ -304,6 +348,152 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     } catch (error) {
       _showSnackBar(l10n.actionFailed('$error'));
     }
+  }
+
+  Future<void> _confirmCancelAttachment(MessageAttachmentSnapshot attachment) {
+    final l10n = AppLocalizations.of(context);
+    final fileName = attachment.fileName ?? l10n.fileAttachment;
+    return _showConfirmSheet(
+      title: l10n.cancelTransfer,
+      message: l10n.cancelTransferDescription(fileName),
+      actionLabel: l10n.cancelTransfer,
+      onConfirmed: () async {
+        await ref
+            .read(chatPageControllerProvider(widget.remoteDeviceId))
+            .cancelTransfer(attachment);
+        _showSnackBar(l10n.transferCancelled);
+      },
+    );
+  }
+
+  Future<void> _showMessageActions(ConversationMessage message) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context);
+    return showModalBottomSheet<void>(
+      context: context,
+      useSafeArea: true,
+      showDragHandle: false,
+      builder: (sheetContext) {
+        return Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: colorScheme.surface,
+            border: Border(
+              top: BorderSide(color: colorScheme.outline, width: 2),
+            ),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (message.textContent?.trim().isNotEmpty == true)
+                  _ActionSheetTile(
+                    icon: Icons.copy_rounded,
+                    title: l10n.copyMessage,
+                    onTap: () async {
+                      Navigator.of(sheetContext).pop();
+                      await _copyMessage(message);
+                    },
+                  ),
+                if (message.sendStatus == MessageSendStatus.failed &&
+                    message.textContent?.trim().isNotEmpty == true)
+                  _ActionSheetTile(
+                    icon: Icons.refresh_rounded,
+                    title: l10n.retryMessage,
+                    onTap: () async {
+                      Navigator.of(sheetContext).pop();
+                      await _retryMessage(message);
+                    },
+                  ),
+                _ActionSheetTile(
+                  icon: Icons.delete_outline_rounded,
+                  title: l10n.deleteMessage,
+                  onTap: () async {
+                    Navigator.of(sheetContext).pop();
+                    await _confirmDeleteMessage(message);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showAttachmentActions(MessageAttachmentSnapshot attachment) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context);
+    final attachmentId = attachment.attachmentId;
+    final live = attachmentId == null || attachmentId.isEmpty
+        ? null
+        : ref.read(transferProgressProvider(attachmentId));
+    final transferStatus = switch (live?.phase) {
+      TransferProgressPhase.transferring =>
+        MessageAttachmentTransferStatus.transferring,
+      TransferProgressPhase.completed => MessageAttachmentTransferStatus.saved,
+      TransferProgressPhase.failed => MessageAttachmentTransferStatus.failed,
+      TransferProgressPhase.paused => MessageAttachmentTransferStatus.pending,
+      TransferProgressPhase.pending => MessageAttachmentTransferStatus.pending,
+      null => attachment.transferStatus,
+    };
+    final canPause =
+        transferStatus == MessageAttachmentTransferStatus.transferring;
+    final canCancel =
+        transferStatus == MessageAttachmentTransferStatus.pending ||
+        transferStatus == MessageAttachmentTransferStatus.transferring;
+    return showModalBottomSheet<void>(
+      context: context,
+      useSafeArea: true,
+      showDragHandle: false,
+      builder: (sheetContext) {
+        return Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: colorScheme.surface,
+            border: Border(
+              top: BorderSide(color: colorScheme.outline, width: 2),
+            ),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (attachment.filePath != null)
+                  _ActionSheetTile(
+                    icon: Icons.save_alt_rounded,
+                    title: l10n.save,
+                    onTap: () async {
+                      Navigator.of(sheetContext).pop();
+                      await _saveAttachment(attachment);
+                    },
+                  ),
+                if (canPause)
+                  _ActionSheetTile(
+                    icon: Icons.pause_rounded,
+                    title: l10n.pause,
+                    onTap: () async {
+                      Navigator.of(sheetContext).pop();
+                      await _pauseAttachment(attachment);
+                    },
+                  ),
+                if (canCancel)
+                  _ActionSheetTile(
+                    icon: Icons.close_rounded,
+                    title: l10n.cancelTransfer,
+                    onTap: () async {
+                      Navigator.of(sheetContext).pop();
+                      await _confirmCancelAttachment(attachment);
+                    },
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _copyMessage(ConversationMessage message) async {
@@ -462,18 +652,19 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   }
 
   void _toggleSearch() {
-    setState(() {
-      _isSearching = !_isSearching;
-      if (!_isSearching) {
-        _query = '';
-        _searchController.clear();
-      }
-      _visibleMessageLimit = _chatPageSize;
-    });
+    ref.read(chatSearchProvider(widget.remoteDeviceId).notifier).toggle();
+    final state = ref.read(chatSearchProvider(widget.remoteDeviceId));
+    if (!state.isSearching) {
+      _searchController.clear();
+    }
+    setState(() => _visibleMessageLimit = _chatPageSize);
   }
 
-  List<ConversationMessage> _filterMessages(List<ConversationMessage> items) {
-    final normalized = _query.trim().toLowerCase();
+  List<ConversationMessage> _matchingMessages(
+    List<ConversationMessage> items,
+    String query,
+  ) {
+    final normalized = query.trim().toLowerCase();
     if (normalized.isEmpty) {
       return items;
     }
@@ -511,6 +702,29 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     setState(() => _visibleMessageLimit += _chatPageSize);
   }
 
+  void _selectPreviousSearchResult() {
+    final count = _lastFilteredMessages.length;
+    ref
+        .read(chatSearchProvider(widget.remoteDeviceId).notifier)
+        .previous(count);
+  }
+
+  void _selectNextSearchResult() {
+    final count = _lastFilteredMessages.length;
+    ref.read(chatSearchProvider(widget.remoteDeviceId).notifier).next(count);
+  }
+
+  int? _highlightedMessageId(
+    List<ConversationMessage> filtered,
+    ChatSearchState searchState,
+  ) {
+    if (searchState.query.trim().isEmpty || filtered.isEmpty) {
+      return null;
+    }
+    final index = searchState.selectedIndex.clamp(0, filtered.length - 1);
+    return filtered[index].id;
+  }
+
   Future<void> _showDeviceInfo() {
     final colorScheme = Theme.of(context).colorScheme;
     return showModalBottomSheet<void>(
@@ -538,6 +752,47 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   }
 
   Future<void> _showAttachmentDetail(MessageAttachmentSnapshot attachment) {
+    final fileName = attachment.fileName ?? '';
+    final isImage =
+        (attachment.mimeType ?? '').startsWith('image/') ||
+        fileName.toLowerCase().endsWith('.png') ||
+        fileName.toLowerCase().endsWith('.jpg') ||
+        fileName.toLowerCase().endsWith('.jpeg') ||
+        fileName.toLowerCase().endsWith('.webp') ||
+        fileName.toLowerCase().endsWith('.gif');
+    if (isImage && attachment.attachmentId != null) {
+      final images = _lastRenderedMessages
+          .expand((message) => message.attachments)
+          .where((item) {
+            final name = (item.fileName ?? '').toLowerCase();
+            return (item.mimeType ?? '').startsWith('image/') ||
+                name.endsWith('.png') ||
+                name.endsWith('.jpg') ||
+                name.endsWith('.jpeg') ||
+                name.endsWith('.webp') ||
+                name.endsWith('.gif');
+          })
+          .toList(growable: false);
+      if (images.isNotEmpty) {
+        return showModalBottomSheet<void>(
+          context: context,
+          useSafeArea: true,
+          isScrollControlled: true,
+          showDragHandle: false,
+          backgroundColor: Colors.black,
+          builder: (context) {
+            return SizedBox(
+              height: MediaQuery.sizeOf(context).height,
+              child: ChatImageViewer(
+                images: images,
+                initialAttachmentId: attachment.attachmentId!,
+                onSave: _saveAttachment,
+              ),
+            );
+          },
+        );
+      }
+    }
     final colorScheme = Theme.of(context).colorScheme;
     return showModalBottomSheet<void>(
       context: context,
@@ -559,6 +814,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
             attachment: attachment,
             onSave: () => _saveAttachment(attachment),
             onPause: () => _pauseAttachment(attachment),
+            onCancel: () => _confirmCancelAttachment(attachment),
           ),
         );
       },
@@ -581,6 +837,109 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       ChatAttachmentPickMode.image => l10n.chooseImageToSend,
       ChatAttachmentPickMode.video => l10n.chooseVideoToSend,
     };
+  }
+}
+
+class _ChatSearchBar extends StatelessWidget {
+  const _ChatSearchBar({
+    required this.controller,
+    required this.query,
+    required this.selectedIndex,
+    required this.resultCount,
+    required this.onChanged,
+    required this.onPrevious,
+    required this.onNext,
+  });
+
+  final TextEditingController controller;
+  final String query;
+  final int selectedIndex;
+  final int resultCount;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onPrevious;
+  final VoidCallback onNext;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final hasResults = resultCount > 0;
+    return Row(
+      children: [
+        Expanded(
+          child: HdSearchField(
+            controller: controller,
+            hintText: l10n.searchConversation,
+            onChanged: onChanged,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          l10n.searchResultCounter(
+            hasResults ? selectedIndex + 1 : 0,
+            resultCount,
+          ),
+          style: Theme.of(
+            context,
+          ).textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(width: 4),
+        HdFloatingIconButton(
+          icon: Icons.keyboard_arrow_up_rounded,
+          tooltip: l10n.previousResult,
+          onPressed: hasResults ? onPrevious : null,
+        ),
+        const SizedBox(width: 4),
+        HdFloatingIconButton(
+          icon: Icons.keyboard_arrow_down_rounded,
+          tooltip: l10n.nextResult,
+          onPressed: hasResults ? onNext : null,
+        ),
+      ],
+    );
+  }
+}
+
+class _ActionSheetTile extends StatelessWidget {
+  const _ActionSheetTile({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: theme.colorScheme.outlineVariant,
+              width: 2,
+            ),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 18),
+            const SizedBox(width: 10),
+            Text(
+              title,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

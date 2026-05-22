@@ -759,6 +759,12 @@ abstract class AppLocalizations {
   /// **'Back to devices'**
   String get backToDevices;
 
+  /// No description provided for @close.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get close;
+
   /// No description provided for @closeSearch.
   ///
   /// In en, this message translates to:
@@ -788,6 +794,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Search this conversation'**
   String get searchConversation;
+
+  /// No description provided for @searchResultCounter.
+  ///
+  /// In en, this message translates to:
+  /// **'{current} / {total}'**
+  String searchResultCounter(int current, int total);
+
+  /// No description provided for @previousResult.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous result'**
+  String get previousResult;
+
+  /// No description provided for @nextResult.
+  ///
+  /// In en, this message translates to:
+  /// **'Next result'**
+  String get nextResult;
 
   /// No description provided for @noMatchingMessages.
   ///
@@ -948,7 +972,7 @@ abstract class AppLocalizations {
   /// No description provided for @deleteMessageDescription.
   ///
   /// In en, this message translates to:
-  /// **'This removes the message and any local attachment file.'**
+  /// **'This removes the message record only. Local files stay on this device.'**
   String get deleteMessageDescription;
 
   /// No description provided for @delete.
@@ -966,7 +990,7 @@ abstract class AppLocalizations {
   /// No description provided for @clearConversationDescription.
   ///
   /// In en, this message translates to:
-  /// **'This removes all local messages and attachment files for this device.'**
+  /// **'This removes the local conversation records for this device.'**
   String get clearConversationDescription;
 
   /// No description provided for @deleteDevice.
@@ -1137,6 +1161,12 @@ abstract class AppLocalizations {
   /// **'Task ID'**
   String get taskId;
 
+  /// No description provided for @sha256Label.
+  ///
+  /// In en, this message translates to:
+  /// **'SHA-256'**
+  String get sha256Label;
+
   /// No description provided for @noLocalVideoFile.
   ///
   /// In en, this message translates to:
@@ -1161,6 +1191,24 @@ abstract class AppLocalizations {
   /// **'Transfer paused.'**
   String get transferPaused;
 
+  /// No description provided for @cancelTransfer.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel transfer'**
+  String get cancelTransfer;
+
+  /// No description provided for @cancelTransferDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop transferring {fileName} and mark it as cancelled.'**
+  String cancelTransferDescription(String fileName);
+
+  /// No description provided for @transferCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Transfer cancelled.'**
+  String get transferCancelled;
+
   /// No description provided for @play.
   ///
   /// In en, this message translates to:
@@ -1173,11 +1221,23 @@ abstract class AppLocalizations {
   /// **'Attach file'**
   String get attachFile;
 
+  /// No description provided for @insertEmoji.
+  ///
+  /// In en, this message translates to:
+  /// **'Insert emoji'**
+  String get insertEmoji;
+
   /// No description provided for @messageOrAttachFile.
   ///
   /// In en, this message translates to:
   /// **'Message or attach a file'**
   String get messageOrAttachFile;
+
+  /// No description provided for @jumpToLatest.
+  ///
+  /// In en, this message translates to:
+  /// **'Latest'**
+  String get jumpToLatest;
 
   /// No description provided for @transfersTitle.
   ///
@@ -1418,6 +1478,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{progress} · {updated}'**
   String transferProgressUpdated(String progress, String updated);
+
+  /// No description provided for @transferProgressSpeed.
+  ///
+  /// In en, this message translates to:
+  /// **'{progress} · {speed}'**
+  String transferProgressSpeed(String progress, String speed);
+
+  /// No description provided for @speed.
+  ///
+  /// In en, this message translates to:
+  /// **'Speed'**
+  String get speed;
+
+  /// No description provided for @lastError.
+  ///
+  /// In en, this message translates to:
+  /// **'Last error'**
+  String get lastError;
+
+  /// No description provided for @todayLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get todayLabel;
+
+  /// No description provided for @yesterdayLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Yesterday'**
+  String get yesterdayLabel;
 
   /// No description provided for @transferNotificationSendingTitle.
   ///

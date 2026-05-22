@@ -376,6 +376,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get backToDevices => 'Back to devices';
 
   @override
+  String get close => 'Close';
+
+  @override
   String get closeSearch => 'Close search';
 
   @override
@@ -389,6 +392,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get searchConversation => 'Search this conversation';
+
+  @override
+  String searchResultCounter(int current, int total) {
+    return '$current / $total';
+  }
+
+  @override
+  String get previousResult => 'Previous result';
+
+  @override
+  String get nextResult => 'Next result';
 
   @override
   String get noMatchingMessages => 'No matching messages';
@@ -487,7 +501,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get deleteMessageDescription =>
-      'This removes the message and any local attachment file.';
+      'This removes the message record only. Local files stay on this device.';
 
   @override
   String get delete => 'Delete';
@@ -497,7 +511,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get clearConversationDescription =>
-      'This removes all local messages and attachment files for this device.';
+      'This removes the local conversation records for this device.';
 
   @override
   String get deleteDevice => 'Delete device';
@@ -588,6 +602,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get taskId => 'Task ID';
 
   @override
+  String get sha256Label => 'SHA-256';
+
+  @override
   String get noLocalVideoFile => 'No local video file available.';
 
   @override
@@ -602,13 +619,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get transferPaused => 'Transfer paused.';
 
   @override
+  String get cancelTransfer => 'Cancel transfer';
+
+  @override
+  String cancelTransferDescription(String fileName) {
+    return 'Stop transferring $fileName and mark it as cancelled.';
+  }
+
+  @override
+  String get transferCancelled => 'Transfer cancelled.';
+
+  @override
   String get play => 'Play';
 
   @override
   String get attachFile => 'Attach file';
 
   @override
+  String get insertEmoji => 'Insert emoji';
+
+  @override
   String get messageOrAttachFile => 'Message or attach a file';
+
+  @override
+  String get jumpToLatest => 'Latest';
 
   @override
   String get transfersTitle => 'Transfers';
@@ -742,6 +776,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String transferProgressUpdated(String progress, String updated) {
     return '$progress · $updated';
   }
+
+  @override
+  String transferProgressSpeed(String progress, String speed) {
+    return '$progress · $speed';
+  }
+
+  @override
+  String get speed => 'Speed';
+
+  @override
+  String get lastError => 'Last error';
+
+  @override
+  String get todayLabel => 'Today';
+
+  @override
+  String get yesterdayLabel => 'Yesterday';
 
   @override
   String get transferNotificationSendingTitle => 'Sending file';
