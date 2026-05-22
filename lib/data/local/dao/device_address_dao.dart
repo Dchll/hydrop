@@ -65,38 +65,49 @@ class DeviceAddressDao extends DatabaseAccessor<AppDataBase>
     )..where((table) => table.deviceId.equals(deviceId))).get();
   }
 
-  Future<int> upsertAddress(DeviceAddressUpsert address) {
+  Future<int> upsertAddress(DeviceAddressUpsert address) async {
     final now = address.updatedAt ?? DateTime.now();
-    return into(deviceAddressItems).insert(
-      DeviceAddressItemsCompanion.insert(
-        deviceId: address.deviceId,
-        ipAddress: address.ipAddress,
-        ipVersion: address.ipVersion,
-        port: address.port,
-        interfaceName: Value(address.interfaceName),
-        networkSignature: Value(address.networkSignature),
-        subnetMask: Value(address.subnetMask),
-        gatewayAddress: Value(address.gatewayAddress),
-        broadcastAddress: Value(address.broadcastAddress),
-        source: Value(address.source),
-        isReachable: Value(address.isReachable),
-        latencyMs: Value(address.latencyMs),
-        averageTransferSpeedBytesPerSecond: Value(
-          address.averageTransferSpeedBytesPerSecond,
-        ),
-        lastSeenAt: Value(address.lastSeenAt),
-        lastSuccessAt: Value(address.lastSuccessAt),
-        lastFailureAt: Value(address.lastFailureAt),
-        failureReason: Value(address.failureReason),
-        createdAt: Value(address.createdAt ?? now),
-        updatedAt: Value(now),
-      ),
-      onConflict: DoUpdate(
-        (old) => DeviceAddressItemsCompanion(
-          deviceId: Value(address.deviceId),
-          ipAddress: Value(address.ipAddress),
-          ipVersion: Value(address.ipVersion),
-          port: Value(address.port),
+    return transaction(() async {
+      final existing =
+          await (select(deviceAddressItems)
+                ..where((table) => table.deviceId.equals(address.deviceId))
+                ..where((table) => table.ipAddress.equals(address.ipAddress))
+                ..where((table) => table.port.equals(address.port))
+                ..limit(1))
+              .getSingleOrNull();
+      if (existing != null) {
+        await (update(
+          deviceAddressItems,
+        )..where((table) => table.id.equals(existing.id))).write(
+          DeviceAddressItemsCompanion(
+            ipVersion: Value(address.ipVersion),
+            interfaceName: Value(address.interfaceName),
+            networkSignature: Value(address.networkSignature),
+            subnetMask: Value(address.subnetMask),
+            gatewayAddress: Value(address.gatewayAddress),
+            broadcastAddress: Value(address.broadcastAddress),
+            source: Value(address.source),
+            isReachable: Value(address.isReachable),
+            latencyMs: Value(address.latencyMs),
+            averageTransferSpeedBytesPerSecond: Value(
+              address.averageTransferSpeedBytesPerSecond,
+            ),
+            lastSeenAt: Value(address.lastSeenAt),
+            lastSuccessAt: Value(address.lastSuccessAt),
+            lastFailureAt: Value(address.lastFailureAt),
+            failureReason: Value(address.failureReason),
+            updatedAt: Value(now),
+          ),
+        );
+        return existing.id;
+      }
+
+      return into(deviceAddressItems).insert(
+        DeviceAddressItemsCompanion.insert(
+          deviceId: address.deviceId,
+          ipAddress: address.ipAddress,
+          ipVersion: address.ipVersion,
+          port: address.port,
           interfaceName: Value(address.interfaceName),
           networkSignature: Value(address.networkSignature),
           subnetMask: Value(address.subnetMask),
@@ -112,15 +123,11 @@ class DeviceAddressDao extends DatabaseAccessor<AppDataBase>
           lastSuccessAt: Value(address.lastSuccessAt),
           lastFailureAt: Value(address.lastFailureAt),
           failureReason: Value(address.failureReason),
+          createdAt: Value(address.createdAt ?? now),
           updatedAt: Value(now),
         ),
-        target: [
-          deviceAddressItems.deviceId,
-          deviceAddressItems.ipAddress,
-          deviceAddressItems.port,
-        ],
-      ),
-    );
+      );
+    });
   }
 
   Future<void> upsertAddresses(Iterable<DeviceAddressUpsert> addresses) async {

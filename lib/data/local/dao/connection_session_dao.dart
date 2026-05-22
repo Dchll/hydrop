@@ -19,33 +19,45 @@ class ConnectionSessionDao extends DatabaseAccessor<AppDataBase>
     DateTime? lastHeartbeatAt,
     DateTime? disconnectedAt,
     String? lastError,
-  }) {
-    return into(connectionSessionItems).insert(
-      ConnectionSessionItemsCompanion.insert(
-        sessionId: sessionId,
-        deviceId: deviceId,
-        deviceAddressId: Value(deviceAddressId),
-        state: state,
-        protocolVersion: protocolVersion,
-        connectedAt: Value(connectedAt),
-        lastHeartbeatAt: Value(lastHeartbeatAt),
-        disconnectedAt: Value(disconnectedAt),
-        lastError: Value(lastError),
-      ),
-      onConflict: DoUpdate(
-        (old) => ConnectionSessionItemsCompanion(
-          deviceId: Value(deviceId),
+  }) async {
+    return transaction(() async {
+      final existing =
+          await (select(connectionSessionItems)
+                ..where((table) => table.sessionId.equals(sessionId))
+                ..limit(1))
+              .getSingleOrNull();
+      if (existing != null) {
+        await (update(
+          connectionSessionItems,
+        )..where((table) => table.id.equals(existing.id))).write(
+          ConnectionSessionItemsCompanion(
+            deviceId: Value(deviceId),
+            deviceAddressId: Value(deviceAddressId),
+            state: Value(state),
+            protocolVersion: Value(protocolVersion),
+            connectedAt: Value(connectedAt),
+            lastHeartbeatAt: Value(lastHeartbeatAt),
+            disconnectedAt: Value(disconnectedAt),
+            lastError: Value(lastError),
+          ),
+        );
+        return existing.id;
+      }
+
+      return into(connectionSessionItems).insert(
+        ConnectionSessionItemsCompanion.insert(
+          sessionId: sessionId,
+          deviceId: deviceId,
           deviceAddressId: Value(deviceAddressId),
-          state: Value(state),
-          protocolVersion: Value(protocolVersion),
+          state: state,
+          protocolVersion: protocolVersion,
           connectedAt: Value(connectedAt),
           lastHeartbeatAt: Value(lastHeartbeatAt),
           disconnectedAt: Value(disconnectedAt),
           lastError: Value(lastError),
         ),
-        target: [connectionSessionItems.sessionId],
-      ),
-    );
+      );
+    });
   }
 
   Future<int> updateSessionState({

@@ -40,27 +40,30 @@ class AttachmentStorage {
     required Directory directory,
     required String fileName,
   }) async {
-    final candidate = File('${directory.path}/$fileName');
-    if (!await candidate.exists()) {
-      return candidate;
-    }
-
     final extensionStart = fileName.lastIndexOf('.');
     final hasExtension = extensionStart > 0 && extensionStart < fileName.length;
     final baseName = hasExtension
         ? fileName.substring(0, extensionStart)
         : fileName;
     final extension = hasExtension ? fileName.substring(extensionStart) : '';
-    for (var index = 1; index < 10000; index += 1) {
-      final renamed = File('${directory.path}/$baseName ($index)$extension');
-      if (!await renamed.exists()) {
-        return renamed;
+    for (var index = 0; index < 10000; index += 1) {
+      final resolvedName = index == 0
+          ? fileName
+          : '$baseName ($index)$extension';
+      final candidate = File('${directory.path}/$resolvedName');
+      try {
+        await candidate.create(exclusive: true);
+        return candidate;
+      } on PathExistsException {
+        continue;
       }
     }
 
-    return File(
+    final fallback = File(
       '${directory.path}/${DateTime.now().microsecondsSinceEpoch}_$fileName',
     );
+    await fallback.create(exclusive: true);
+    return fallback;
   }
 }
 

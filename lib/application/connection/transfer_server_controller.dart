@@ -321,7 +321,14 @@ class TransferServerController {
     final timer = _heartbeats.remove(connection);
     timer?.cancel();
     _connections.remove(connection);
-    _frameQueues.remove(connection);
+    final pendingFrames = _frameQueues.remove(connection);
+    unawaited(
+      (pendingFrames ?? Future<void>.value()).whenComplete(
+        () =>
+            _fileTransferCoordinator?.handleConnectionClosed(connection) ??
+            Future<void>.value(),
+      ),
+    );
     final deviceId = _connectionDeviceIds.remove(connection);
     final sessionId = _connectionSessionIds.remove(connection);
     if (deviceId != null) {
@@ -351,6 +358,15 @@ class TransferServerController {
   void _startHeartbeatTimeout(TransferConnection connection) {
     _heartbeats.remove(connection)?.cancel();
     _heartbeats[connection] = Timer(transferHeartbeatTimeout, () {
+      if (_fileTransferCoordinator?.hasActiveTransferOnConnection(connection) ??
+          false) {
+        talker.debug(
+          'DchllTest 消息接收连接保活延长：来源IP=${connection.remoteAddress} '
+          '来源端口=${connection.remotePort} 原因=仍有活动传输',
+        );
+        _startHeartbeatTimeout(connection);
+        return;
+      }
       final deviceId = _connectionDeviceIds[connection];
       if (deviceId != null) {
         unawaited(

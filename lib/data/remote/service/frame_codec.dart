@@ -38,31 +38,24 @@ class FrameCodec {
   }
 
   Stream<TransferFrame> decodeStream(Stream<List<int>> chunks) async* {
-    final buffer = <int>[];
+    final buffer = _FrameBuffer();
 
     await for (final chunk in chunks) {
-      buffer.addAll(chunk);
+      buffer.add(chunk);
 
-      while (buffer.length >= 8) {
-        final lengthHeader = ByteData.sublistView(
-          Uint8List.fromList(buffer),
-          0,
-          8,
-        );
-        final headerLength = lengthHeader.getUint32(0, Endian.big);
-        final bodyLength = lengthHeader.getUint32(4, Endian.big);
+      while (buffer.availableBytes >= 8) {
+        final headerLength = buffer.peekUint32(0);
+        final bodyLength = buffer.peekUint32(4);
         _validateLengths(headerLength, bodyLength);
 
         final frameLength = 8 + headerLength + bodyLength;
-        if (buffer.length < frameLength) {
+        if (buffer.availableBytes < frameLength) {
           break;
         }
 
-        final headerStart = 8;
-        final bodyStart = headerStart + headerLength;
-        final headerBytes = buffer.sublist(headerStart, bodyStart);
-        final bodyBytes = buffer.sublist(bodyStart, frameLength);
-        buffer.removeRange(0, frameLength);
+        buffer.skip(8);
+        final headerBytes = buffer.readBytes(headerLength);
+        final bodyBytes = buffer.readBytes(bodyLength);
 
         final decodedHeader = jsonDecode(utf8.decode(headerBytes));
         if (decodedHeader is! Map<String, Object?>) {
@@ -86,5 +79,95 @@ class FrameCodec {
     if (bodyLength < 0 || bodyLength > transferFrameMaxBodyBytes) {
       throw FrameCodecException('Invalid frame body length: $bodyLength.');
     }
+  }
+}
+
+class _FrameBuffer {
+  _FrameBuffer() : _storage = Uint8List(0);
+
+  Uint8List _storage;
+  int _start = 0;
+  int _end = 0;
+
+  int get availableBytes => _end - _start;
+
+  void add(List<int> chunk) {
+    if (chunk.isEmpty) {
+      return;
+    }
+    _ensureCapacity(chunk.length);
+    _storage.setRange(_end, _end + chunk.length, chunk);
+    _end += chunk.length;
+  }
+
+  int peekUint32(int offset) {
+    final start = _start + offset;
+    return ByteData.sublistView(
+      _storage,
+      start,
+      start + 4,
+    ).getUint32(0, Endian.big);
+  }
+
+  void skip(int length) {
+    _start += length;
+    _maybeCompact();
+  }
+
+  Uint8List readBytes(int length) {
+    final start = _start;
+    final end = start + length;
+    final bytes = Uint8List.sublistView(_storage, start, end);
+    _start = end;
+    _maybeCompact();
+    return Uint8List.fromList(bytes);
+  }
+
+  void _ensureCapacity(int incomingLength) {
+    final freeTail = _storage.length - _end;
+    if (freeTail >= incomingLength) {
+      return;
+    }
+
+    _compact();
+    final freeAfterCompact = _storage.length - _end;
+    if (freeAfterCompact >= incomingLength) {
+      return;
+    }
+
+    final requiredLength = _end + incomingLength;
+    final nextLength = _storage.isEmpty
+        ? requiredLength
+        : requiredLength > _storage.length * 2
+        ? requiredLength
+        : _storage.length * 2;
+    final next = Uint8List(nextLength);
+    if (_end > 0) {
+      next.setRange(0, _end, _storage.sublist(0, _end));
+    }
+    _storage = next;
+  }
+
+  void _maybeCompact() {
+    if (_start == _end) {
+      _start = 0;
+      _end = 0;
+      return;
+    }
+    if (_start >= (_storage.length >> 1)) {
+      _compact();
+    }
+  }
+
+  void _compact() {
+    if (_start == 0) {
+      return;
+    }
+    final remaining = _end - _start;
+    if (remaining > 0) {
+      _storage.setRange(0, remaining, _storage.sublist(_start, _end));
+    }
+    _start = 0;
+    _end = remaining;
   }
 }

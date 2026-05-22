@@ -4,19 +4,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hydrop/application/connection/transfer_server_controller.dart';
 import 'package:hydrop/application/discovery/discovery_controller.dart';
+import 'package:hydrop/application/transfer/file_transfer_coordinator.dart';
 import 'package:hydrop/application/transfer/transfer_notification_service.dart';
 import 'package:hydrop/core/constants/discovery_constants.dart';
 import 'package:hydrop/core/locale/app_locale.dart';
 import 'package:hydrop/core/theme/app_theme.dart';
+import 'package:hydrop/core/utils/talker/talker.dart';
 import 'package:hydrop/data/local/repository/setting_repository.dart';
 
 final appRuntimeProvider = Provider<AppRuntime>((ref) {
   final runtime = AppRuntime(
     discoveryController: ref.watch(discoveryControllerProvider),
     transferServerController: ref.watch(transferServerControllerProvider),
+    fileTransferCoordinator: ref.watch(fileTransferCoordinatorProvider),
     transferNotificationService: ref.watch(transferNotificationServiceProvider),
   );
   unawaited(runtime.requestNotificationPermissions());
+  unawaited(runtime.resumeInterruptedTransfers());
   ref.onDispose(runtime.dispose);
   return runtime;
 });
@@ -43,11 +47,13 @@ class AppRuntime {
   AppRuntime({
     required this.discoveryController,
     required this.transferServerController,
+    required this.fileTransferCoordinator,
     required this.transferNotificationService,
   });
 
   final DiscoveryController discoveryController;
   final TransferServerController transferServerController;
+  final FileTransferCoordinator fileTransferCoordinator;
   final TransferNotificationService transferNotificationService;
   Timer? _backgroundMaintenanceTimer;
   Timer? _backgroundMaintenanceStopTimer;
@@ -70,6 +76,15 @@ class AppRuntime {
     _stopBackgroundMaintenanceTimer();
     await discoveryController.start();
     await transferServerController.start();
+    await resumeInterruptedTransfers();
+  }
+
+  Future<void> resumeInterruptedTransfers() async {
+    try {
+      await fileTransferCoordinator.resumeInterruptedTransfers();
+    } catch (error, stackTrace) {
+      talker.error('DchllTest 自动恢复传输失败：$error', error, stackTrace);
+    }
   }
 
   void dispose() {

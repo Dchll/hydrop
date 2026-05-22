@@ -41,6 +41,16 @@ class MessageWithAttachmentRows {
   final List<MessageAttachmentItem> attachments;
 }
 
+class RecoverableOutgoingTransferRow {
+  const RecoverableOutgoingTransferRow({
+    required this.message,
+    required this.attachment,
+  });
+
+  final MessageItem message;
+  final MessageAttachmentItem attachment;
+}
+
 @DriftAccessor(tables: [MessageItems, MessageAttachmentItems])
 class MessageDao extends DatabaseAccessor<AppDataBase> with _$MessageDaoMixin {
   MessageDao(super.db);
@@ -115,6 +125,54 @@ class MessageDao extends DatabaseAccessor<AppDataBase> with _$MessageDaoMixin {
     return (select(messageAttachmentItems)
           ..where((table) => table.attachmentId.equals(attachmentId)))
         .getSingleOrNull();
+  }
+
+  Future<List<RecoverableOutgoingTransferRow>>
+  listRecoverableOutgoingTransfers() {
+    final query =
+        select(messageItems).join([
+            innerJoin(
+              messageAttachmentItems,
+              messageAttachmentItems.messageId.equalsExp(messageItems.id),
+            ),
+          ])
+          ..where(
+            messageItems.direction.equalsValue(MessageDirection.sent) &
+                messageItems.messageType.equalsValue(MessageType.file) &
+                messageItems.sendStatus
+                    .equalsValue(MessageSendStatus.sent)
+                    .not() &
+                messageAttachmentItems.transferStatus.equalsValue(
+                  MessageAttachmentTransferStatus.transferring,
+                ) &
+                messageAttachmentItems.attachmentId.isNotNull() &
+                messageAttachmentItems.filePath.isNotNull(),
+          )
+          ..orderBy([
+            OrderingTerm.asc(messageItems.createdAt),
+            OrderingTerm.asc(messageItems.id),
+          ]);
+    return query.get().then(
+      (rows) => rows
+          .map(
+            (row) => RecoverableOutgoingTransferRow(
+              message: row.readTable(messageItems),
+              attachment: row.readTable(messageAttachmentItems),
+            ),
+          )
+          .toList(growable: false),
+    );
+  }
+
+  Future<MessageItem?> getMessageByAttachmentId(String attachmentId) async {
+    final query = select(messageItems).join([
+      innerJoin(
+        messageAttachmentItems,
+        messageAttachmentItems.messageId.equalsExp(messageItems.id),
+      ),
+    ])..where(messageAttachmentItems.attachmentId.equals(attachmentId));
+    final row = await query.getSingleOrNull();
+    return row?.readTable(messageItems);
   }
 
   Future<int> insertMessageWithAttachments({
