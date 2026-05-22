@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hydrop/application/transfer/attachment_action_controller.dart';
 import 'package:hydrop/application/transfer/transfer_action_controller.dart';
+import 'package:hydrop/application/transfer/transfer_progress_state.dart';
 import 'package:hydrop/core/feedback/transient_feedback.dart';
 import 'package:hydrop/core/localization/localized_formatters.dart';
 import 'package:hydrop/data/local/model/message/message.dart';
@@ -61,8 +62,10 @@ class _TransfersPageState extends ConsumerState<TransfersPage> {
                   data: (messages) {
                     final allItems = _flatten(messages);
                     return _TransferContent(
-                      items: _filterItems(allItems, _filter, _query, l10n),
+                      items: allItems,
                       totalItemCount: allItems.length,
+                      filter: _filter,
+                      query: _query,
                       windowClass: windowClass,
                       selectedAttachmentId: _selectedAttachmentId,
                       searchController: _searchController,
@@ -104,58 +107,6 @@ class _TransfersPageState extends ConsumerState<TransfersPage> {
       }
     }
     return items;
-  }
-
-  List<_TransferItem> _filterItems(
-    List<_TransferItem> items,
-    _TransferFilter filter,
-    String query,
-    AppLocalizations l10n,
-  ) {
-    final statusFiltered = switch (filter) {
-      _TransferFilter.all => items,
-      _TransferFilter.active =>
-        items
-            .where(
-              (item) =>
-                  item.attachment.transferStatus ==
-                      MessageAttachmentTransferStatus.pending ||
-                  item.attachment.transferStatus ==
-                      MessageAttachmentTransferStatus.transferring,
-            )
-            .toList(growable: false),
-      _TransferFilter.completed =>
-        items
-            .where(
-              (item) =>
-                  item.attachment.transferStatus ==
-                  MessageAttachmentTransferStatus.saved,
-            )
-            .toList(growable: false),
-      _TransferFilter.failed =>
-        items
-            .where(
-              (item) =>
-                  item.attachment.transferStatus ==
-                  MessageAttachmentTransferStatus.failed,
-            )
-            .toList(growable: false),
-    };
-    final normalized = query.trim().toLowerCase();
-    if (normalized.isEmpty) {
-      return statusFiltered;
-    }
-    return statusFiltered
-        .where((item) {
-          return item.fileName(l10n).toLowerCase().contains(normalized) ||
-              item.remoteDeviceId.toLowerCase().contains(normalized) ||
-              item.statusLabel(l10n).toLowerCase().contains(normalized) ||
-              item.directionLabel(l10n).toLowerCase().contains(normalized) ||
-              (item.attachment.filePath ?? '').toLowerCase().contains(
-                normalized,
-              );
-        })
-        .toList(growable: false);
   }
 
   Future<void> _showTransferSheet(BuildContext context, _TransferItem item) {
@@ -217,10 +168,12 @@ class _TransferFilterBar extends StatelessWidget {
   }
 }
 
-class _TransferContent extends StatelessWidget {
+class _TransferContent extends ConsumerWidget {
   const _TransferContent({
     required this.items,
     required this.totalItemCount,
+    required this.filter,
+    required this.query,
     required this.windowClass,
     required this.selectedAttachmentId,
     required this.searchController,
@@ -230,6 +183,8 @@ class _TransferContent extends StatelessWidget {
 
   final List<_TransferItem> items;
   final int totalItemCount;
+  final _TransferFilter filter;
+  final String query;
   final HydropWindowClass windowClass;
   final String? selectedAttachmentId;
   final TextEditingController searchController;
@@ -237,9 +192,13 @@ class _TransferContent extends StatelessWidget {
   final ValueChanged<_TransferItem> onSelected;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
-    if (items.isEmpty) {
+    final mergedItems = items
+        .map((item) => item.withProgress(_watchTransferProgress(ref, item)))
+        .toList(growable: false);
+    final liveItems = _filterItems(mergedItems, filter, query, l10n);
+    if (liveItems.isEmpty) {
       return HdGlassPanel(
         child: _CenteredState(
           title: totalItemCount == 0
@@ -252,7 +211,7 @@ class _TransferContent extends StatelessWidget {
       );
     }
 
-    final selected = _selectedItem;
+    final selected = _selectedItem(liveItems);
     final list = Column(
       children: [
         HdGlassPanel(
@@ -267,14 +226,14 @@ class _TransferContent extends StatelessWidget {
           child: HdGlassPanel(
             padding: EdgeInsets.zero,
             child: ListView.separated(
-              itemCount: items.length,
+              itemCount: liveItems.length,
               separatorBuilder: (context, index) => Divider(
                 height: 2,
                 thickness: 2,
                 color: Theme.of(context).colorScheme.outlineVariant,
               ),
               itemBuilder: (context, index) {
-                final item = items[index];
+                final item = liveItems[index];
                 return _TransferRow(
                   item: item,
                   selected:
@@ -315,18 +274,18 @@ class _TransferContent extends StatelessWidget {
     );
   }
 
-  _TransferItem? get _selectedItem {
-    if (items.isEmpty) {
+  _TransferItem? _selectedItem(List<_TransferItem> liveItems) {
+    if (liveItems.isEmpty) {
       return null;
     }
     if (selectedAttachmentId != null) {
-      for (final item in items) {
+      for (final item in liveItems) {
         if (item.attachment.attachmentId == selectedAttachmentId) {
           return item;
         }
       }
     }
-    return items.first;
+    return liveItems.first;
   }
 }
 
@@ -343,12 +302,12 @@ class _TransferRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final displayItem = item.withProgress(_watchTransferProgress(ref, item));
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final l10n = AppLocalizations.of(context);
     final muted =
-        item.attachment.transferStatus ==
-        MessageAttachmentTransferStatus.failed;
+        displayItem.transferStatus == MessageAttachmentTransferStatus.failed;
     final foreground = muted
         ? colorScheme.onSurface.withValues(alpha: 0.48)
         : colorScheme.onSurface;
@@ -412,13 +371,13 @@ class _TransferRow extends ConsumerWidget {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    item.statusLabel(l10n),
+                    displayItem.statusLabel(l10n),
                     style: theme.textTheme.labelMedium?.copyWith(
                       color: foreground,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  if (item.canPause) ...[
+                  if (displayItem.canPause) ...[
                     const SizedBox(width: 6),
                     IconButton(
                       tooltip: l10n.pause,
@@ -426,16 +385,24 @@ class _TransferRow extends ConsumerWidget {
                       icon: const Icon(Icons.pause_rounded, size: 18),
                     ),
                   ],
+                  if (displayItem.canCancel) ...[
+                    const SizedBox(width: 4),
+                    IconButton(
+                      tooltip: l10n.cancelTransfer,
+                      onPressed: () => _cancelTransfer(context, ref),
+                      icon: const Icon(Icons.close_rounded, size: 18),
+                    ),
+                  ],
                 ],
               ),
               const SizedBox(height: 6),
               LinearProgressIndicator(
-                value: item.hasKnownTotal ? item.progress : null,
+                value: displayItem.hasKnownTotal ? displayItem.progress : null,
                 minHeight: 4,
               ),
               const SizedBox(height: 8),
               Text(
-                item.progressUpdatedLabel(l10n),
+                displayItem.progressSummaryLabel(l10n),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.labelSmall?.copyWith(
@@ -468,6 +435,26 @@ class _TransferRow extends ConsumerWidget {
       }
     }
   }
+
+  Future<void> _cancelTransfer(BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context);
+    final attachmentId = item.attachment.attachmentId;
+    if (attachmentId == null || attachmentId.trim().isEmpty) {
+      return;
+    }
+    try {
+      await ref
+          .read(transferActionControllerProvider)
+          .cancelTransfer(attachmentId);
+      if (context.mounted) {
+        await TransientFeedback.show(context, l10n.transferCancelled);
+      }
+    } catch (error) {
+      if (context.mounted) {
+        await TransientFeedback.show(context, l10n.actionFailed('$error'));
+      }
+    }
+  }
 }
 
 class _TransferDetail extends ConsumerWidget {
@@ -477,6 +464,7 @@ class _TransferDetail extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final displayItem = item.withProgress(_watchTransferProgress(ref, item));
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final l10n = AppLocalizations.of(context);
@@ -505,7 +493,7 @@ class _TransferDetail extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      item.fileName(l10n),
+                      displayItem.fileName(l10n),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.titleLarge?.copyWith(
@@ -514,7 +502,7 @@ class _TransferDetail extends ConsumerWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      item.statusLabel(l10n),
+                      displayItem.statusLabel(l10n),
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: colorScheme.onSurface.withValues(alpha: 0.64),
                       ),
@@ -523,7 +511,7 @@ class _TransferDetail extends ConsumerWidget {
                 ),
               ),
               const SizedBox(width: 6),
-              if (item.canPause) ...[
+              if (displayItem.canPause) ...[
                 OutlinedButton.icon(
                   onPressed: () => _pauseTransfer(context, ref),
                   icon: const Icon(Icons.pause_rounded),
@@ -531,8 +519,16 @@ class _TransferDetail extends ConsumerWidget {
                 ),
                 const SizedBox(width: 6),
               ],
+              if (displayItem.canCancel) ...[
+                OutlinedButton.icon(
+                  onPressed: () => _cancelTransfer(context, ref),
+                  icon: const Icon(Icons.close_rounded),
+                  label: Text(l10n.cancelTransfer),
+                ),
+                const SizedBox(width: 6),
+              ],
               OutlinedButton.icon(
-                onPressed: item.attachment.filePath == null
+                onPressed: displayItem.attachment.filePath == null
                     ? null
                     : () => _saveAttachment(context, ref),
                 icon: const Icon(Icons.save_alt_rounded),
@@ -541,20 +537,41 @@ class _TransferDetail extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 20),
-          LinearProgressIndicator(value: item.progress, minHeight: 6),
+          LinearProgressIndicator(value: displayItem.progress, minHeight: 6),
           const SizedBox(height: 18),
-          _DetailRow(label: l10n.direction, value: item.directionLabel(l10n)),
-          _DetailRow(label: l10n.device, value: item.remoteDeviceId),
-          _DetailRow(label: l10n.progress, value: item.byteProgressLabel(l10n)),
-          _DetailRow(label: l10n.message, value: item.messageStatusLabel(l10n)),
-          _DetailRow(label: l10n.saveStatus, value: item.saveStatusLabel(l10n)),
-          _DetailRow(label: l10n.updated, value: item.updatedLabel),
-          if (item.attachment.filePath != null)
-            _DetailRow(label: l10n.localPath, value: item.attachment.filePath!),
-          if (item.attachment.checksumSha256 != null)
+          _DetailRow(
+            label: l10n.direction,
+            value: displayItem.directionLabel(l10n),
+          ),
+          _DetailRow(label: l10n.device, value: displayItem.remoteDeviceId),
+          _DetailRow(
+            label: l10n.progress,
+            value: displayItem.byteProgressLabel(l10n),
+          ),
+          _DetailRow(
+            label: l10n.speed,
+            value: formatLocalizedByteRate(l10n, displayItem.bytesPerSecond),
+          ),
+          _DetailRow(
+            label: l10n.message,
+            value: displayItem.messageStatusLabel(l10n),
+          ),
+          _DetailRow(
+            label: l10n.saveStatus,
+            value: displayItem.saveStatusLabel(l10n),
+          ),
+          _DetailRow(label: l10n.updated, value: displayItem.updatedLabel),
+          if (displayItem.errorMessage?.isNotEmpty == true)
+            _DetailRow(label: l10n.lastError, value: displayItem.errorMessage!),
+          if (displayItem.attachment.filePath != null)
+            _DetailRow(
+              label: l10n.localPath,
+              value: displayItem.attachment.filePath!,
+            ),
+          if (displayItem.attachment.checksumSha256 != null)
             _DetailRow(
               label: 'SHA-256',
-              value: item.attachment.checksumSha256!,
+              value: displayItem.attachment.checksumSha256!,
             ),
         ],
       ),
@@ -592,6 +609,26 @@ class _TransferDetail extends ConsumerWidget {
           .pauseTransfer(attachmentId);
       if (context.mounted) {
         await TransientFeedback.show(context, l10n.transferPaused);
+      }
+    } catch (error) {
+      if (context.mounted) {
+        await TransientFeedback.show(context, l10n.actionFailed('$error'));
+      }
+    }
+  }
+
+  Future<void> _cancelTransfer(BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context);
+    final attachmentId = item.attachment.attachmentId;
+    if (attachmentId == null || attachmentId.trim().isEmpty) {
+      return;
+    }
+    try {
+      await ref
+          .read(transferActionControllerProvider)
+          .cancelTransfer(attachmentId);
+      if (context.mounted) {
+        await TransientFeedback.show(context, l10n.transferCancelled);
       }
     } catch (error) {
       if (context.mounted) {
@@ -640,21 +677,63 @@ class _DetailRow extends StatelessWidget {
 }
 
 class _TransferItem {
-  const _TransferItem({required this.message, required this.attachment});
+  const _TransferItem({
+    required this.message,
+    required this.attachment,
+    this.live,
+  });
 
   final ConversationMessage message;
   final MessageAttachmentSnapshot attachment;
+  final TransferProgressSnapshot? live;
+
+  _TransferItem withProgress(TransferProgressSnapshot? progress) {
+    if (progress == null) {
+      return this;
+    }
+    return _TransferItem(
+      message: message,
+      attachment: attachment,
+      live: progress,
+    );
+  }
 
   String get remoteDeviceId => message.remoteDeviceId;
   String fileName(AppLocalizations l10n) =>
       attachment.fileName ?? l10n.fileAttachment;
+
+  int get totalBytes => live?.totalBytes ?? attachment.totalBytes;
+
+  int get transferredBytes {
+    final value = live?.transferredBytes ?? attachment.transferredBytes;
+    if (totalBytes <= 0) {
+      return value < 0 ? 0 : value;
+    }
+    return value.clamp(0, totalBytes).toInt();
+  }
+
+  int get bytesPerSecond => live?.bytesPerSecond ?? 0;
+
+  String? get errorMessage => live?.errorMessage ?? message.errorMessage;
+
+  MessageAttachmentTransferStatus get transferStatus {
+    return switch (live?.phase) {
+      TransferProgressPhase.transferring =>
+        MessageAttachmentTransferStatus.transferring,
+      TransferProgressPhase.completed => MessageAttachmentTransferStatus.saved,
+      TransferProgressPhase.failed => MessageAttachmentTransferStatus.failed,
+      TransferProgressPhase.paused => MessageAttachmentTransferStatus.pending,
+      TransferProgressPhase.pending => MessageAttachmentTransferStatus.pending,
+      null => attachment.transferStatus,
+    };
+  }
 
   String directionLabel(AppLocalizations l10n) {
     return localizedDirectionLabel(l10n, message.direction);
   }
 
   String statusLabel(AppLocalizations l10n) {
-    return localizedAttachmentTransferStatus(l10n, attachment.transferStatus);
+    return localizedAttachmentTransferStatus(l10n, transferStatus);
   }
 
   String messageStatusLabel(AppLocalizations l10n) {
@@ -666,38 +745,34 @@ class _TransferItem {
   }
 
   bool get isActive {
-    return attachment.transferStatus ==
-            MessageAttachmentTransferStatus.pending ||
-        attachment.transferStatus ==
-            MessageAttachmentTransferStatus.transferring;
+    return transferStatus == MessageAttachmentTransferStatus.pending ||
+        transferStatus == MessageAttachmentTransferStatus.transferring;
   }
 
   bool get canPause =>
-      attachment.transferStatus ==
-          MessageAttachmentTransferStatus.transferring &&
+      transferStatus == MessageAttachmentTransferStatus.transferring &&
       attachment.attachmentId != null;
 
-  bool get hasKnownTotal => attachment.totalBytes > 0;
+  bool get canCancel =>
+      isActive &&
+      attachment.attachmentId != null &&
+      attachment.attachmentId!.isNotEmpty;
+
+  bool get hasKnownTotal => totalBytes > 0;
 
   double get progress {
-    if (attachment.totalBytes <= 0) {
+    if (totalBytes <= 0) {
       return attachment.downloadProgress.clamp(0, 100) / 100;
     }
-    return (attachment.transferredBytes / attachment.totalBytes).clamp(
-      0.0,
-      1.0,
-    );
+    return (transferredBytes / totalBytes).clamp(0.0, 1.0);
   }
 
   String byteProgressLabel(AppLocalizations l10n) {
-    return formatLocalizedByteProgress(
-      l10n,
-      attachment.transferredBytes,
-      attachment.totalBytes,
-    );
+    return formatLocalizedByteProgress(l10n, transferredBytes, totalBytes);
   }
 
-  String get updatedLabel => formatLocalizedDateTime(attachment.updatedAt);
+  String get updatedLabel =>
+      formatLocalizedDateTime(live?.updatedAt ?? attachment.updatedAt);
 
   String rowMeta(AppLocalizations l10n) {
     return l10n.transferRowMeta(directionLabel(l10n), remoteDeviceId);
@@ -706,6 +781,67 @@ class _TransferItem {
   String progressUpdatedLabel(AppLocalizations l10n) {
     return l10n.transferProgressUpdated(byteProgressLabel(l10n), updatedLabel);
   }
+
+  String progressSummaryLabel(AppLocalizations l10n) {
+    if (bytesPerSecond > 0) {
+      return l10n.transferProgressSpeed(
+        byteProgressLabel(l10n),
+        formatLocalizedByteRate(l10n, bytesPerSecond),
+      );
+    }
+    return progressUpdatedLabel(l10n);
+  }
+}
+
+List<_TransferItem> _filterItems(
+  List<_TransferItem> items,
+  _TransferFilter filter,
+  String query,
+  AppLocalizations l10n,
+) {
+  final statusFiltered = switch (filter) {
+    _TransferFilter.all => items,
+    _TransferFilter.active =>
+      items.where((item) => item.isActive).toList(growable: false),
+    _TransferFilter.completed =>
+      items
+          .where(
+            (item) =>
+                item.transferStatus == MessageAttachmentTransferStatus.saved,
+          )
+          .toList(growable: false),
+    _TransferFilter.failed =>
+      items
+          .where(
+            (item) =>
+                item.transferStatus == MessageAttachmentTransferStatus.failed,
+          )
+          .toList(growable: false),
+  };
+  final normalized = query.trim().toLowerCase();
+  if (normalized.isEmpty) {
+    return statusFiltered;
+  }
+  return statusFiltered
+      .where((item) {
+        return item.fileName(l10n).toLowerCase().contains(normalized) ||
+            item.remoteDeviceId.toLowerCase().contains(normalized) ||
+            item.statusLabel(l10n).toLowerCase().contains(normalized) ||
+            item.directionLabel(l10n).toLowerCase().contains(normalized) ||
+            (item.attachment.filePath ?? '').toLowerCase().contains(normalized);
+      })
+      .toList(growable: false);
+}
+
+TransferProgressSnapshot? _watchTransferProgress(
+  WidgetRef ref,
+  _TransferItem item,
+) {
+  final attachmentId = item.attachment.attachmentId;
+  if (attachmentId == null || attachmentId.isEmpty) {
+    return null;
+  }
+  return ref.watch(transferProgressProvider(attachmentId));
 }
 
 class _CenteredState extends StatelessWidget {

@@ -360,6 +360,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get backToDevices => '返回设备';
 
   @override
+  String get close => '关闭';
+
+  @override
   String get closeSearch => '关闭搜索';
 
   @override
@@ -373,6 +376,17 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get searchConversation => '搜索此会话';
+
+  @override
+  String searchResultCounter(int current, int total) {
+    return '$current / $total';
+  }
+
+  @override
+  String get previousResult => '上一个结果';
+
+  @override
+  String get nextResult => '下一个结果';
 
   @override
   String get noMatchingMessages => '没有匹配消息';
@@ -469,7 +483,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get deleteMessage => '删除消息';
 
   @override
-  String get deleteMessageDescription => '这会删除消息和所有本地附件文件。';
+  String get deleteMessageDescription => '这只会删除消息记录，本地文件会保留在当前设备上。';
 
   @override
   String get delete => '删除';
@@ -478,7 +492,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get messageDeleted => '消息已删除。';
 
   @override
-  String get clearConversationDescription => '这会删除此设备的所有本地消息和附件文件。';
+  String get clearConversationDescription => '这会删除此设备的本地会话记录。';
 
   @override
   String get deleteDevice => '删除设备';
@@ -569,6 +583,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get taskId => '任务 ID';
 
   @override
+  String get sha256Label => 'SHA-256';
+
+  @override
   String get noLocalVideoFile => '没有可用的本地视频文件。';
 
   @override
@@ -583,13 +600,30 @@ class AppLocalizationsZh extends AppLocalizations {
   String get transferPaused => '传输已暂停。';
 
   @override
+  String get cancelTransfer => '取消传输';
+
+  @override
+  String cancelTransferDescription(String fileName) {
+    return '停止传输 $fileName，并将其标记为已取消。';
+  }
+
+  @override
+  String get transferCancelled => '传输已取消。';
+
+  @override
   String get play => '播放';
 
   @override
   String get attachFile => '附加文件';
 
   @override
+  String get insertEmoji => '插入表情';
+
+  @override
   String get messageOrAttachFile => '消息或附加文件';
+
+  @override
+  String get jumpToLatest => '最新消息';
 
   @override
   String get transfersTitle => '传输';
@@ -720,6 +754,23 @@ class AppLocalizationsZh extends AppLocalizations {
   String transferProgressUpdated(String progress, String updated) {
     return '$progress · $updated';
   }
+
+  @override
+  String transferProgressSpeed(String progress, String speed) {
+    return '$progress · $speed';
+  }
+
+  @override
+  String get speed => '速度';
+
+  @override
+  String get lastError => '最后错误';
+
+  @override
+  String get todayLabel => '今天';
+
+  @override
+  String get yesterdayLabel => '昨天';
 
   @override
   String get transferNotificationSendingTitle => '正在发送文件';
@@ -1103,6 +1154,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get backToDevices => '返回裝置';
 
   @override
+  String get close => '關閉';
+
+  @override
   String get closeSearch => '關閉搜尋';
 
   @override
@@ -1116,6 +1170,17 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get searchConversation => '搜尋此對話';
+
+  @override
+  String searchResultCounter(int current, int total) {
+    return '$current / $total';
+  }
+
+  @override
+  String get previousResult => '上一個結果';
+
+  @override
+  String get nextResult => '下一個結果';
 
   @override
   String get noMatchingMessages => '沒有符合的訊息';
@@ -1212,7 +1277,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get deleteMessage => '刪除訊息';
 
   @override
-  String get deleteMessageDescription => '這會刪除訊息和所有本地附件檔案。';
+  String get deleteMessageDescription => '這只會刪除訊息記錄，本地檔案會保留在目前裝置上。';
 
   @override
   String get delete => '刪除';
@@ -1221,7 +1286,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get messageDeleted => '訊息已刪除。';
 
   @override
-  String get clearConversationDescription => '這會刪除此裝置的所有本地訊息和附件檔案。';
+  String get clearConversationDescription => '這會刪除此裝置的本地對話記錄。';
 
   @override
   String get deleteDevice => '刪除裝置';
@@ -1312,6 +1377,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get taskId => '任務 ID';
 
   @override
+  String get sha256Label => 'SHA-256';
+
+  @override
   String get noLocalVideoFile => '沒有可用的本地影片檔案。';
 
   @override
@@ -1326,13 +1394,30 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get transferPaused => '傳輸已暫停。';
 
   @override
+  String get cancelTransfer => '取消傳輸';
+
+  @override
+  String cancelTransferDescription(String fileName) {
+    return '停止傳輸 $fileName，並將其標記為已取消。';
+  }
+
+  @override
+  String get transferCancelled => '傳輸已取消。';
+
+  @override
   String get play => '播放';
 
   @override
   String get attachFile => '附加檔案';
 
   @override
+  String get insertEmoji => '插入表情';
+
+  @override
   String get messageOrAttachFile => '訊息或附加檔案';
+
+  @override
+  String get jumpToLatest => '最新訊息';
 
   @override
   String get transfersTitle => '傳輸';
@@ -1463,6 +1548,23 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String transferProgressUpdated(String progress, String updated) {
     return '$progress · $updated';
   }
+
+  @override
+  String transferProgressSpeed(String progress, String speed) {
+    return '$progress · $speed';
+  }
+
+  @override
+  String get speed => '速度';
+
+  @override
+  String get lastError => '最後錯誤';
+
+  @override
+  String get todayLabel => '今天';
+
+  @override
+  String get yesterdayLabel => '昨天';
 
   @override
   String get transferNotificationSendingTitle => '正在傳送檔案';

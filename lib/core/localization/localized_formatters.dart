@@ -29,6 +29,10 @@ String formatLocalizedByteProgress(
   );
 }
 
+String formatLocalizedByteRate(AppLocalizations l10n, int bytesPerSecond) {
+  return '${formatLocalizedBytes(l10n, bytesPerSecond)}/s';
+}
+
 String formatLocalizedDateTime(DateTime dateTime) {
   final month = dateTime.month.toString().padLeft(2, '0');
   final day = dateTime.day.toString().padLeft(2, '0');

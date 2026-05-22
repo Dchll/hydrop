@@ -169,11 +169,21 @@
     }
   },
   "backToDevices": "Back to devices",
+  "close": "Close",
   "closeSearch": "Close search",
   "searchMessages": "Search messages",
   "deviceInfo": "Device info",
   "clearConversation": "Clear conversation",
   "searchConversation": "Search this conversation",
+  "searchResultCounter": "{current} / {total}",
+  "@searchResultCounter": {
+    "placeholders": {
+      "current": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "previousResult": "Previous result",
+  "nextResult": "Next result",
   "noMatchingMessages": "No matching messages",
   "emptyConversationMessage": "Send a message or attach a file to start this transfer log.",
   "tryDifferentSearchTerm": "Try a different search term.",
@@ -240,10 +250,10 @@
     }
   },
   "deleteMessage": "Delete message",
-  "deleteMessageDescription": "This removes the message and any local attachment file.",
+  "deleteMessageDescription": "This removes the message record only. Local files stay on this device.",
   "delete": "Delete",
   "messageDeleted": "Message deleted.",
-  "clearConversationDescription": "This removes all local messages and attachment files for this device.",
+  "clearConversationDescription": "This removes the local conversation records for this device.",
   "deleteDevice": "Delete device",
   "deleteDeviceDescription": "Remove {displayName} from Devices.",
   "@deleteDeviceDescription": {
@@ -282,6 +292,7 @@
   "localPath": "Local path",
   "attachmentId": "Attachment ID",
   "taskId": "Task ID",
+  "sha256Label": "SHA-256",
   "noLocalVideoFile": "No local video file available.",
   "unableToPreviewVideo": "Unable to preview video: {error}",
   "@unableToPreviewVideo": {
@@ -291,9 +302,19 @@
   },
   "pause": "Pause",
   "transferPaused": "Transfer paused.",
+  "cancelTransfer": "Cancel transfer",
+  "cancelTransferDescription": "Stop transferring {fileName} and mark it as cancelled.",
+  "@cancelTransferDescription": {
+    "placeholders": {
+      "fileName": { "type": "String" }
+    }
+  },
+  "transferCancelled": "Transfer cancelled.",
   "play": "Play",
   "attachFile": "Attach file",
+  "insertEmoji": "Insert emoji",
   "messageOrAttachFile": "Message or attach a file",
+  "jumpToLatest": "Latest",
   "transfersTitle": "Transfers",
   "transfersSubtitle": "File queue and transfer history",
   "refreshTransfers": "Refresh transfers",
@@ -363,6 +384,17 @@
       "updated": { "type": "String" }
     }
   },
+  "transferProgressSpeed": "{progress} · {speed}",
+  "@transferProgressSpeed": {
+    "placeholders": {
+      "progress": { "type": "String" },
+      "speed": { "type": "String" }
+    }
+  },
+  "speed": "Speed",
+  "lastError": "Last error",
+  "todayLabel": "Today",
+  "yesterdayLabel": "Yesterday",
   "transferNotificationSendingTitle": "Sending file",
   "transferNotificationReceivingTitle": "Receiving file",
   "transferNotificationSentTitle": "File sent",

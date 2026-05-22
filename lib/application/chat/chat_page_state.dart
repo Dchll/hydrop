@@ -352,6 +352,14 @@ class ChatPageController {
     await _transferActionController.pauseTransfer(attachmentId);
   }
 
+  Future<void> cancelTransfer(MessageAttachmentSnapshot attachment) async {
+    final attachmentId = attachment.attachmentId;
+    if (attachmentId == null || attachmentId.trim().isEmpty) {
+      return;
+    }
+    await _transferActionController.cancelTransfer(attachmentId);
+  }
+
   Future<void> deleteMessage(ConversationMessage message) {
     return _messageRepository.deleteMessage(message.id);
   }
