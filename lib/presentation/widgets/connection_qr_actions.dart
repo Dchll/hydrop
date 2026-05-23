@@ -6,7 +6,7 @@ import 'package:hydrop/application/mine/connection_qr_controller.dart';
 import 'package:hydrop/application/mine/mine_page_state.dart';
 import 'package:hydrop/core/feedback/transient_feedback.dart';
 import 'package:hydrop/gen/l10n/app_localizations.dart';
-import 'package:hydrop/presentation/widgets/hd_glass_components.dart';
+import 'package:hydrop/presentation/widgets/hd_components.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
@@ -28,7 +28,7 @@ Future<void> showConnectionQrDialog(
       return SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-          child: HdGlassPanel(
+          child: HdPanel(
             padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
             child: ConstrainedBox(
               constraints: BoxConstraints(maxHeight: maxHeight),
@@ -154,7 +154,7 @@ class _ConnectionQrScannerDialogState
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-        child: HdGlassPanel(
+        child: HdPanel(
           padding: const EdgeInsets.all(10),
           child: ConstrainedBox(
             constraints: BoxConstraints(maxHeight: maxHeight),

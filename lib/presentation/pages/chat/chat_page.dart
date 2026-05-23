@@ -15,7 +15,7 @@ import 'package:hydrop/gen/l10n/app_localizations.dart';
 import 'package:hydrop/presentation/pages/chat/widgets/chat_image_viewer.dart';
 import 'package:hydrop/presentation/pages/chat/widgets/chat_message_widgets.dart';
 import 'package:hydrop/presentation/widgets/hd_floating_components.dart';
-import 'package:hydrop/presentation/widgets/hd_glass_components.dart';
+import 'package:hydrop/presentation/widgets/hd_components.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 const _chatPageSize = 80;
@@ -159,13 +159,13 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                   emptyMessage: l10n.emptyConversationMessage,
                 );
               },
-              error: (error, stackTrace) => HdGlassPanel(
+              error: (error, stackTrace) => HdPanel(
                 child: ChatCenteredState(
                   title: l10n.unableToLoadConversation,
                   message: error.toString(),
                 ),
               ),
-              loading: () => const HdGlassPanel(
+              loading: () => const HdPanel(
                 child: Center(child: CircularProgressIndicator()),
               ),
             ),

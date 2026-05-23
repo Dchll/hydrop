@@ -46,7 +46,7 @@ class AppDataBase extends _$AppDataBase {
   AppDataBase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 1;
 
   @override
   MigrationStrategy get migration {
@@ -54,20 +54,6 @@ class AppDataBase extends _$AppDataBase {
       onCreate: (migrator) async {
         await migrator.createAll();
         await _createCustomIndexes();
-      },
-      onUpgrade: (migrator, from, to) async {
-        if (from < 2) {
-          await _migrateFromV1ToV2(migrator);
-        }
-        if (from < 3) {
-          await _migrateFromV2ToV3(migrator);
-        }
-        if (from < 4) {
-          await _migrateFromV3ToV4(migrator);
-        }
-        if (from < 5) {
-          await _migrateFromV4ToV5(migrator);
-        }
       },
       beforeOpen: (details) async {
         await customStatement('PRAGMA foreign_keys = ON');
@@ -83,130 +69,6 @@ class AppDataBase extends _$AppDataBase {
         isolateDebugLog: debugLog,
       ),
     );
-  }
-
-  Future<void> _migrateFromV1ToV2(Migrator migrator) async {
-    await migrator.createTable(deviceAddressItems);
-    await migrator.createTable(connectionSessionItems);
-
-    await customStatement('''
-      ALTER TABLE message_items
-      ADD COLUMN updated_at INTEGER NOT NULL DEFAULT 0
-      ''');
-    await customStatement('''
-      ALTER TABLE message_items
-      ADD COLUMN message_type TEXT NOT NULL DEFAULT 'text'
-      ''');
-    await customStatement('''
-      ALTER TABLE message_items
-      ADD COLUMN send_status TEXT NOT NULL DEFAULT 'pending'
-      ''');
-    await migrator.addColumn(messageItems, messageItems.localMessageId);
-    await migrator.addColumn(messageItems, messageItems.remoteMessageId);
-    await migrator.addColumn(messageItems, messageItems.errorMessage);
-
-    await customStatement('''
-      ALTER TABLE message_attachment_items
-      ADD COLUMN total_bytes INTEGER NOT NULL DEFAULT 0
-      ''');
-    await customStatement('''
-      ALTER TABLE message_attachment_items
-      ADD COLUMN transferred_bytes INTEGER NOT NULL DEFAULT 0
-      ''');
-    await migrator.addColumn(
-      messageAttachmentItems,
-      messageAttachmentItems.attachmentId,
-    );
-    await migrator.addColumn(
-      messageAttachmentItems,
-      messageAttachmentItems.fileName,
-    );
-    await migrator.addColumn(
-      messageAttachmentItems,
-      messageAttachmentItems.mimeType,
-    );
-    await migrator.addColumn(
-      messageAttachmentItems,
-      messageAttachmentItems.checksumSha256,
-    );
-    await migrator.addColumn(
-      messageAttachmentItems,
-      messageAttachmentItems.thumbnailPath,
-    );
-    await customStatement('''
-      ALTER TABLE message_attachment_items
-      ADD COLUMN transfer_status TEXT NOT NULL DEFAULT 'pending'
-      ''');
-    await migrator.addColumn(
-      messageAttachmentItems,
-      messageAttachmentItems.transferTaskId,
-    );
-    await customStatement('''
-      ALTER TABLE message_attachment_items
-      ADD COLUMN created_at INTEGER NOT NULL DEFAULT 0
-      ''');
-    await customStatement('''
-      ALTER TABLE message_attachment_items
-      ADD COLUMN updated_at INTEGER NOT NULL DEFAULT 0
-      ''');
-
-    await customStatement('''
-      UPDATE message_items
-      SET
-        updated_at = created_at,
-        send_status = CASE direction
-          WHEN 'sent' THEN 'sent'
-          ELSE 'received'
-        END,
-        local_message_id = 'legacy_msg_' || id
-      ''');
-
-    await customStatement('''
-      UPDATE message_items
-      SET message_type = 'file'
-      WHERE EXISTS (
-        SELECT 1
-        FROM message_attachment_items
-        WHERE message_attachment_items.message_id = message_items.id
-      )
-      ''');
-
-    await customStatement('''
-      UPDATE message_attachment_items
-      SET
-        attachment_id = 'legacy_attachment_' || id,
-        file_name = file_path,
-        transfer_status = CASE save_status
-          WHEN 'saving' THEN 'transferring'
-          WHEN 'saved' THEN 'saved'
-          WHEN 'failed' THEN 'failed'
-          ELSE 'pending'
-        END
-      ''');
-
-    await _createCustomIndexes();
-  }
-
-  Future<void> _migrateFromV2ToV3(Migrator migrator) async {
-    await customStatement('''
-      ALTER TABLE setting_items
-      ADD COLUMN auto_resume_transfers_enabled INTEGER NOT NULL DEFAULT 1
-      ''');
-  }
-
-  Future<void> _migrateFromV3ToV4(Migrator migrator) async {
-    await migrator.addColumn(deviceItems, deviceItems.lastConnectedAt);
-    await migrator.addColumn(deviceItems, deviceItems.lastDisconnectedAt);
-    await migrator.addColumn(deviceItems, deviceItems.lastTransferAt);
-    await migrator.addColumn(deviceItems, deviceItems.lastError);
-    await migrator.addColumn(messageItems, messageItems.readAt);
-  }
-
-  Future<void> _migrateFromV4ToV5(Migrator migrator) async {
-    await customStatement('''
-      ALTER TABLE setting_items
-      ADD COLUMN language TEXT NOT NULL DEFAULT 'system'
-      ''');
   }
 
   Future<void> _createCustomIndexes() async {

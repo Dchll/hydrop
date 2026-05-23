@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,10 +9,9 @@ import 'package:hydrop/data/local/repository/setting_repository.dart';
 import 'package:hydrop/gen/l10n/app_localizations.dart';
 import 'package:hydrop/presentation/widgets/connection_qr_actions.dart';
 import 'package:hydrop/presentation/widgets/hd_floating_components.dart';
-import 'package:hydrop/presentation/widgets/hd_glass_components.dart';
+import 'package:hydrop/presentation/widgets/hd_components.dart';
 import 'package:hydrop/presentation/widgets/hydrop_adaptive.dart';
 
-@RoutePage()
 class MinePage extends ConsumerWidget {
   const MinePage({super.key});
 
@@ -41,13 +39,13 @@ class MinePage extends ConsumerWidget {
                 child: overview.when(
                   data: (state) =>
                       _MineOverviewBody(state: state, windowClass: windowClass),
-                  error: (error, stackTrace) => HdGlassPanel(
+                  error: (error, stackTrace) => HdPanel(
                     child: _SectionMessage(
                       title: l10n.unableToLoadLocalDeviceInfo,
                       message: error.toString(),
                     ),
                   ),
-                  loading: () => const HdGlassPanel(
+                  loading: () => const HdPanel(
                     child: Center(child: CircularProgressIndicator()),
                   ),
                 ),
@@ -138,7 +136,7 @@ class _SectionBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return HdGlassPanel(child: child);
+    return HdPanel(child: child);
   }
 }
 
