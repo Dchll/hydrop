@@ -113,7 +113,9 @@ cached_network_image（版本 3.4.1）提供网络图片的缓存加载能力，
 
 本系统功能需求按"设备发现、会话通信、文件传输、配置管理"四类进行定义，并以"输入—处理—输出—验收点"的结构化方式进行约束。以下分别对四类功能需求进行详细描述。
 
-**图 31 系统功能需求分解图**
+图3-1系统功能需求分解图
+
+Fig.3-1 The diagram of system functional requirement decomposition
 
 设备发现需求：输入为局域网内在线节点信息与主动探测指令。处理过程采用UDP广播报文（kind=probe/hello/beat）与节点表维护机制。系统启动后，本机周期性地向局域网广播包含设备ID、设备名称、TCP端口和能力列表的公告报文；同时监听其他设备的广播报文，解析后更新在线设备列表。节点表维护机制包括：收到新设备的广播报文时，将其添加到在线列表；收到已知设备的更新报文时，刷新其最后活跃时间；超过指定时间未收到某设备的报文时，将其标记为离线并从列表中移除。输出为可实时刷新的在线设备列表（含节点名称、主机地址、端口与最近活跃时间）。验收点为：应用启动后可接收并解析对端广播，执行探测后可更新列表，超时节点可被剔除。
 
@@ -143,7 +145,9 @@ cached_network_image（版本 3.4.1）提供网络图片的缓存加载能力，
 
 系统采用UI层、Provider状态层、Repository业务层、Service/Core基础设施层的四层分离架构。该架构的核心设计思想是"关注点分离"——每一层只负责自己的职责，通过定义良好的接口与上下层通信，避免跨层直接依赖。
 
-**图3-2 系统总体架构图**
+图3-2系统总体架构图
+
+Fig.3-2 The diagram of overall system architecture
 
 UI层（表现层）负责页面渲染与用户交互，包括Home工作台、Inbox收件箱、Settings设置页以及设备详情、包信息等二级页面。UI层通过ConsumerWidget和ConsumerStatefulWidget消费Provider层暴露的状态数据，根据状态值渲染不同的UI状态（加载中、数据就绪、错误提示等）。UI层不直接访问网络或数据库，所有数据获取和业务逻辑均通过Provider层完成。
 
@@ -199,7 +203,9 @@ Service/Core层（基础设施层）负责Socket通信、数据库访问、网�
 
 在应用根部，启动阶段通过监听 chat、transfer、discovery 三类 Hub Provider 完成网络能力预热，使页面进入后可以直接消费稳定的异步状态。
 
-**图5-1 应用启动初始化流程**
+图5-1应用启动初始化流程
+
+Fig.5-1 The flowchart of application startup initialization
 
 void main() {
 
@@ -2737,13 +2743,19 @@ lastError: Value(lastError),
 
 本节对系统中涉及的核心数据库表进行说明。系统采用 Drift 进行本地持久化管理，围绕设备发现、地址记忆、连接会话、本机信息、应用设置、消息内容、消息附件与统计信息等业务场景，共设计若干核心数据表。下面结合各表的功能、字段约束及表间关系，分别给出数据库表设计说明。
 
-**表 51数据库表功能概览**
+表5-1  数据库表功能概览
 
-**表5-2 设备信息表（device_items）**
+Tab.5-1 Overview of database table functions
 
-**表 52 设备信息表**
+表5-2  设备信息表（device_items）
 
-**Tab 52 device_items**
+Tab.5-2 Device information table (device_items)
+
+表5-2  设备信息表
+
+Tab.5-2 Device information table
+
+Tab.5-2 device_items
 
 # 6 系统测试与结果分析
 
