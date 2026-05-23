@@ -1,4 +1,3 @@
-import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hydrop/application/transfer/attachment_action_controller.dart';
@@ -10,10 +9,9 @@ import 'package:hydrop/data/local/model/message/message.dart';
 import 'package:hydrop/data/local/repository/message_repository.dart';
 import 'package:hydrop/gen/l10n/app_localizations.dart';
 import 'package:hydrop/presentation/widgets/hd_floating_components.dart';
-import 'package:hydrop/presentation/widgets/hd_glass_components.dart';
+import 'package:hydrop/presentation/widgets/hd_components.dart';
 import 'package:hydrop/presentation/widgets/hydrop_adaptive.dart';
 
-@RoutePage()
 class TransfersPage extends ConsumerStatefulWidget {
   const TransfersPage({super.key});
 
@@ -81,13 +79,13 @@ class _TransfersPageState extends ConsumerState<TransfersPage> {
                       },
                     );
                   },
-                  error: (error, stackTrace) => HdGlassPanel(
+                  error: (error, stackTrace) => HdPanel(
                     child: _CenteredState(
                       title: l10n.unableToLoadTransfers,
                       message: error.toString(),
                     ),
                   ),
-                  loading: () => const HdGlassPanel(
+                  loading: () => const HdPanel(
                     child: Center(child: CircularProgressIndicator()),
                   ),
                 ),
@@ -199,7 +197,7 @@ class _TransferContent extends ConsumerWidget {
         .toList(growable: false);
     final liveItems = _filterItems(mergedItems, filter, query, l10n);
     if (liveItems.isEmpty) {
-      return HdGlassPanel(
+      return HdPanel(
         child: _CenteredState(
           title: totalItemCount == 0
               ? l10n.noTransfers
@@ -214,7 +212,7 @@ class _TransferContent extends ConsumerWidget {
     final selected = _selectedItem(liveItems);
     final list = Column(
       children: [
-        HdGlassPanel(
+        HdPanel(
           child: HdSearchField(
             controller: searchController,
             hintText: l10n.searchTransfers,
@@ -223,7 +221,7 @@ class _TransferContent extends ConsumerWidget {
         ),
         const SizedBox(height: 6),
         Expanded(
-          child: HdGlassPanel(
+          child: HdPanel(
             padding: EdgeInsets.zero,
             child: ListView.separated(
               itemCount: liveItems.length,
@@ -259,13 +257,13 @@ class _TransferContent extends ConsumerWidget {
         const SizedBox(width: 6),
         Expanded(
           child: selected == null
-              ? HdGlassPanel(
+              ? HdPanel(
                   child: _CenteredState(
                     title: l10n.selectTransfer,
                     message: l10n.selectTransferMessage,
                   ),
                 )
-              : HdGlassPanel(
+              : HdPanel(
                   padding: EdgeInsets.zero,
                   child: _TransferDetail(item: selected),
                 ),

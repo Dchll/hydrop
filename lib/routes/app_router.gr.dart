@@ -9,24 +9,22 @@
 // coverage:ignore-file
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
-import 'package:auto_route/auto_route.dart' as _i7;
-import 'package:flutter/material.dart' as _i8;
+import 'package:auto_route/auto_route.dart' as _i5;
+import 'package:flutter/material.dart' as _i6;
 import 'package:hydrop/presentation/pages/app/app_page.dart' as _i1;
 import 'package:hydrop/presentation/pages/chat/chat_page.dart' as _i2;
 import 'package:hydrop/presentation/pages/home/home_page.dart' as _i3;
-import 'package:hydrop/presentation/pages/mine/mine_page.dart' as _i4;
-import 'package:hydrop/presentation/pages/settings/settings_page.dart' as _i5;
-import 'package:hydrop/presentation/pages/transfers/transfers_page.dart' as _i6;
+import 'package:hydrop/presentation/pages/settings/settings_page.dart' as _i4;
 
 /// generated route for
 /// [_i1.AppPage]
-class AppRoute extends _i7.PageRouteInfo<void> {
-  const AppRoute({List<_i7.PageRouteInfo>? children})
+class AppRoute extends _i5.PageRouteInfo<void> {
+  const AppRoute({List<_i5.PageRouteInfo>? children})
     : super(AppRoute.name, initialChildren: children);
 
   static const String name = 'AppRoute';
 
-  static _i7.PageInfo page = _i7.PageInfo(
+  static _i5.PageInfo page = _i5.PageInfo(
     name,
     builder: (data) {
       return const _i1.AppPage();
@@ -36,13 +34,13 @@ class AppRoute extends _i7.PageRouteInfo<void> {
 
 /// generated route for
 /// [_i2.ChatPage]
-class ChatRoute extends _i7.PageRouteInfo<ChatRouteArgs> {
+class ChatRoute extends _i5.PageRouteInfo<ChatRouteArgs> {
   ChatRoute({
-    _i8.Key? key,
+    _i6.Key? key,
     required String remoteDeviceId,
     required String displayName,
     bool showBackButton = true,
-    List<_i7.PageRouteInfo>? children,
+    List<_i5.PageRouteInfo>? children,
   }) : super(
          ChatRoute.name,
          args: ChatRouteArgs(
@@ -56,7 +54,7 @@ class ChatRoute extends _i7.PageRouteInfo<ChatRouteArgs> {
 
   static const String name = 'ChatRoute';
 
-  static _i7.PageInfo page = _i7.PageInfo(
+  static _i5.PageInfo page = _i5.PageInfo(
     name,
     builder: (data) {
       final args = data.argsAs<ChatRouteArgs>();
@@ -78,7 +76,7 @@ class ChatRouteArgs {
     this.showBackButton = true,
   });
 
-  final _i8.Key? key;
+  final _i6.Key? key;
 
   final String remoteDeviceId;
 
@@ -111,13 +109,13 @@ class ChatRouteArgs {
 
 /// generated route for
 /// [_i3.HomePage]
-class HomeRoute extends _i7.PageRouteInfo<void> {
-  const HomeRoute({List<_i7.PageRouteInfo>? children})
+class HomeRoute extends _i5.PageRouteInfo<void> {
+  const HomeRoute({List<_i5.PageRouteInfo>? children})
     : super(HomeRoute.name, initialChildren: children);
 
   static const String name = 'HomeRoute';
 
-  static _i7.PageInfo page = _i7.PageInfo(
+  static _i5.PageInfo page = _i5.PageInfo(
     name,
     builder: (data) {
       return const _i3.HomePage();
@@ -126,49 +124,17 @@ class HomeRoute extends _i7.PageRouteInfo<void> {
 }
 
 /// generated route for
-/// [_i4.MinePage]
-class MineRoute extends _i7.PageRouteInfo<void> {
-  const MineRoute({List<_i7.PageRouteInfo>? children})
-    : super(MineRoute.name, initialChildren: children);
-
-  static const String name = 'MineRoute';
-
-  static _i7.PageInfo page = _i7.PageInfo(
-    name,
-    builder: (data) {
-      return const _i4.MinePage();
-    },
-  );
-}
-
-/// generated route for
-/// [_i5.SettingsPage]
-class SettingsRoute extends _i7.PageRouteInfo<void> {
-  const SettingsRoute({List<_i7.PageRouteInfo>? children})
+/// [_i4.SettingsPage]
+class SettingsRoute extends _i5.PageRouteInfo<void> {
+  const SettingsRoute({List<_i5.PageRouteInfo>? children})
     : super(SettingsRoute.name, initialChildren: children);
 
   static const String name = 'SettingsRoute';
 
-  static _i7.PageInfo page = _i7.PageInfo(
+  static _i5.PageInfo page = _i5.PageInfo(
     name,
     builder: (data) {
-      return const _i5.SettingsPage();
-    },
-  );
-}
-
-/// generated route for
-/// [_i6.TransfersPage]
-class TransfersRoute extends _i7.PageRouteInfo<void> {
-  const TransfersRoute({List<_i7.PageRouteInfo>? children})
-    : super(TransfersRoute.name, initialChildren: children);
-
-  static const String name = 'TransfersRoute';
-
-  static _i7.PageInfo page = _i7.PageInfo(
-    name,
-    builder: (data) {
-      return const _i6.TransfersPage();
+      return const _i4.SettingsPage();
     },
   );
 }

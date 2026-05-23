@@ -9,7 +9,7 @@ import 'package:hydrop/data/local/repository/message_repository.dart';
 import 'package:hydrop/gen/l10n/app_localizations.dart';
 import 'package:hydrop/presentation/widgets/image_widget.dart';
 import 'package:hydrop/presentation/widgets/hd_floating_components.dart';
-import 'package:hydrop/presentation/widgets/hd_glass_components.dart';
+import 'package:hydrop/presentation/widgets/hd_components.dart';
 import 'package:video_player/video_player.dart';
 
 class EmptyChatPanel extends StatelessWidget {
@@ -19,7 +19,7 @@ class EmptyChatPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return HdPageScaffold(
-      child: HdGlassPanel(
+      child: HdPanel(
         child: ChatCenteredState(
           title: l10n.chatNoActive,
           message: l10n.chatNoActiveMessage,
@@ -113,7 +113,7 @@ class _ChatMessageTimelineState extends State<ChatMessageTimeline> {
   Widget build(BuildContext context) {
     if (widget.messages.isEmpty) {
       final l10n = AppLocalizations.of(context);
-      return HdGlassPanel(
+      return HdPanel(
         child: ChatCenteredState(
           title: widget.emptyTitle ?? l10n.noMessagesYet,
           message: widget.emptyMessage ?? l10n.emptyConversationMessage,
@@ -122,7 +122,7 @@ class _ChatMessageTimelineState extends State<ChatMessageTimeline> {
     }
 
     final entries = _buildTimelineEntries(context, widget.messages);
-    return HdGlassPanel(
+    return HdPanel(
       padding: const EdgeInsets.all(0),
       child: Stack(
         children: [
@@ -1164,7 +1164,7 @@ class ChatComposer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return HdGlassDock(
+    return HdDock(
       maxWidth: 960,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       child: Row(

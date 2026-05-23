@@ -8,7 +8,7 @@ import 'package:hydrop/presentation/pages/chat/chat_page.dart';
 import 'package:hydrop/presentation/pages/chat/widgets/chat_message_widgets.dart';
 import 'package:hydrop/presentation/widgets/connection_qr_actions.dart';
 import 'package:hydrop/presentation/widgets/hd_floating_components.dart';
-import 'package:hydrop/presentation/widgets/hd_glass_components.dart';
+import 'package:hydrop/presentation/widgets/hd_components.dart';
 import 'package:hydrop/presentation/widgets/hydrop_adaptive.dart';
 import 'package:hydrop/routes/app_router.gr.dart';
 
@@ -102,60 +102,83 @@ class _HomeContent extends ConsumerWidget {
     final unreadCounts = ref.watch(homeUnreadCountByDeviceProvider);
     final l10n = AppLocalizations.of(context);
 
-    return devices.when(
-      data: (items) {
-        final messageLabels = lastMessages.maybeWhen(
-          data: (labels) => labels,
-          orElse: () => const <String, String>{},
-        );
-        final unreadLabels = unreadCounts.maybeWhen(
-          data: (counts) => counts,
-          orElse: () => const <String, int>{},
-        );
-        final visibleItems = _filterDevices(items, deviceQuery);
-        final selected = _resolveSelectedDevice(visibleItems);
-        final list = _DevicePane(
-          devices: visibleItems,
-          totalDeviceCount: items.length,
-          lastMessageLabels: messageLabels,
-          unreadCounts: unreadLabels,
-          selectedDeviceId: selected?.deviceId,
-          windowClass: windowClass,
-          searchController: searchController,
-          onDeviceTap: (device) => _openDevice(context, device),
-          onScanCompleted: onSelectedChanged,
-          onQueryChanged: onQueryChanged,
-        );
+    final loadedDevices = devices.maybeWhen(
+      data: (items) => items,
+      orElse: () => null,
+    );
+    if (loadedDevices != null) {
+      return _buildDeviceContent(
+        context,
+        items: loadedDevices,
+        lastMessages: lastMessages,
+        unreadCounts: unreadCounts,
+      );
+    }
 
-        if (windowClass.usesBottomNavigation) {
-          return list;
-        }
-
-        return Row(
-          children: [
-            SizedBox(width: windowClass.contactListWidth, child: list),
-            const SizedBox(width: 6),
-            Expanded(
-              child: selected == null
-                  ? const EmptyChatPanel()
-                  : ChatPage(
-                      remoteDeviceId: selected.deviceId,
-                      displayName: selected.displayName,
-                      showBackButton: false,
-                    ),
-            ),
-          ],
-        );
-      },
-      error: (error, stackTrace) => _SectionShell(
+    if (devices.hasError) {
+      return _SectionShell(
         child: _CenteredState(
           title: l10n.homeUnableToLoadDevices,
-          message: error.toString(),
+          message: devices.error.toString(),
         ),
-      ),
-      loading: () => const _SectionShell(
-        child: Center(child: CircularProgressIndicator()),
-      ),
+      );
+    }
+
+    return _buildDeviceContent(
+      context,
+      items: const [],
+      lastMessages: lastMessages,
+      unreadCounts: unreadCounts,
+    );
+  }
+
+  Widget _buildDeviceContent(
+    BuildContext context, {
+    required List<HomeDeviceListItem> items,
+    required AsyncValue<Map<String, String>> lastMessages,
+    required AsyncValue<Map<String, int>> unreadCounts,
+  }) {
+    final messageLabels = lastMessages.maybeWhen(
+      data: (labels) => labels,
+      orElse: () => const <String, String>{},
+    );
+    final unreadLabels = unreadCounts.maybeWhen(
+      data: (counts) => counts,
+      orElse: () => const <String, int>{},
+    );
+    final visibleItems = _filterDevices(items, deviceQuery);
+    final selected = _resolveSelectedDevice(visibleItems);
+    final list = _DevicePane(
+      devices: visibleItems,
+      totalDeviceCount: items.length,
+      lastMessageLabels: messageLabels,
+      unreadCounts: unreadLabels,
+      selectedDeviceId: selected?.deviceId,
+      windowClass: windowClass,
+      searchController: searchController,
+      onDeviceTap: (device) => _openDevice(context, device),
+      onScanCompleted: onSelectedChanged,
+      onQueryChanged: onQueryChanged,
+    );
+
+    if (windowClass.usesBottomNavigation) {
+      return list;
+    }
+
+    return Row(
+      children: [
+        SizedBox(width: windowClass.contactListWidth, child: list),
+        const SizedBox(width: 6),
+        Expanded(
+          child: selected == null
+              ? const EmptyChatPanel()
+              : ChatPage(
+                  remoteDeviceId: selected.deviceId,
+                  displayName: selected.displayName,
+                  showBackButton: false,
+                ),
+        ),
+      ],
     );
   }
 
@@ -561,7 +584,7 @@ class _SectionShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return HdGlassPanel(padding: padding, child: child);
+    return HdPanel(padding: padding, child: child);
   }
 }
 

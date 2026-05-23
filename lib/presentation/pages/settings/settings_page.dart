@@ -1,13 +1,16 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:hydrop/application/home/home_page_state.dart';
 import 'package:hydrop/application/mine/mine_page_state.dart';
+import 'package:hydrop/core/feedback/transient_feedback.dart';
 import 'package:hydrop/data/local/model/setting/setting.dart';
 import 'package:hydrop/data/local/repository/setting_repository.dart';
 import 'package:hydrop/gen/l10n/app_localizations.dart';
+import 'package:hydrop/presentation/widgets/connection_qr_actions.dart';
 import 'package:hydrop/presentation/widgets/hd_floating_components.dart';
-import 'package:hydrop/presentation/widgets/hd_glass_components.dart';
+import 'package:hydrop/presentation/widgets/hd_components.dart';
 import 'package:hydrop/presentation/widgets/hydrop_adaptive.dart';
 
 @RoutePage()
@@ -19,7 +22,7 @@ class SettingsPage extends ConsumerStatefulWidget {
 }
 
 class _SettingsPageState extends ConsumerState<SettingsPage> {
-  _SettingsSectionId _selectedSection = _SettingsSectionId.appearance;
+  _SettingsSectionId _selectedSection = _SettingsSectionId.mine;
 
   @override
   Widget build(BuildContext context) {
@@ -52,13 +55,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     onTransferEncryptionChanged: _setTransferEncryption,
                     onAutoResumeChanged: _setAutoResume,
                   ),
-                  error: (error, stackTrace) => HdGlassPanel(
+                  error: (error, stackTrace) => HdPanel(
                     child: _CenteredState(
                       title: l10n.settingsUnableToLoad,
                       message: error.toString(),
                     ),
                   ),
-                  loading: () => const HdGlassPanel(
+                  loading: () => const HdPanel(
                     child: Center(child: CircularProgressIndicator()),
                   ),
                 ),
@@ -135,11 +138,19 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 }
 
-enum _SettingsSectionId { appearance, transfer, discovery, privacy, about }
+enum _SettingsSectionId {
+  mine,
+  appearance,
+  transfer,
+  discovery,
+  privacy,
+  about,
+}
 
 extension on _SettingsSectionId {
   String title(AppLocalizations l10n) {
     return switch (this) {
+      _SettingsSectionId.mine => l10n.mineTitle,
       _SettingsSectionId.appearance => l10n.settingsAppearance,
       _SettingsSectionId.transfer => l10n.settingsTransfer,
       _SettingsSectionId.discovery => l10n.settingsDiscovery,
@@ -150,6 +161,7 @@ extension on _SettingsSectionId {
 
   IconData get icon {
     return switch (this) {
+      _SettingsSectionId.mine => Icons.person_outline_rounded,
       _SettingsSectionId.appearance => Icons.contrast_rounded,
       _SettingsSectionId.transfer => Icons.swap_horiz_rounded,
       _SettingsSectionId.discovery => Icons.radar_rounded,
@@ -182,7 +194,7 @@ class _SettingsContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final list = HdGlassPanel(
+    final list = HdPanel(
       padding: EdgeInsets.zero,
       child: ListView.separated(
         itemCount: _SettingsSectionId.values.length,
@@ -211,7 +223,7 @@ class _SettingsContent extends StatelessWidget {
         SizedBox(width: windowClass.contactListWidth, child: list),
         const SizedBox(width: 6),
         Expanded(
-          child: HdGlassPanel(
+          child: HdPanel(
             padding: EdgeInsets.zero,
             child: _SettingsDetail(
               section: selectedSection,
@@ -335,6 +347,7 @@ class _SettingsDetail extends StatelessWidget {
   List<Widget> _buildSection(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return switch (section) {
+      _SettingsSectionId.mine => const [_MineSettingsSection()],
       _SettingsSectionId.appearance => [
         _ThemeModeSetting(
           value: settings.themeMode,
@@ -366,6 +379,306 @@ class _SettingsDetail extends StatelessWidget {
         _InfoSetting(title: l10n.uiLabel, value: l10n.uiValue),
       ],
     };
+  }
+}
+
+class _MineSettingsSection extends ConsumerWidget {
+  const _MineSettingsSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final overview = ref.watch(mineOverviewProvider);
+    final l10n = AppLocalizations.of(context);
+
+    return overview.when(
+      data: (state) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _SettingBlock(
+            title: l10n.deviceProfile,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _DisplayNameSetting(
+                  displayName: state.displayName,
+                  onSave: (value) async {
+                    await ref
+                        .read(minePageControllerProvider)
+                        .updateDisplayName(value);
+                    ref.invalidate(mineOverviewProvider);
+                    if (context.mounted) {
+                      await TransientFeedback.show(
+                        context,
+                        l10n.displayNameSaved,
+                      );
+                    }
+                  },
+                ),
+                const SizedBox(height: 10),
+                _InfoValue(label: l10n.hostName, value: state.hostName),
+                const SizedBox(height: 10),
+                _InfoValue(
+                  label: l10n.device,
+                  value: state.deviceId,
+                  selectable: true,
+                ),
+              ],
+            ),
+          ),
+          _SettingBlock(
+            title: l10n.qrConnection,
+            child: Row(
+              children: [
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: () => showConnectionQrDialog(context, state),
+                    icon: const Icon(Icons.qr_code_2_rounded),
+                    label: Text(l10n.myQr),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => scanConnectionQr(context, ref),
+                    icon: const Icon(Icons.qr_code_scanner_rounded),
+                    label: Text(l10n.scanQr),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          _SettingBlock(
+            title: l10n.localNetwork,
+            child: _LocalAddressList(addresses: state.localAddresses),
+          ),
+          _SettingBlock(
+            title: l10n.diagnostics,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _InfoValue(
+                  label: l10n.qrPayload,
+                  value: l10n.characterCount(state.connectionQrPayload.length),
+                ),
+                const SizedBox(height: 10),
+                _InfoValue(
+                  label: l10n.addressCount,
+                  value: state.localAddresses.length.toString(),
+                ),
+                const SizedBox(height: 10),
+                _InfoValue(label: l10n.tcpServer, value: l10n.tcpServerManaged),
+              ],
+            ),
+          ),
+        ],
+      ),
+      error: (error, stackTrace) => _CenteredState(
+        title: l10n.unableToLoadLocalDeviceInfo,
+        message: error.toString(),
+      ),
+      loading: () => const Center(child: CircularProgressIndicator()),
+    );
+  }
+}
+
+class _DisplayNameSetting extends StatefulWidget {
+  const _DisplayNameSetting({required this.displayName, required this.onSave});
+
+  final String displayName;
+  final Future<void> Function(String value) onSave;
+
+  @override
+  State<_DisplayNameSetting> createState() => _DisplayNameSettingState();
+}
+
+class _DisplayNameSettingState extends State<_DisplayNameSetting> {
+  late final TextEditingController _controller;
+  late final FocusNode _focusNode;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.displayName);
+    _focusNode = FocusNode()..addListener(_handleFocusChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant _DisplayNameSetting oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.displayName != widget.displayName && !_focusNode.hasFocus) {
+      _controller.text = widget.displayName;
+    }
+  }
+
+  @override
+  void dispose() {
+    _focusNode
+      ..removeListener(_handleFocusChanged)
+      ..dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  bool get _hasChanges => _controller.text.trim() != widget.displayName.trim();
+
+  void _handleFocusChanged() {
+    if (!_focusNode.hasFocus && _hasChanges) {
+      _save();
+    }
+  }
+
+  Future<void> _save() async {
+    final value = _controller.text.trim();
+    if (_saving || value == widget.displayName.trim()) {
+      return;
+    }
+    if (value.isEmpty) {
+      _controller.text = widget.displayName;
+      return;
+    }
+
+    setState(() => _saving = true);
+    try {
+      await widget.onSave(value);
+    } finally {
+      if (mounted) {
+        setState(() => _saving = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context);
+
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: _controller,
+      builder: (context, value, child) {
+        final canSave =
+            value.text.trim().isNotEmpty &&
+            value.text.trim() != widget.displayName.trim();
+        return Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _controller,
+                focusNode: _focusNode,
+                enabled: !_saving,
+                maxLength: 32,
+                textInputAction: TextInputAction.done,
+                decoration: InputDecoration(
+                  labelText: l10n.displayName,
+                  counterText: '',
+                  isDense: true,
+                  border: const OutlineInputBorder(
+                    borderRadius: BorderRadius.zero,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.zero,
+                    borderSide: BorderSide(
+                      color: colorScheme.outlineVariant,
+                      width: 2,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.zero,
+                    borderSide: BorderSide(
+                      color: colorScheme.onSurface,
+                      width: 2,
+                    ),
+                  ),
+                ),
+                onSubmitted: (_) => _save(),
+              ),
+            ),
+            const SizedBox(width: 6),
+            IconButton(
+              tooltip: l10n.save,
+              onPressed: !_saving && canSave ? _save : null,
+              icon: _saving
+                  ? const SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.check_rounded),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _LocalAddressList extends StatelessWidget {
+  const _LocalAddressList({required this.addresses});
+
+  final List<LocalNetworkAddressInfo> addresses;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    if (addresses.isEmpty) {
+      return Text(l10n.noLocalNetworkAddresses);
+    }
+
+    return Column(
+      children: [
+        for (final address in addresses.take(6))
+          _LocalAddressRow(address: address),
+      ],
+    );
+  }
+}
+
+class _LocalAddressRow extends StatelessWidget {
+  const _LocalAddressRow({required this.address});
+
+  final LocalNetworkAddressInfo address;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final l10n = AppLocalizations.of(context);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: colorScheme.outlineVariant, width: 2),
+        ),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 88,
+            child: Text(
+              address.interfaceName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          Expanded(child: SelectableText(address.address)),
+          const SizedBox(width: 6),
+          Text(address.versionLabel, style: theme.textTheme.labelMedium),
+          IconButton(
+            tooltip: l10n.copyAddress,
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: address.address));
+              if (context.mounted) {
+                await TransientFeedback.show(context, l10n.copiedAddress);
+              }
+            },
+            icon: const Icon(Icons.copy_rounded, size: 18),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -522,6 +835,62 @@ class _InfoSetting extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _SettingBlock(title: title, child: SelectableText(value));
+  }
+}
+
+class _InfoValue extends StatelessWidget {
+  const _InfoValue({
+    required this.label,
+    required this.value,
+    this.selectable = false,
+  });
+
+  final String label;
+  final String value;
+  final bool selectable;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    final labelStyle = theme.textTheme.bodySmall?.copyWith(
+      color: theme.colorScheme.onSurface.withValues(alpha: 0.68),
+      fontWeight: FontWeight.w700,
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: labelStyle),
+        const SizedBox(height: 4),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: selectable
+                  ? SelectableText(value)
+                  : Text(value, overflow: TextOverflow.ellipsis, maxLines: 2),
+            ),
+            if (selectable) ...[
+              const SizedBox(width: 6),
+              IconButton(
+                tooltip: l10n.copyLabel(label),
+                onPressed: () async {
+                  await Clipboard.setData(ClipboardData(text: value));
+                  if (context.mounted) {
+                    await TransientFeedback.show(
+                      context,
+                      l10n.copiedLabel(label),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.copy_rounded, size: 18),
+              ),
+            ],
+          ],
+        ),
+      ],
+    );
   }
 }
 
