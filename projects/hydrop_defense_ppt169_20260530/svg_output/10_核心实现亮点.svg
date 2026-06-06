@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <g id="background"><rect width="1280" height="720" fill="#F7F9FC"/><circle cx="1080" cy="118" r="230" fill="#E8F2FF" fill-opacity="0.82"/><path d="M56 612 H1224" stroke="#D0D0D0" stroke-width="2"/></g>
+  <g id="header"><text x="56" y="70" font-family='SimHei, "Microsoft YaHei", sans-serif' font-size="34" fill="#0D0D0D" font-weight="900">创新点：相比普通文件传输 Demo 的不同</text><text x="56" y="106" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="16" fill="#5F6368">创新点单独讲清楚：以前怎么做，我的不同点在哪里，多解决了什么问题。</text></g>
+  <g id="innovation-grid">
+    <rect x="72" y="160" width="340" height="360" rx="24" fill="#FFFFFF" fill-opacity="0.94" stroke="#D0D0D0" stroke-width="2"/>
+    <text x="112" y="218" font-family='SimHei, "Microsoft YaHei", sans-serif' font-size="26" fill="#0D0D0D" font-weight="900">不是手填 IP</text>
+    <text x="112" y="284" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="22" fill="#5F6368">自动发现设备</text>
+    <text x="112" y="330" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="22" fill="#5F6368">多网卡地址处理</text>
+    <text x="112" y="376" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="22" fill="#0169CC">降低连接门槛</text>
+
+    <rect x="470" y="160" width="340" height="360" rx="24" fill="#F3F8FF" stroke="#B8D7FB" stroke-width="2"/>
+    <text x="510" y="218" font-family='SimHei, "Microsoft YaHei", sans-serif' font-size="26" fill="#0D0D0D" font-weight="900">不是裸 Socket</text>
+    <text x="510" y="284" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="22" fill="#5F6368">FrameCodec 分帧</text>
+    <text x="510" y="330" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="22" fill="#5F6368">offer / chunk / ACK</text>
+    <text x="510" y="376" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="22" fill="#0169CC">传输状态可解释</text>
+
+    <rect x="868" y="160" width="340" height="360" rx="24" fill="#FFFFFF" fill-opacity="0.94" stroke="#D0D0D0" stroke-width="2"/>
+    <text x="908" y="218" font-family='SimHei, "Microsoft YaHei", sans-serif' font-size="26" fill="#0D0D0D" font-weight="900">不是临时状态</text>
+    <text x="908" y="284" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="22" fill="#5F6368">Drift 持久化</text>
+    <text x="908" y="330" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="22" fill="#5F6368">暂停取消与恢复</text>
+    <text x="908" y="376" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="22" fill="#0169CC">失败后可回到现场</text>
+  </g>
+  <g id="takeaway"><rect x="250" y="564" width="780" height="44" rx="18" fill="#0D0D0D"/><text x="332" y="592" font-family='SimHei, "Microsoft YaHei", sans-serif' font-size="18" fill="#FFFFFF" font-weight="900">一句话：从“能传”提升到“可发现、可恢复、可演示”。</text></g>
+  <g id="footer"><text x="56" y="666" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#5F6368">创新点页用于应对老师关于“你的不同点是什么”的提问</text><text x="1160" y="666" font-family='Consolas, "Courier New", monospace' font-size="12" fill="#5F6368">10/14</text></g>
+</svg>

@@ -141,9 +141,11 @@ class _SocketTransferConnection implements TransferConnection {
 }
 
 class _IoTransferDuplexSocket implements TransferDuplexSocket {
-  const _IoTransferDuplexSocket(this._socket);
+  _IoTransferDuplexSocket(this._socket);
 
   final Socket _socket;
+  Future<void> _writeQueue = Future<void>.value();
+  bool _isClosing = false;
 
   @override
   String get remoteAddress => _socket.remoteAddress.address;
@@ -156,16 +158,32 @@ class _IoTransferDuplexSocket implements TransferDuplexSocket {
 
   @override
   Future<void> add(List<int> data, {bool flush = true}) async {
-    _socket.add(data);
-    if (flush) {
-      await _socket.flush();
+    if (_isClosing) {
+      throw const TransferSocketException('Socket is closed.');
     }
+
+    final operation = _writeQueue.then((_) async {
+      _socket.add(data);
+      if (flush) {
+        await _socket.flush();
+      }
+    });
+    _writeQueue = operation.catchError((_) {});
+    await operation;
   }
 
   @override
   Future<void> close() async {
-    await _socket.flush();
-    await _socket.close();
+    if (_isClosing) {
+      return;
+    }
+    _isClosing = true;
+    final operation = _writeQueue.then((_) async {
+      await _socket.flush();
+      await _socket.close();
+    });
+    _writeQueue = operation.catchError((_) {});
+    await operation;
   }
 }
 

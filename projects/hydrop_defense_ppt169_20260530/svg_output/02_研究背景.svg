@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <g id="background"><rect width="1280" height="720" fill="#F7F9FC"/><circle cx="1080" cy="110" r="230" fill="#E8F2FF" fill-opacity="0.82"/><path d="M56 612 H1224" stroke="#D0D0D0" stroke-width="2"/></g>
+  <g id="header"><text x="56" y="70" font-family='SimHei, "Microsoft YaHei", sans-serif' font-size="34" fill="#0D0D0D" font-weight="900">选题背景：跨设备传输还不够直接</text><text x="56" y="106" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="16" fill="#5F6368">这一页只回答一个问题：为什么要做局域网直传应用。</text></g>
+  <g id="pain-points">
+    <rect x="78" y="168" width="310" height="230" rx="20" fill="#FFFFFF" fill-opacity="0.94" stroke="#D0D0D0" stroke-width="2"/>
+    <use data-icon="tabler-outline/shield-check" x="112" y="202" width="42" height="42" fill="#0169CC" stroke-width="2"/>
+    <text x="112" y="282" font-family='SimHei, "Microsoft YaHei", sans-serif' font-size="28" fill="#0D0D0D" font-weight="900">云盘中转</text>
+    <text x="112" y="332" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="22" fill="#0D0D0D">慢</text>
+    <text x="112" y="368" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="22" fill="#5F6368">且文件经过外部服务器</text>
+
+    <rect x="486" y="168" width="310" height="230" rx="20" fill="#FFFFFF" fill-opacity="0.94" stroke="#D0D0D0" stroke-width="2"/>
+    <use data-icon="tabler-outline/wifi-2" x="520" y="202" width="42" height="42" fill="#0169CC" stroke-width="2"/>
+    <text x="520" y="282" font-family='SimHei, "Microsoft YaHei", sans-serif' font-size="28" fill="#0D0D0D" font-weight="900">蓝牙近传</text>
+    <text x="520" y="332" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="22" fill="#0D0D0D">近</text>
+    <text x="520" y="368" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="22" fill="#5F6368">但大文件效率有限</text>
+
+    <rect x="894" y="168" width="310" height="230" rx="20" fill="#FFFFFF" fill-opacity="0.94" stroke="#D0D0D0" stroke-width="2"/>
+    <use data-icon="tabler-outline/devices-check" x="928" y="202" width="42" height="42" fill="#0169CC" stroke-width="2"/>
+    <text x="928" y="282" font-family='SimHei, "Microsoft YaHei", sans-serif' font-size="28" fill="#0D0D0D" font-weight="900">厂商互传</text>
+    <text x="928" y="332" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="22" fill="#0D0D0D">顺</text>
+    <text x="928" y="368" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="22" fill="#5F6368">但常受生态限制</text>
+  </g>
+  <g id="conclusion">
+    <rect x="168" y="472" width="944" height="88" rx="22" fill="#0D0D0D"/>
+    <text x="218" y="526" font-family='SimHei, "Microsoft YaHei", sans-serif' font-size="28" fill="#FFFFFF" font-weight="900">研究机会：同一局域网内，自动发现，直接传输。</text>
+  </g>
+  <g id="footer"><text x="56" y="666" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#5F6368">背景结论：把“传文件”从平台生态和外部中转中解耦出来</text><text x="1160" y="666" font-family='Consolas, "Courier New", monospace' font-size="12" fill="#5F6368">02/14</text></g>
+</svg>

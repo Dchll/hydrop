@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <g id="background"><rect width="1280" height="720" fill="#F7F9FC"/><circle cx="1080" cy="118" r="230" fill="#E8F2FF" fill-opacity="0.82"/><path d="M56 612 H1224" stroke="#D0D0D0" stroke-width="2"/></g>
+  <g id="header"><text x="56" y="70" font-family='SimHei, "Microsoft YaHei", sans-serif' font-size="34" fill="#0D0D0D" font-weight="900">研究方法一：设备如何被发现</text><text x="56" y="106" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="16" fill="#5F6368">核心点：自动发现优先，二维码作为受限网络下的补充入口。</text></g>
+  <g id="flow">
+    <rect x="86" y="198" width="196" height="106" rx="20" fill="#FFFFFF" fill-opacity="0.94" stroke="#D0D0D0" stroke-width="2"/><text x="126" y="262" font-family='SimHei, "Microsoft YaHei", sans-serif' font-size="24" fill="#0D0D0D" font-weight="900">枚举网卡</text>
+    <path d="M282 251 H382" stroke="#0169CC" stroke-width="4"/>
+    <rect x="382" y="198" width="196" height="106" rx="20" fill="#F3F8FF" stroke="#B8D7FB" stroke-width="2"/><text x="422" y="262" font-family='SimHei, "Microsoft YaHei", sans-serif' font-size="24" fill="#0D0D0D" font-weight="900">UDP 广播</text>
+    <path d="M578 251 H678" stroke="#0169CC" stroke-width="4"/>
+    <rect x="678" y="198" width="196" height="106" rx="20" fill="#FFFFFF" fill-opacity="0.94" stroke="#D0D0D0" stroke-width="2"/><text x="718" y="262" font-family='SimHei, "Microsoft YaHei", sans-serif' font-size="24" fill="#0D0D0D" font-weight="900">去重入库</text>
+    <path d="M874 251 H974" stroke="#0169CC" stroke-width="4"/>
+    <rect x="974" y="198" width="196" height="106" rx="20" fill="#0D0D0D"/><text x="1014" y="262" font-family='SimHei, "Microsoft YaHei", sans-serif' font-size="24" fill="#FFFFFF" font-weight="900">在线可见</text>
+  </g>
+  <g id="details">
+    <rect x="104" y="386" width="312" height="122" rx="20" fill="#FFFFFF" fill-opacity="0.94" stroke="#D0D0D0" stroke-width="2"/><text x="136" y="434" font-family='Consolas, "Courier New", monospace' font-size="20" fill="#0169CC">UDP 39175</text><text x="136" y="472" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="20" fill="#0D0D0D">hello payload + nonce</text>
+    <rect x="484" y="386" width="312" height="122" rx="20" fill="#FFFFFF" fill-opacity="0.94" stroke="#D0D0D0" stroke-width="2"/><text x="516" y="434" font-family='Consolas, "Courier New", monospace' font-size="20" fill="#0169CC">TTL 12s</text><text x="516" y="472" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="20" fill="#0D0D0D">超时后标记离线</text>
+    <rect x="864" y="386" width="312" height="122" rx="20" fill="#FFFFFF" fill-opacity="0.94" stroke="#D0D0D0" stroke-width="2"/><text x="896" y="434" font-family='Consolas, "Courier New", monospace' font-size="20" fill="#0169CC">QR fallback</text><text x="896" y="472" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="20" fill="#0D0D0D">广播失败时手动配对</text>
+  </g>
+  <g id="footer"><text x="56" y="666" font-family='Consolas, "Courier New", monospace' font-size="12" fill="#5F6368">DiscoveryController · LocalNetworkAddressService · DiscoveryBroadcastService</text><text x="1160" y="666" font-family='Consolas, "Courier New", monospace' font-size="12" fill="#5F6368">06/14</text></g>
+</svg>

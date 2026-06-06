@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <g id="background"><rect width="1280" height="720" fill="#F7F9FC" /><circle cx="1090" cy="118" r="230" fill="#E8F2FF" fill-opacity="0.82" /><path d="M56 612 H1224" stroke="#D0D0D0" stroke-width="2" /></g>
+  <g id="header"><text x="56" y="70" font-family="SimHei, &quot;Microsoft YaHei&quot;, sans-serif" font-size="34" fill="#0D0D0D" font-weight="900">研究思路：四层架构把复杂问题拆开</text><text x="56" y="106" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="16" fill="#5F6368">老师看这一页就能知道：界面、业务、数据、网络分别放在哪里。</text></g>
+  <g id="architecture">
+    <path fill="#FFFFFF" fill-opacity="0.94" stroke="#D0D0D0" stroke-width="2" d="M148,164 H1132 A20,20 0 0 1 1152,184 V222 A20,20 0 0 1 1132,242 H148 A20,20 0 0 1 128,222 V184 A20,20 0 0 1 148,164 Z" />
+    <text x="174" y="213" font-family="SimHei, &quot;Microsoft YaHei&quot;, sans-serif" font-size="26" fill="#0D0D0D" font-weight="900">Presentation</text><text x="440" y="213" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="20" fill="#5F6368">页面、响应式布局、用户操作</text>
+    <path fill="#F3F8FF" stroke="#B8D7FB" stroke-width="2" d="M148,270 H1132 A20,20 0 0 1 1152,290 V328 A20,20 0 0 1 1132,348 H148 A20,20 0 0 1 128,328 V290 A20,20 0 0 1 148,270 Z" />
+    <text x="174" y="319" font-family="SimHei, &quot;Microsoft YaHei&quot;, sans-serif" font-size="26" fill="#0D0D0D" font-weight="900">Application</text><text x="440" y="319" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="20" fill="#5F6368">AppRuntime、发现控制、传输编排</text>
+    <path fill="#FFFFFF" fill-opacity="0.94" stroke="#D0D0D0" stroke-width="2" d="M148,376 H1132 A20,20 0 0 1 1152,396 V434 A20,20 0 0 1 1132,454 H148 A20,20 0 0 1 128,434 V396 A20,20 0 0 1 148,376 Z" />
+    <text x="174" y="425" font-family="SimHei, &quot;Microsoft YaHei&quot;, sans-serif" font-size="26" fill="#0D0D0D" font-weight="900">Data</text><text x="440" y="425" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="20" fill="#5F6368">Drift、DAO、Repository、状态来源</text>
+    <path fill="#FFFFFF" fill-opacity="0.94" stroke="#D0D0D0" stroke-width="2" d="M148,482 H1132 A20,20 0 0 1 1152,502 V540 A20,20 0 0 1 1132,560 H148 A20,20 0 0 1 128,540 V502 A20,20 0 0 1 148,482 Z" />
+    <text x="174" y="531" font-family="SimHei, &quot;Microsoft YaHei&quot;, sans-serif" font-size="26" fill="#0D0D0D" font-weight="900">Remote / Platform</text><text x="440" y="531" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="20" fill="#5F6368">UDP、TCP、文件选择、通知、平台能力</text>
+    <path d="M640 242 V270 M640 348 V376 M640 454 V482" stroke="#0169CC" stroke-width="4" />
+  </g>
+  <g id="rule"><path fill="#0D0D0D" d="M294,592 H986 A16,16 0 0 1 1002,608 V616 A16,16 0 0 1 986,632 H294 A16,16 0 0 1 278,616 V608 A16,16 0 0 1 294,592 Z" /><text x="392" y="618" font-family="SimHei, &quot;Microsoft YaHei&quot;, sans-serif" font-size="18" fill="#FFFFFF" font-weight="900">原则：UI 不直接操作 Socket、Drift 或平台 API。</text></g>
+  <g id="footer"><text x="56" y="666" font-family="Consolas, &quot;Courier New&quot;, monospace" font-size="12" fill="#5F6368">lib/presentation · lib/application · lib/data · lib/core</text><text x="1160" y="666" font-family="Consolas, &quot;Courier New&quot;, monospace" font-size="12" fill="#5F6368">05/14</text></g>
+</svg>

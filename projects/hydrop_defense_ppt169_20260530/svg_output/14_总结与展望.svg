@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <g id="background"><rect width="1280" height="720" fill="#F7F9FC"/><circle cx="1080" cy="118" r="230" fill="#E8F2FF" fill-opacity="0.82"/><circle cx="150" cy="620" r="220" fill="#FFFFFF" fill-opacity="0.6"/><path d="M56 612 H1224" stroke="#D0D0D0" stroke-width="2"/></g>
+  <g id="header"><text x="56" y="70" font-family='SimHei, "Microsoft YaHei", sans-serif' font-size="34" fill="#0D0D0D" font-weight="900">总结与展望</text><text x="56" y="106" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="16" fill="#5F6368">最后只保留结论，避免把前面内容再讲一遍。</text></g>
+  <g id="summary">
+    <rect x="92" y="162" width="500" height="300" rx="24" fill="#FFFFFF" fill-opacity="0.94" stroke="#D0D0D0" stroke-width="2"/>
+    <text x="132" y="226" font-family='SimHei, "Microsoft YaHei", sans-serif' font-size="30" fill="#0D0D0D" font-weight="900">本文完成了</text>
+    <text x="132" y="302" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="24" fill="#0D0D0D">一个局域网传输闭环</text>
+    <text x="132" y="354" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="24" fill="#0D0D0D">一套跨平台 Flutter 应用</text>
+    <text x="132" y="406" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="24" fill="#0D0D0D">一组可恢复的数据状态</text>
+
+    <rect x="688" y="162" width="500" height="300" rx="24" fill="#F3F8FF" stroke="#B8D7FB" stroke-width="2"/>
+    <text x="728" y="226" font-family='SimHei, "Microsoft YaHei", sans-serif' font-size="30" fill="#0D0D0D" font-weight="900">后续可以做</text>
+    <text x="728" y="302" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="24" fill="#0D0D0D">端到端加密</text>
+    <text x="728" y="354" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="24" fill="#0D0D0D">断点续传体验优化</text>
+    <text x="728" y="406" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="24" fill="#0D0D0D">更多真实设备测试</text>
+  </g>
+  <g id="thanks"><rect x="260" y="530" width="760" height="70" rx="22" fill="#0D0D0D"/><text x="408" y="575" font-family='SimHei, "Microsoft YaHei", sans-serif' font-size="28" fill="#FFFFFF" font-weight="900">谢谢各位老师，请批评指正</text></g>
+  <g id="footer"><text x="56" y="666" font-family='Consolas, "Courier New", monospace' font-size="12" fill="#5F6368">Hydrop · Flutter LAN File Transfer System</text><text x="1160" y="666" font-family='Consolas, "Courier New", monospace' font-size="12" fill="#5F6368">14/14</text></g>
+</svg>

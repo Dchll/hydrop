@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <g id="background"><rect width="1280" height="720" fill="#F7F9FC" /><circle cx="1090" cy="120" r="230" fill="#E8F2FF" fill-opacity="0.8" /><path d="M56 612 H1224" stroke="#D0D0D0" stroke-width="2" /></g>
+  <g id="header"><text x="56" y="70" font-family="SimHei, &quot;Microsoft YaHei&quot;, sans-serif" font-size="34" fill="#0D0D0D" font-weight="900">系统边界：哪些问题由 Hydrop 解决</text><text x="56" y="106" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="16" fill="#5F6368">本科毕设需要边界清晰：把核心链路做完整，而不是承诺所有传输场景。</text></g>
+  <g id="scope">
+    <path fill="#FFFFFF" fill-opacity="0.94" stroke="#0169CC" stroke-width="2" d="M110,164 H572 A24,24 0 0 1 596,188 V500 A24,24 0 0 1 572,524 H110 A24,24 0 0 1 86,500 V188 A24,24 0 0 1 110,164 Z" />
+    <text x="126" y="222" font-family="SimHei, &quot;Microsoft YaHei&quot;, sans-serif" font-size="30" fill="#0D0D0D" font-weight="900">本次重点解决</text>
+    <text x="126" y="292" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="24" fill="#0D0D0D">1. 局域网设备发现</text>
+    <text x="126" y="346" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="24" fill="#0D0D0D">2. 聊天式发送入口</text>
+    <text x="126" y="400" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="24" fill="#0D0D0D">3. 文本与文件传输</text>
+    <text x="126" y="454" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="24" fill="#0D0D0D">4. 进度与历史恢复</text>
+
+    <path fill="#FFFFFF" fill-opacity="0.94" stroke="#D0D0D0" stroke-width="2" d="M708,164 H1170 A24,24 0 0 1 1194,188 V500 A24,24 0 0 1 1170,524 H708 A24,24 0 0 1 684,500 V188 A24,24 0 0 1 708,164 Z" />
+    <text x="724" y="222" font-family="SimHei, &quot;Microsoft YaHei&quot;, sans-serif" font-size="30" fill="#0D0D0D" font-weight="900">不作为核心承诺</text>
+    <text x="724" y="292" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="24" fill="#5F6368">1. 公网穿透</text>
+    <text x="724" y="346" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="24" fill="#5F6368">2. 大规模并发</text>
+    <text x="724" y="400" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="24" fill="#5F6368">3. 企业级安全体系</text>
+    <text x="724" y="454" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="24" fill="#5F6368">4. 全平台后台保活</text>
+  </g>
+  <g id="takeaway"><path fill="#0D0D0D" d="M240,560 H1040 A16,16 0 0 1 1056,576 V586 A16,16 0 0 1 1040,602 H240 A16,16 0 0 1 224,586 V576 A16,16 0 0 1 240,560 Z" /><text x="334" y="587" font-family="SimHei, &quot;Microsoft YaHei&quot;, sans-serif" font-size="18" fill="#FFFFFF" font-weight="900">答辩口径：核心链路做实，边界问题诚实说明。</text></g>
+  <g id="footer"><text x="56" y="666" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#5F6368">需求边界对应论文需求分析与当前源码实现范围</text><text x="1160" y="666" font-family="Consolas, &quot;Courier New&quot;, monospace" font-size="12" fill="#5F6368">04/14</text></g>
+</svg>

@@ -183,9 +183,6 @@ class _HomeContent extends ConsumerWidget {
   }
 
   HomeDeviceListItem? _resolveSelectedDevice(List<HomeDeviceListItem> devices) {
-    if (devices.isEmpty) {
-      return null;
-    }
     if (selectedDeviceId != null) {
       for (final device in devices) {
         if (device.deviceId == selectedDeviceId) {
@@ -193,7 +190,7 @@ class _HomeContent extends ConsumerWidget {
         }
       }
     }
-    return devices.first;
+    return null;
   }
 
   List<HomeDeviceListItem> _filterDevices(

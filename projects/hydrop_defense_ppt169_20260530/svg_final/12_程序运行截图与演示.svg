@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <g id="background"><rect width="1280" height="720" fill="#F7F9FC" /><circle cx="1080" cy="118" r="230" fill="#E8F2FF" fill-opacity="0.82" /><path d="M56 612 H1224" stroke="#D0D0D0" stroke-width="2" /></g>
+  <g id="header"><text x="56" y="70" font-family="SimHei, &quot;Microsoft YaHei&quot;, sans-serif" font-size="34" fill="#0D0D0D" font-weight="900">程序演示：用一次操作证明系统闭环</text><text x="56" y="106" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="16" fill="#5F6368">这里预留运行截图，正式 PPT 可替换为真实程序画面。</text></g>
+  <g id="shots">
+    <path fill="#FFFFFF" fill-opacity="0.82" stroke="#0169CC" stroke-width="2" stroke-dasharray="10 8" d="M88,150 H314 A18,18 0 0 1 332,168 V302 A18,18 0 0 1 314,320 H88 A18,18 0 0 1 70,302 V168 A18,18 0 0 1 88,150 Z" /><text x="128" y="238" font-family="SimHei, &quot;Microsoft YaHei&quot;, sans-serif" font-size="21" fill="#0D0D0D" font-weight="900">设备发现</text>
+    <path fill="#FFFFFF" fill-opacity="0.82" stroke="#0169CC" stroke-width="2" stroke-dasharray="10 8" d="M380,150 H606 A18,18 0 0 1 624,168 V302 A18,18 0 0 1 606,320 H380 A18,18 0 0 1 362,302 V168 A18,18 0 0 1 380,150 Z" /><text x="420" y="238" font-family="SimHei, &quot;Microsoft YaHei&quot;, sans-serif" font-size="21" fill="#0D0D0D" font-weight="900">聊天附件</text>
+    <path fill="#FFFFFF" fill-opacity="0.82" stroke="#0169CC" stroke-width="2" stroke-dasharray="10 8" d="M672,150 H898 A18,18 0 0 1 916,168 V302 A18,18 0 0 1 898,320 H672 A18,18 0 0 1 654,302 V168 A18,18 0 0 1 672,150 Z" /><text x="712" y="238" font-family="SimHei, &quot;Microsoft YaHei&quot;, sans-serif" font-size="21" fill="#0D0D0D" font-weight="900">传输进度</text>
+    <path fill="#FFFFFF" fill-opacity="0.82" stroke="#0169CC" stroke-width="2" stroke-dasharray="10 8" d="M964,150 H1190 A18,18 0 0 1 1208,168 V302 A18,18 0 0 1 1190,320 H964 A18,18 0 0 1 946,302 V168 A18,18 0 0 1 964,150 Z" /><text x="998" y="238" font-family="SimHei, &quot;Microsoft YaHei&quot;, sans-serif" font-size="21" fill="#0D0D0D" font-weight="900">设置二维码</text>
+  </g>
+  <g id="demo-flow">
+    <path fill="#0D0D0D" d="M152,404 H262 A26,26 0 0 1 288,430 V430 A26,26 0 0 1 262,456 H152 A26,26 0 0 1 126,430 V430 A26,26 0 0 1 152,404 Z" /><text x="154" y="438" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="17" fill="#FFFFFF">打开两端</text>
+    <path d="M288 430 H406" stroke="#0169CC" stroke-width="4" />
+    <path fill="#0D0D0D" d="M432,404 H542 A26,26 0 0 1 568,430 V430 A26,26 0 0 1 542,456 H432 A26,26 0 0 1 406,430 V430 A26,26 0 0 1 432,404 Z" /><text x="434" y="438" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="17" fill="#FFFFFF">发现设备</text>
+    <path d="M568 430 H686" stroke="#0169CC" stroke-width="4" />
+    <path fill="#0D0D0D" d="M712,404 H822 A26,26 0 0 1 848,430 V430 A26,26 0 0 1 822,456 H712 A26,26 0 0 1 686,430 V430 A26,26 0 0 1 712,404 Z" /><text x="714" y="438" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="17" fill="#FFFFFF">发送文件</text>
+    <path d="M848 430 H966" stroke="#0169CC" stroke-width="4" />
+    <path fill="#0169CC" d="M992,404 H1102 A26,26 0 0 1 1128,430 V430 A26,26 0 0 1 1102,456 H992 A26,26 0 0 1 966,430 V430 A26,26 0 0 1 992,404 Z" /><text x="994" y="438" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="17" fill="#FFFFFF">查看结果</text>
+  </g>
+  <g id="time"><path fill="#F3F8FF" stroke="#B8D7FB" stroke-width="2" d="M286,532 H994 A18,18 0 0 1 1012,550 V562 A18,18 0 0 1 994,580 H286 A18,18 0 0 1 268,562 V550 A18,18 0 0 1 286,532 Z" /><text x="366" y="563" font-family="SimHei, &quot;Microsoft YaHei&quot;, sans-serif" font-size="18" fill="#0D0D0D" font-weight="900">建议：正式讲解 18-20 分钟，程序演示 6-8 分钟。</text></g>
+  <g id="footer"><text x="56" y="666" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#5F6368">截图占位后续替换，不改变页面结构</text><text x="1160" y="666" font-family="Consolas, &quot;Courier New&quot;, monospace" font-size="12" fill="#5F6368">12/14</text></g>
+</svg>

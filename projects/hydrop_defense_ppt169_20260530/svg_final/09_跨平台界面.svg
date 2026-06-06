@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <g id="background"><rect width="1280" height="720" fill="#F7F9FC" /><circle cx="1080" cy="118" r="230" fill="#E8F2FF" fill-opacity="0.82" /><path d="M56 612 H1224" stroke="#D0D0D0" stroke-width="2" /></g>
+  <g id="header"><text x="56" y="70" font-family="SimHei, &quot;Microsoft YaHei&quot;, sans-serif" font-size="34" fill="#0D0D0D" font-weight="900">界面实现：同一套代码适配手机与桌面</text><text x="56" y="106" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="16" fill="#5F6368">核心点：界面不是单纯堆功能，而是按设备宽度组织操作路径。</text></g>
+  <g id="layouts">
+    <path fill="#FFFFFF" fill-opacity="0.94" stroke="#D0D0D0" stroke-width="2" d="M128,166 H400 A24,24 0 0 1 424,190 V492 A24,24 0 0 1 400,516 H128 A24,24 0 0 1 104,492 V190 A24,24 0 0 1 128,166 Z" />
+    <path fill="#0D0D0D" d="M236,212 H294 A22,22 0 0 1 316,234 V420 A22,22 0 0 1 294,442 H236 A22,22 0 0 1 214,420 V234 A22,22 0 0 1 236,212 Z" /><path fill="#FFFFFF" d="M238,248 H292 A6,6 0 0 1 298,254 V270 A6,6 0 0 1 292,276 H238 A6,6 0 0 1 232,270 V254 A6,6 0 0 1 238,248 Z" /><path fill="#F3F8FF" d="M238,292 H292 A6,6 0 0 1 298,298 V314 A6,6 0 0 1 292,320 H238 A6,6 0 0 1 232,314 V298 A6,6 0 0 1 238,292 Z" /><path fill="#FFFFFF" d="M238,336 H292 A6,6 0 0 1 298,342 V358 A6,6 0 0 1 292,364 H238 A6,6 0 0 1 232,358 V342 A6,6 0 0 1 238,336 Z" />
+    <text x="166" y="574" font-family="SimHei, &quot;Microsoft YaHei&quot;, sans-serif" font-size="24" fill="#0D0D0D" font-weight="900">手机：单栏跳转</text>
+
+    <path fill="#FFFFFF" fill-opacity="0.94" stroke="#D0D0D0" stroke-width="2" d="M504,166 H1152 A24,24 0 0 1 1176,190 V492 A24,24 0 0 1 1152,516 H504 A24,24 0 0 1 480,492 V190 A24,24 0 0 1 504,166 Z" />
+    <path fill="#0D0D0D" d="M552,222 H1088 A12,12 0 0 1 1100,234 V420 A12,12 0 0 1 1088,432 H552 A12,12 0 0 1 540,420 V234 A12,12 0 0 1 552,222 Z" /><path fill="#F3F8FF" d="M572,250 H644 A6,6 0 0 1 650,256 V398 A6,6 0 0 1 644,404 H572 A6,6 0 0 1 566,398 V256 A6,6 0 0 1 572,250 Z" /><path fill="#FFFFFF" d="M682,250 H824 A6,6 0 0 1 830,256 V398 A6,6 0 0 1 824,404 H682 A6,6 0 0 1 676,398 V256 A6,6 0 0 1 682,250 Z" /><path fill="#F3F8FF" d="M862,250 H1068 A6,6 0 0 1 1074,256 V398 A6,6 0 0 1 1068,404 H862 A6,6 0 0 1 856,398 V256 A6,6 0 0 1 862,250 Z" />
+    <text x="688" y="574" font-family="SimHei, &quot;Microsoft YaHei&quot;, sans-serif" font-size="24" fill="#0D0D0D" font-weight="900">桌面：导航 + 列表 + 会话</text>
+  </g>
+  <g id="footer"><text x="56" y="666" font-family="Consolas, &quot;Courier New&quot;, monospace" font-size="12" fill="#5F6368">HydropAdaptiveBuilder · AppPage · HomePage · SettingsPage</text><text x="1160" y="666" font-family="Consolas, &quot;Courier New&quot;, monospace" font-size="12" fill="#5F6368">09/14</text></g>
+</svg>

@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <g id="background"><rect width="1280" height="720" fill="#F7F9FC" /><circle cx="1080" cy="118" r="230" fill="#E8F2FF" fill-opacity="0.82" /><path d="M56 612 H1224" stroke="#D0D0D0" stroke-width="2" /></g>
+  <g id="header"><text x="56" y="70" font-family="SimHei, &quot;Microsoft YaHei&quot;, sans-serif" font-size="34" fill="#0D0D0D" font-weight="900">说明与不足：主动回答老师可能追问</text><text x="56" y="106" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="16" fill="#5F6368">不要回避差异和局限，说明清楚反而更稳。</text></g>
+  <g id="two-columns">
+    <path fill="#FFFFFF" fill-opacity="0.94" stroke="#0169CC" stroke-width="2" d="M108,164 H580 A24,24 0 0 1 604,188 V470 A24,24 0 0 1 580,494 H108 A24,24 0 0 1 84,470 V188 A24,24 0 0 1 108,164 Z" />
+    <text x="124" y="224" font-family="SimHei, &quot;Microsoft YaHei&quot;, sans-serif" font-size="28" fill="#0D0D0D" font-weight="900">论文提交后改进</text>
+    <text x="124" y="292" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="22" fill="#0D0D0D">传输页更完整</text>
+    <text x="124" y="342" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="22" fill="#0D0D0D">支持暂停与取消</text>
+    <text x="124" y="392" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="22" fill="#0D0D0D">完善恢复和通知反馈</text>
+
+    <path fill="#FFFFFF" fill-opacity="0.94" stroke="#D0D0D0" stroke-width="2" d="M700,164 H1172 A24,24 0 0 1 1196,188 V470 A24,24 0 0 1 1172,494 H700 A24,24 0 0 1 676,470 V188 A24,24 0 0 1 700,164 Z" />
+    <text x="716" y="224" font-family="SimHei, &quot;Microsoft YaHei&quot;, sans-serif" font-size="28" fill="#0D0D0D" font-weight="900">仍存在的不足</text>
+    <text x="716" y="292" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="22" fill="#5F6368">复杂网络环境样本不足</text>
+    <text x="716" y="342" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="22" fill="#5F6368">加密与身份校验待完善</text>
+    <text x="716" y="392" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="22" fill="#5F6368">后台传输策略需继续适配</text>
+  </g>
+  <g id="answer"><path fill="#0D0D0D" d="M230,552 H1050 A18,18 0 0 1 1068,570 V582 A18,18 0 0 1 1050,600 H230 A18,18 0 0 1 212,582 V570 A18,18 0 0 1 230,552 Z" /><text x="290" y="583" font-family="SimHei, &quot;Microsoft YaHei&quot;, sans-serif" font-size="18" fill="#FFFFFF" font-weight="900">答辩口径：论文讲设计依据，演示展示当前源码完善后的状态。</text></g>
+  <g id="footer"><text x="56" y="666" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="12" fill="#5F6368">这一页用于提前化解“论文和演示为什么不完全一致”的问题</text><text x="1160" y="666" font-family="Consolas, &quot;Courier New&quot;, monospace" font-size="12" fill="#5F6368">13/14</text></g>
+</svg>

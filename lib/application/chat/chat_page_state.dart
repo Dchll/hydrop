@@ -134,24 +134,6 @@ class ChatPageController {
         'DchllTest 消息发送等待 ACK：本地消息ID=${record.localMessageId} '
         '请求ID=$requestId',
       );
-      unawaited(
-        connection.sendFrame(
-          TransferFrame(
-            header: {
-              'type': transferFrameTypeHeartbeat,
-              'protocolVersion': transferProtocolVersion,
-              'requestId': '${requestId}_heartbeat',
-              'senderDeviceId': profile.deviceId,
-              'senderDisplayName': profile.displayName,
-              'sentAt': DateTime.now().millisecondsSinceEpoch,
-            },
-          ),
-        ),
-      );
-      talker.debug(
-        'DchllTest 消息发送心跳帧已提交：请求ID=${requestId}_heartbeat '
-        '本机设备ID=${profile.deviceId}',
-      );
       await connection.sendFrame(
         TransferFrame(
           header: {

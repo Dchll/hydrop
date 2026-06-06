@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <g id="background"><rect width="1280" height="720" fill="#F7F9FC"/><circle cx="1082" cy="118" r="230" fill="#E8F2FF" fill-opacity="0.8"/><path d="M56 612 H1224" stroke="#D0D0D0" stroke-width="2"/></g>
+  <g id="header"><text x="56" y="70" font-family='SimHei, "Microsoft YaHei", sans-serif' font-size="34" fill="#0D0D0D" font-weight="900">研究目标：做一个可演示的传输闭环</text><text x="56" y="106" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="16" fill="#5F6368">不是 Socket Demo，而是能被用户理解和操作的跨平台文件传输系统。</text></g>
+  <g id="center">
+    <rect x="430" y="174" width="420" height="206" rx="24" fill="#0D0D0D"/>
+    <text x="510" y="264" font-family='SimHei, "Microsoft YaHei", sans-serif' font-size="36" fill="#FFFFFF" font-weight="900">设备即联系人</text>
+    <text x="500" y="318" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="22" fill="#E8F2FF">选择设备，然后发送消息和附件</text>
+  </g>
+  <g id="goals">
+    <rect x="104" y="182" width="250" height="86" rx="18" fill="#FFFFFF" fill-opacity="0.94" stroke="#D0D0D0" stroke-width="2"/>
+    <text x="142" y="236" font-family='SimHei, "Microsoft YaHei", sans-serif' font-size="24" fill="#0D0D0D" font-weight="900">跨平台运行</text>
+    <rect x="926" y="182" width="250" height="86" rx="18" fill="#FFFFFF" fill-opacity="0.94" stroke="#D0D0D0" stroke-width="2"/>
+    <text x="964" y="236" font-family='SimHei, "Microsoft YaHei", sans-serif' font-size="24" fill="#0D0D0D" font-weight="900">局域网直连</text>
+    <rect x="104" y="424" width="250" height="86" rx="18" fill="#FFFFFF" fill-opacity="0.94" stroke="#D0D0D0" stroke-width="2"/>
+    <text x="142" y="478" font-family='SimHei, "Microsoft YaHei", sans-serif' font-size="24" fill="#0D0D0D" font-weight="900">状态可解释</text>
+    <rect x="926" y="424" width="250" height="86" rx="18" fill="#FFFFFF" fill-opacity="0.94" stroke="#D0D0D0" stroke-width="2"/>
+    <text x="964" y="478" font-family='SimHei, "Microsoft YaHei", sans-serif' font-size="24" fill="#0D0D0D" font-weight="900">数据可恢复</text>
+    <path d="M354 225 H430 M850 225 H926 M354 467 H430 M850 467 H926" stroke="#0169CC" stroke-width="3"/>
+  </g>
+  <g id="result"><rect x="258" y="548" width="764" height="52" rx="18" fill="#F3F8FF" stroke="#B8D7FB" stroke-width="2"/><text x="318" y="581" font-family='SimHei, "Microsoft YaHei", sans-serif' font-size="20" fill="#0D0D0D" font-weight="900">最终成果：发现设备、建立会话、传输文件、反馈进度、保存历史。</text></g>
+  <g id="footer"><text x="56" y="666" font-family='"Microsoft YaHei", "PingFang SC", Arial, sans-serif' font-size="12" fill="#5F6368">目标页只讲“做到什么程度”，技术细节放到后续页</text><text x="1160" y="666" font-family='Consolas, "Courier New", monospace' font-size="12" fill="#5F6368">03/14</text></g>
+</svg>

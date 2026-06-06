@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hydrop/application/connection/speed_test_runner.dart';
 import 'package:hydrop/core/constants/discovery_constants.dart';
 import 'package:hydrop/core/constants/transfer_constants.dart';
+import 'package:hydrop/core/utils/talker/talker.dart';
 import 'package:hydrop/data/local/dao/device_address_dao.dart';
 import 'package:hydrop/data/local/model/device/device.dart';
 import 'package:hydrop/data/local/repository/device_address_repository.dart';
@@ -39,7 +40,7 @@ final discoveryControllerProvider = Provider<DiscoveryController>((ref) {
 
   unawaited(
     controller.start().catchError((Object error, StackTrace stackTrace) {
-      // Discovery is best-effort and must not block app startup.
+      talker.error('DchllTest 设备发现启动失败：$error', error, stackTrace);
     }),
   );
   ref.onDispose(controller.stop);
@@ -118,8 +119,13 @@ class DiscoveryController {
           unawaited(_handlePayload(event));
         },
       );
-    } catch (_) {
-      // Keep broadcast and local UI alive even if UDP listen is unavailable.
+      talker.debug('DchllTest 设备发现接收服务已启动：端口=$discoveryBroadcastPort');
+    } catch (error, stackTrace) {
+      talker.error(
+        'DchllTest 设备发现接收服务启动失败：端口=$discoveryBroadcastPort 错误=$error',
+        error,
+        stackTrace,
+      );
     }
   }
 
@@ -131,8 +137,17 @@ class DiscoveryController {
         tcpPort: discoveryTransferPort,
         capabilities: discoveryBroadcastCapabilities,
       );
-    } catch (_) {
-      // Listening can still work even if one platform refuses broadcast sockets.
+      talker.debug(
+        'DchllTest 设备发现广播服务已启动：本机设备ID=${profile.deviceId} '
+        'TCP端口=$discoveryTransferPort',
+      );
+    } catch (error, stackTrace) {
+      talker.error(
+        'DchllTest 设备发现广播服务启动失败：本机设备ID=${profile.deviceId} '
+        'TCP端口=$discoveryTransferPort 错误=$error',
+        error,
+        stackTrace,
+      );
     }
   }
 

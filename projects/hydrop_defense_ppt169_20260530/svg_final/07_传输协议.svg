@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <g id="background"><rect width="1280" height="720" fill="#F7F9FC" /><circle cx="1080" cy="118" r="230" fill="#E8F2FF" fill-opacity="0.82" /><path d="M56 612 H1224" stroke="#D0D0D0" stroke-width="2" /></g>
+  <g id="header"><text x="56" y="70" font-family="SimHei, &quot;Microsoft YaHei&quot;, sans-serif" font-size="34" fill="#0D0D0D" font-weight="900">研究方法二：文件如何稳定传过去</text><text x="56" y="106" font-family="&quot;Microsoft YaHei&quot;, &quot;PingFang SC&quot;, Arial, sans-serif" font-size="16" fill="#5F6368">核心点：TCP 负责可靠传输，FrameCodec 负责“消息边界”。</text></g>
+  <g id="frame">
+    <path fill="#FFFFFF" fill-opacity="0.94" stroke="#D0D0D0" stroke-width="2" d="M106,168 H1174 A22,22 0 0 1 1196,190 V296 A22,22 0 0 1 1174,318 H106 A22,22 0 0 1 84,296 V190 A22,22 0 0 1 106,168 Z" />
+    <path fill="#0D0D0D" d="M140,218 H262 A10,10 0 0 1 272,228 V262 A10,10 0 0 1 262,272 H140 A10,10 0 0 1 130,262 V228 A10,10 0 0 1 140,218 Z" /><text x="160" y="252" font-family="Consolas, &quot;Courier New&quot;, monospace" font-size="16" fill="#FFFFFF">4B header</text>
+    <path fill="#0D0D0D" d="M302,218 H424 A10,10 0 0 1 434,228 V262 A10,10 0 0 1 424,272 H302 A10,10 0 0 1 292,262 V228 A10,10 0 0 1 302,218 Z" /><text x="328" y="252" font-family="Consolas, &quot;Courier New&quot;, monospace" font-size="16" fill="#FFFFFF">4B body</text>
+    <path fill="#F3F8FF" stroke="#B8D7FB" stroke-width="2" d="M464,218 H744 A10,10 0 0 1 754,228 V262 A10,10 0 0 1 744,272 H464 A10,10 0 0 1 454,262 V228 A10,10 0 0 1 464,218 Z" /><text x="512" y="252" font-family="Consolas, &quot;Courier New&quot;, monospace" font-size="16" fill="#0D0D0D">JSON header</text>
+    <path fill="#F3F8FF" stroke="#B8D7FB" stroke-width="2" d="M784,218 H1138 A10,10 0 0 1 1148,228 V262 A10,10 0 0 1 1138,272 H784 A10,10 0 0 1 774,262 V228 A10,10 0 0 1 784,218 Z" /><text x="878" y="252" font-family="Consolas, &quot;Courier New&quot;, monospace" font-size="16" fill="#0D0D0D">binary body</text>
+  </g>
+  <g id="file-flow">
+    <path fill="#0D0D0D" d="M173,386 H273 A27,27 0 0 1 300,413 V413 A27,27 0 0 1 273,440 H173 A27,27 0 0 1 146,413 V413 A27,27 0 0 1 173,386 Z" /><text x="184" y="421" font-family="Consolas, &quot;Courier New&quot;, monospace" font-size="16" fill="#FFFFFF">offer</text>
+    <path d="M300 413 H420" stroke="#0169CC" stroke-width="4" />
+    <path fill="#0D0D0D" d="M447,386 H547 A27,27 0 0 1 574,413 V413 A27,27 0 0 1 547,440 H447 A27,27 0 0 1 420,413 V413 A27,27 0 0 1 447,386 Z" /><text x="454" y="421" font-family="Consolas, &quot;Courier New&quot;, monospace" font-size="16" fill="#FFFFFF">chunks</text>
+    <path d="M574 413 H694" stroke="#0169CC" stroke-width="4" />
+    <path fill="#0D0D0D" d="M721,386 H821 A27,27 0 0 1 848,413 V413 A27,27 0 0 1 821,440 H721 A27,27 0 0 1 694,413 V413 A27,27 0 0 1 721,386 Z" /><text x="724" y="421" font-family="Consolas, &quot;Courier New&quot;, monospace" font-size="16" fill="#FFFFFF">complete</text>
+    <path d="M848 413 H968" stroke="#0169CC" stroke-width="4" />
+    <path fill="#0169CC" d="M995,386 H1095 A27,27 0 0 1 1122,413 V413 A27,27 0 0 1 1095,440 H995 A27,27 0 0 1 968,413 V413 A27,27 0 0 1 995,386 Z" /><text x="1008" y="421" font-family="Consolas, &quot;Courier New&quot;, monospace" font-size="16" fill="#FFFFFF">ACK</text>
+  </g>
+  <g id="numbers"><path fill="#FFFFFF" fill-opacity="0.94" stroke="#0169CC" stroke-width="2" d="M202,514 H1078 A18,18 0 0 1 1096,532 V554 A18,18 0 0 1 1078,572 H202 A18,18 0 0 1 184,554 V532 A18,18 0 0 1 202,514 Z" /><text x="246" y="552" font-family="Consolas, &quot;Courier New&quot;, monospace" font-size="19" fill="#0D0D0D">TCP 39176 · 1 MB chunk · SHA-256 · 2 concurrent</text></g>
+  <g id="footer"><text x="56" y="666" font-family="Consolas, &quot;Courier New&quot;, monospace" font-size="12" fill="#5F6368">FrameCodec · transfer_constants.dart · FileTransferCoordinator</text><text x="1160" y="666" font-family="Consolas, &quot;Courier New&quot;, monospace" font-size="12" fill="#5F6368">07/14</text></g>
+</svg>
