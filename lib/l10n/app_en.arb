@@ -35,6 +35,8 @@
   "transferEncryptionSubtitle": "Store the preference used by transfer controllers",
   "autoResumeTransfers": "Auto resume transfers",
   "autoResumeTransfersSubtitle": "Retry and continue interrupted file transfers when possible",
+  "autoReceiveFilesByDefault": "Auto receive files for new devices",
+  "autoReceiveFilesForDevice": "Auto receive files from this device",
   "nearbyDevices": "Nearby devices",
   "savedOrDiscoveredDevices": "{count} saved or discovered devices",
   "@savedOrDiscoveredDevices": {
@@ -344,6 +346,7 @@
   "directionOutgoing": "Outgoing",
   "directionIncoming": "Incoming",
   "statusPending": "Pending",
+  "statusWaitingForReceiver": "Waiting for receiver",
   "statusTransferring": "Transferring",
   "statusDone": "Done",
   "statusFailed": "Failed",

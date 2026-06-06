@@ -114,6 +114,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get autoResumeTransfersSubtitle => '尽可能重试并继续中断的文件传输';
 
   @override
+  String get autoReceiveFilesByDefault => '新设备默认自动接收';
+
+  @override
+  String get autoReceiveFilesForDevice => '自动接收此设备的文件';
+
+  @override
   String get nearbyDevices => '附近设备';
 
   @override
@@ -700,6 +706,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get statusPending => '等待中';
 
   @override
+  String get statusWaitingForReceiver => '等待对方接收';
+
+  @override
   String get statusTransferring => '传输中';
 
   @override
@@ -906,6 +915,12 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get autoResumeTransfersSubtitle => '盡可能重試並繼續中斷的檔案傳輸';
+
+  @override
+  String get autoReceiveFilesByDefault => '新裝置預設自動接收';
+
+  @override
+  String get autoReceiveFilesForDevice => '自動接收此裝置的檔案';
 
   @override
   String get nearbyDevices => '附近裝置';
@@ -1492,6 +1507,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get statusPending => '等待中';
+
+  @override
+  String get statusWaitingForReceiver => '等待對方接收';
 
   @override
   String get statusTransferring => '傳輸中';

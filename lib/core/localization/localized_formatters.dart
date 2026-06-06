@@ -59,10 +59,14 @@ String localizedDirectionLabel(
 
 String localizedAttachmentTransferStatus(
   AppLocalizations l10n,
-  MessageAttachmentTransferStatus status,
-) {
+  MessageAttachmentTransferStatus status, {
+  MessageDirection? direction,
+}) {
   return switch (status) {
-    MessageAttachmentTransferStatus.pending => l10n.statusPending,
+    MessageAttachmentTransferStatus.pending =>
+      direction == MessageDirection.sent
+          ? l10n.statusWaitingForReceiver
+          : l10n.statusPending,
     MessageAttachmentTransferStatus.transferring => l10n.statusTransferring,
     MessageAttachmentTransferStatus.saved => l10n.statusDone,
     MessageAttachmentTransferStatus.failed => l10n.statusFailed,

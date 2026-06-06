@@ -10,6 +10,7 @@ import 'package:hydrop/application/transfer/transfer_progress_state.dart';
 import 'package:hydrop/core/feedback/transient_feedback.dart';
 import 'package:hydrop/data/local/model/message/message.dart';
 import 'package:hydrop/data/local/repository/device_address_repository.dart';
+import 'package:hydrop/data/local/repository/device_repository.dart';
 import 'package:hydrop/data/local/repository/message_repository.dart';
 import 'package:hydrop/gen/l10n/app_localizations.dart';
 import 'package:hydrop/presentation/pages/chat/widgets/chat_image_viewer.dart';
@@ -151,10 +152,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                   searchQuery: searchState.query,
                   highlightedMessageId: highlightedMessageId,
                   peerDisplayName: widget.displayName,
-                  onShowAttachmentActions: _showAttachmentActions,
                   onOpenAttachment: _showAttachmentDetail,
                   onShowMessageActions: _showMessageActions,
-                  onOpenLink: _confirmOpenLink,
                   emptyTitle: l10n.noMessagesYet,
                   emptyMessage: l10n.emptyConversationMessage,
                 );
@@ -369,6 +368,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   Future<void> _showMessageActions(ConversationMessage message) {
     final colorScheme = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context);
+    final attachments = message.attachments;
+    final links = _extractLinks(message.textContent ?? '');
     return showModalBottomSheet<void>(
       context: context,
       useSafeArea: true,
@@ -406,6 +407,47 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                       await _retryMessage(message);
                     },
                   ),
+                for (final uri in links)
+                  _ActionSheetTile(
+                    icon: Icons.open_in_new_rounded,
+                    title: uri.toString(),
+                    onTap: () async {
+                      Navigator.of(sheetContext).pop();
+                      await _confirmOpenLink(uri);
+                    },
+                  ),
+                for (final attachment in attachments) ...[
+                  if (attachment.filePath != null)
+                    _ActionSheetTile(
+                      icon: Icons.save_alt_rounded,
+                      title:
+                          '${l10n.save} - ${attachment.fileName ?? l10n.fileAttachment}',
+                      onTap: () async {
+                        Navigator.of(sheetContext).pop();
+                        await _saveAttachment(attachment);
+                      },
+                    ),
+                  if (_canPauseAttachment(attachment))
+                    _ActionSheetTile(
+                      icon: Icons.pause_rounded,
+                      title:
+                          '${l10n.pause} - ${attachment.fileName ?? l10n.fileAttachment}',
+                      onTap: () async {
+                        Navigator.of(sheetContext).pop();
+                        await _pauseAttachment(attachment);
+                      },
+                    ),
+                  if (_canCancelAttachment(attachment))
+                    _ActionSheetTile(
+                      icon: Icons.close_rounded,
+                      title:
+                          '${l10n.cancelTransfer} - ${attachment.fileName ?? l10n.fileAttachment}',
+                      onTap: () async {
+                        Navigator.of(sheetContext).pop();
+                        await _confirmCancelAttachment(attachment);
+                      },
+                    ),
+                ],
                 _ActionSheetTile(
                   icon: Icons.delete_outline_rounded,
                   title: l10n.deleteMessage,
@@ -422,14 +464,14 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     );
   }
 
-  Future<void> _showAttachmentActions(MessageAttachmentSnapshot attachment) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final l10n = AppLocalizations.of(context);
+  MessageAttachmentTransferStatus _attachmentTransferStatus(
+    MessageAttachmentSnapshot attachment,
+  ) {
     final attachmentId = attachment.attachmentId;
     final live = attachmentId == null || attachmentId.isEmpty
         ? null
         : ref.read(transferProgressProvider(attachmentId));
-    final transferStatus = switch (live?.phase) {
+    return switch (live?.phase) {
       TransferProgressPhase.transferring =>
         MessageAttachmentTransferStatus.transferring,
       TransferProgressPhase.completed => MessageAttachmentTransferStatus.saved,
@@ -438,62 +480,20 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       TransferProgressPhase.pending => MessageAttachmentTransferStatus.pending,
       null => attachment.transferStatus,
     };
-    final canPause =
+  }
+
+  bool _canPauseAttachment(MessageAttachmentSnapshot attachment) {
+    return _attachmentTransferStatus(attachment) ==
+        MessageAttachmentTransferStatus.transferring;
+  }
+
+  bool _canCancelAttachment(MessageAttachmentSnapshot attachment) {
+    if (attachment.attachmentId == null || attachment.attachmentId!.isEmpty) {
+      return false;
+    }
+    final transferStatus = _attachmentTransferStatus(attachment);
+    return transferStatus == MessageAttachmentTransferStatus.pending ||
         transferStatus == MessageAttachmentTransferStatus.transferring;
-    final canCancel =
-        transferStatus == MessageAttachmentTransferStatus.pending ||
-        transferStatus == MessageAttachmentTransferStatus.transferring;
-    return showModalBottomSheet<void>(
-      context: context,
-      useSafeArea: true,
-      showDragHandle: false,
-      builder: (sheetContext) {
-        return Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: colorScheme.surface,
-            border: Border(
-              top: BorderSide(color: colorScheme.outline, width: 2),
-            ),
-          ),
-          child: SafeArea(
-            top: false,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (attachment.filePath != null)
-                  _ActionSheetTile(
-                    icon: Icons.save_alt_rounded,
-                    title: l10n.save,
-                    onTap: () async {
-                      Navigator.of(sheetContext).pop();
-                      await _saveAttachment(attachment);
-                    },
-                  ),
-                if (canPause)
-                  _ActionSheetTile(
-                    icon: Icons.pause_rounded,
-                    title: l10n.pause,
-                    onTap: () async {
-                      Navigator.of(sheetContext).pop();
-                      await _pauseAttachment(attachment);
-                    },
-                  ),
-                if (canCancel)
-                  _ActionSheetTile(
-                    icon: Icons.close_rounded,
-                    title: l10n.cancelTransfer,
-                    onTap: () async {
-                      Navigator.of(sheetContext).pop();
-                      await _confirmCancelAttachment(attachment);
-                    },
-                  ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
   }
 
   Future<void> _copyMessage(ConversationMessage message) async {
@@ -751,7 +751,10 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     );
   }
 
-  Future<void> _showAttachmentDetail(MessageAttachmentSnapshot attachment) {
+  Future<void> _showAttachmentDetail(
+    MessageAttachmentSnapshot attachment,
+    MessageDirection direction,
+  ) {
     final fileName = attachment.fileName ?? '';
     final isImage =
         (attachment.mimeType ?? '').startsWith('image/') ||
@@ -760,7 +763,13 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         fileName.toLowerCase().endsWith('.jpeg') ||
         fileName.toLowerCase().endsWith('.webp') ||
         fileName.toLowerCase().endsWith('.gif');
-    if (isImage && attachment.attachmentId != null) {
+    final isVideo =
+        (attachment.mimeType ?? '').startsWith('video/') ||
+        fileName.toLowerCase().endsWith('.mp4') ||
+        fileName.toLowerCase().endsWith('.mov') ||
+        fileName.toLowerCase().endsWith('.m4v') ||
+        fileName.toLowerCase().endsWith('.webm');
+    if (isImage) {
       final images = _lastRenderedMessages
           .expand((message) => message.attachments)
           .where((item) {
@@ -773,25 +782,18 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                 name.endsWith('.gif');
           })
           .toList(growable: false);
-      if (images.isNotEmpty) {
-        return showModalBottomSheet<void>(
-          context: context,
-          useSafeArea: true,
-          isScrollControlled: true,
-          showDragHandle: false,
-          backgroundColor: Colors.black,
-          builder: (context) {
-            return SizedBox(
-              height: MediaQuery.sizeOf(context).height,
-              child: ChatImageViewer(
-                images: images,
-                initialAttachmentId: attachment.attachmentId!,
-                onSave: _saveAttachment,
-              ),
-            );
-          },
-        );
-      }
+      return _showFullScreenPreview(
+        ChatImageViewer(
+          images: images.isEmpty ? [attachment] : images,
+          initialAttachmentId: attachment.attachmentId ?? '',
+          onSave: _saveAttachment,
+        ),
+      );
+    }
+    if (isVideo) {
+      return _showFullScreenPreview(
+        ChatVideoViewer(attachment: attachment, onSave: _saveAttachment),
+      );
     }
     final colorScheme = Theme.of(context).colorScheme;
     return showModalBottomSheet<void>(
@@ -812,11 +814,24 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           ),
           child: ChatAttachmentDetail(
             attachment: attachment,
-            onSave: () => _saveAttachment(attachment),
-            onPause: () => _pauseAttachment(attachment),
-            onCancel: () => _confirmCancelAttachment(attachment),
+            direction: direction,
           ),
         );
+      },
+    );
+  }
+
+  Future<void> _showFullScreenPreview(Widget child) {
+    final l10n = AppLocalizations.of(context);
+    return showGeneralDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: l10n.close,
+      barrierColor: Colors.black,
+      transitionDuration: const Duration(milliseconds: 160),
+      pageBuilder: (context, animation, secondaryAnimation) => child,
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        return FadeTransition(opacity: animation, child: child);
       },
     );
   }
@@ -930,10 +945,14 @@ class _ActionSheetTile extends StatelessWidget {
           children: [
             Icon(icon, size: 18),
             const SizedBox(width: 10),
-            Text(
-              title,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w700,
+            Expanded(
+              child: Text(
+                title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ],
@@ -955,6 +974,7 @@ class _DeviceInfoSheet extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final addresses = ref.watch(deviceAddressListProvider(remoteDeviceId));
+    final device = ref.watch(deviceSnapshotProvider(remoteDeviceId));
     final l10n = AppLocalizations.of(context);
 
     return SafeArea(
@@ -970,6 +990,33 @@ class _DeviceInfoSheet extends ConsumerWidget {
           ),
           const SizedBox(height: 4),
           _InfoBlock(title: l10n.device, value: remoteDeviceId, copyable: true),
+          const SizedBox(height: 18),
+          device.when(
+            data: (item) {
+              if (item == null) {
+                return const SizedBox.shrink();
+              }
+              return _InfoSwitchBlock(
+                title: l10n.autoReceiveFilesForDevice,
+                value: item.autoReceiveFilesEnabled,
+                onChanged: (value) {
+                  unawaited(
+                    ref
+                        .read(deviceRepositoryProvider)
+                        .setAutoReceiveFilesEnabled(
+                          deviceId: remoteDeviceId,
+                          enabled: value,
+                        ),
+                  );
+                },
+              );
+            },
+            error: (error, stackTrace) => _InfoBlock(
+              title: l10n.autoReceiveFilesForDevice,
+              value: error.toString(),
+            ),
+            loading: () => const Center(child: CircularProgressIndicator()),
+          ),
           const SizedBox(height: 18),
           addresses.when(
             data: (items) {
@@ -1057,6 +1104,18 @@ class _AttachmentModeTile extends StatelessWidget {
   }
 }
 
+List<Uri> _extractLinks(String text) {
+  final matches = RegExp(
+    r'(?:(?:https?):\/\/)[^\s<>()"]+',
+    caseSensitive: false,
+  ).allMatches(text);
+  return matches
+      .map((match) => Uri.tryParse(match.group(0)!))
+      .whereType<Uri>()
+      .where((uri) => uri.scheme == 'http' || uri.scheme == 'https')
+      .toList(growable: false);
+}
+
 class _InfoBlock extends StatelessWidget {
   const _InfoBlock({
     required this.title,
@@ -1118,5 +1177,44 @@ class _InfoBlock extends StatelessWidget {
         TransientFeedback.show(context, AppLocalizations.of(context).copied),
       );
     }
+  }
+}
+
+class _InfoSwitchBlock extends StatelessWidget {
+  const _InfoSwitchBlock({
+    required this.title,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final String title;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: theme.colorScheme.outlineVariant, width: 2),
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              style: theme.textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          Switch(value: value, onChanged: onChanged),
+        ],
+      ),
+    );
   }
 }

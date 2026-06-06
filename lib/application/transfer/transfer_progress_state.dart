@@ -81,6 +81,24 @@ class TransferProgressStore
     );
   }
 
+  void reportPending({
+    required String attachmentId,
+    required TransferProgressDirection direction,
+    required int transferredBytes,
+    required int totalBytes,
+    String? message,
+  }) {
+    _emit(
+      attachmentId: attachmentId,
+      direction: direction,
+      phase: TransferProgressPhase.pending,
+      transferredBytes: transferredBytes,
+      totalBytes: totalBytes,
+      bytesPerSecond: 0,
+      errorMessage: message,
+    );
+  }
+
   void reportPaused({
     required String attachmentId,
     required TransferProgressDirection direction,

@@ -12,6 +12,7 @@ class AppSettings {
     required this.language,
     required this.transferEncryptionEnabled,
     required this.autoResumeTransfersEnabled,
+    required this.autoReceiveFilesByDefaultEnabled,
   });
 
   factory AppSettings.fromRow(SettingItem row) {
@@ -20,6 +21,7 @@ class AppSettings {
       language: row.language,
       transferEncryptionEnabled: row.transferEncryptionEnabled,
       autoResumeTransfersEnabled: row.autoResumeTransfersEnabled,
+      autoReceiveFilesByDefaultEnabled: row.autoReceiveFilesByDefaultEnabled,
     );
   }
 
@@ -27,6 +29,7 @@ class AppSettings {
   final AppLanguage language;
   final bool transferEncryptionEnabled;
   final bool autoResumeTransfersEnabled;
+  final bool autoReceiveFilesByDefaultEnabled;
 }
 
 class SettingRepository {
@@ -52,6 +55,10 @@ class SettingRepository {
 
   Future<void> setAutoResumeTransfersEnabled(bool enabled) {
     return _settingDao.setAutoResumeTransfersEnabled(enabled);
+  }
+
+  Future<void> setAutoReceiveFilesByDefaultEnabled(bool enabled) {
+    return _settingDao.setAutoReceiveFilesByDefaultEnabled(enabled);
   }
 }
 

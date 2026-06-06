@@ -23,11 +23,24 @@ class DeviceDao extends DatabaseAccessor<AppDataBase> with _$DeviceDaoMixin {
     return query.watch();
   }
 
+  Stream<DeviceItem?> watchDevice(String deviceId) {
+    return (select(
+      deviceItems,
+    )..where((table) => table.deviceId.equals(deviceId))).watchSingleOrNull();
+  }
+
+  Future<DeviceItem?> getDevice(String deviceId) {
+    return (select(
+      deviceItems,
+    )..where((table) => table.deviceId.equals(deviceId))).getSingleOrNull();
+  }
+
   Future<int> upsertDevice({
     required String displayName,
     required String deviceId,
     required DeviceConnectionStatus connectionStatus,
     required int averageTransferSpeedBytesPerSecond,
+    bool? autoReceiveFilesEnabled,
     DateTime? lastConnectedAt,
     DateTime? lastDisconnectedAt,
     DateTime? lastTransferAt,
@@ -38,6 +51,9 @@ class DeviceDao extends DatabaseAccessor<AppDataBase> with _$DeviceDaoMixin {
         displayName: displayName,
         deviceId: deviceId,
         connectionStatus: Value(connectionStatus),
+        autoReceiveFilesEnabled: autoReceiveFilesEnabled == null
+            ? const Value.absent()
+            : Value(autoReceiveFilesEnabled),
         averageTransferSpeedBytesPerSecond: Value(
           averageTransferSpeedBytesPerSecond,
         ),
@@ -61,6 +77,15 @@ class DeviceDao extends DatabaseAccessor<AppDataBase> with _$DeviceDaoMixin {
         target: [deviceItems.deviceId],
       ),
     );
+  }
+
+  Future<int> setAutoReceiveFilesEnabled({
+    required String deviceId,
+    required bool enabled,
+  }) {
+    return (update(deviceItems)
+          ..where((table) => table.deviceId.equals(deviceId)))
+        .write(DeviceItemsCompanion(autoReceiveFilesEnabled: Value(enabled)));
   }
 
   Future<int> updateAverageTransferSpeed({

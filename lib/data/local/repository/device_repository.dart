@@ -1,5 +1,6 @@
 import 'package:hydrop/data/local/dao/dao_providers.dart';
 import 'package:hydrop/data/local/dao/device_dao.dart';
+import 'package:hydrop/data/local/dao/setting_dao.dart';
 import 'package:hydrop/data/local/database.dart';
 import 'package:hydrop/data/local/model/device/device.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -12,6 +13,7 @@ class DeviceSnapshot {
     required this.displayName,
     required this.deviceId,
     required this.connectionStatus,
+    required this.autoReceiveFilesEnabled,
     required this.averageTransferSpeedBytesPerSecond,
     required this.lastConnectedAt,
     required this.lastDisconnectedAt,
@@ -25,6 +27,7 @@ class DeviceSnapshot {
       displayName: row.displayName,
       deviceId: row.deviceId,
       connectionStatus: row.connectionStatus,
+      autoReceiveFilesEnabled: row.autoReceiveFilesEnabled,
       averageTransferSpeedBytesPerSecond:
           row.averageTransferSpeedBytesPerSecond,
       lastConnectedAt: row.lastConnectedAt,
@@ -38,6 +41,7 @@ class DeviceSnapshot {
   final String displayName;
   final String deviceId;
   final DeviceConnectionStatus connectionStatus;
+  final bool autoReceiveFilesEnabled;
   final int averageTransferSpeedBytesPerSecond;
   final DateTime? lastConnectedAt;
   final DateTime? lastDisconnectedAt;
@@ -46,14 +50,34 @@ class DeviceSnapshot {
 }
 
 class DeviceRepository {
-  const DeviceRepository(this._deviceDao);
+  DeviceRepository(DeviceDao deviceDao, [SettingDao? settingDao])
+    : _deviceDao = deviceDao,
+      _settingDao = settingDao ?? deviceDao.attachedDatabase.settingDao;
 
   final DeviceDao _deviceDao;
+  final SettingDao _settingDao;
 
   Stream<List<DeviceSnapshot>> watchDevices() {
     return _deviceDao.watchDevices().map(
       (rows) => rows.map(DeviceSnapshot.fromRow).toList(growable: false),
     );
+  }
+
+  Stream<DeviceSnapshot?> watchDevice(String deviceId) {
+    return _deviceDao.watchDevice(deviceId).map((row) {
+      if (row == null) {
+        return null;
+      }
+      return DeviceSnapshot.fromRow(row);
+    });
+  }
+
+  Future<DeviceSnapshot?> getDevice(String deviceId) async {
+    final row = await _deviceDao.getDevice(deviceId);
+    if (row == null) {
+      return null;
+    }
+    return DeviceSnapshot.fromRow(row);
   }
 
   Future<void> saveDiscoveredDevice({
@@ -67,10 +91,16 @@ class DeviceRepository {
     DateTime? lastTransferAt,
     String? lastError,
   }) async {
+    final existingDevice = await _deviceDao.getDevice(deviceId);
+    final autoReceiveFilesEnabled = existingDevice == null
+        ? (await _settingDao.watchSettings().first)
+              .autoReceiveFilesByDefaultEnabled
+        : null;
     await _deviceDao.upsertDevice(
       displayName: displayName,
       deviceId: deviceId,
       connectionStatus: connectionStatus,
+      autoReceiveFilesEnabled: autoReceiveFilesEnabled,
       averageTransferSpeedBytesPerSecond: averageTransferSpeedBytesPerSecond,
       lastConnectedAt: lastConnectedAt,
       lastDisconnectedAt: lastDisconnectedAt,
@@ -111,6 +141,16 @@ class DeviceRepository {
     return _deviceDao.deleteDevice(deviceId);
   }
 
+  Future<void> setAutoReceiveFilesEnabled({
+    required String deviceId,
+    required bool enabled,
+  }) {
+    return _deviceDao.setAutoReceiveFilesEnabled(
+      deviceId: deviceId,
+      enabled: enabled,
+    );
+  }
+
   Future<void> markConnected({required String deviceId, required DateTime at}) {
     return updateConnectionStatus(
       deviceId: deviceId,
@@ -136,10 +176,18 @@ class DeviceRepository {
 
 @Riverpod(keepAlive: true)
 DeviceRepository deviceRepository(Ref ref) {
-  return DeviceRepository(ref.watch(deviceDaoProvider));
+  return DeviceRepository(
+    ref.watch(deviceDaoProvider),
+    ref.watch(settingDaoProvider),
+  );
 }
 
 @Riverpod(keepAlive: true)
 Stream<List<DeviceSnapshot>> deviceList(Ref ref) {
   return ref.watch(deviceRepositoryProvider).watchDevices();
+}
+
+@Riverpod()
+Stream<DeviceSnapshot?> deviceSnapshot(Ref ref, String deviceId) {
+  return ref.watch(deviceRepositoryProvider).watchDevice(deviceId);
 }

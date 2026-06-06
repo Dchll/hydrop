@@ -119,6 +119,12 @@ class AppLocalizationsEn extends AppLocalizations {
       'Retry and continue interrupted file transfers when possible';
 
   @override
+  String get autoReceiveFilesByDefault => 'Auto receive files for new devices';
+
+  @override
+  String get autoReceiveFilesForDevice => 'Auto receive files from this device';
+
+  @override
   String get nearbyDevices => 'Nearby devices';
 
   @override
@@ -720,6 +726,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get statusPending => 'Pending';
+
+  @override
+  String get statusWaitingForReceiver => 'Waiting for receiver';
 
   @override
   String get statusTransferring => 'Transferring';

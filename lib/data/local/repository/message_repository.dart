@@ -383,7 +383,7 @@ class MessageRepository {
           totalBytes: totalBytes,
           checksumSha256: checksumSha256,
           thumbnailPath: thumbnailPath,
-          transferStatus: MessageAttachmentTransferStatus.transferring,
+          transferStatus: MessageAttachmentTransferStatus.pending,
           transferTaskId: transferTaskId,
         ),
       ],

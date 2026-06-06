@@ -22,6 +22,7 @@ class DeviceItems extends Table {
   late final deviceId = text().withLength(min: 1, max: 128).unique()();
   late final connectionStatus = textEnum<DeviceConnectionStatus>()
       .clientDefault(() => DeviceConnectionStatus.disconnected.name)();
+  late final autoReceiveFilesEnabled = boolean().clientDefault(() => true)();
   late final averageTransferSpeedBytesPerSecond = integer().clientDefault(
     () => 0,
   )();

@@ -520,10 +520,18 @@ class FileTransferCoordinator {
         ),
       );
 
+      _progressStore.reportPending(
+        attachmentId: prepared.attachmentId,
+        direction: TransferProgressDirection.outgoing,
+        transferredBytes: 0,
+        totalBytes: prepared.totalBytes,
+      );
       final ack = await ackFuture;
       _throwIfPaused(prepared.attachmentId);
       if (ack.header['accepted'] != true) {
-        throw const FileTransferException('File offer was rejected.');
+        final reason =
+            _readString(ack.header['reason']) ?? 'Remote side did not accept.';
+        throw FileTransferException(reason);
       }
 
       final resumeFromByte = _safeResumeOffset(
@@ -685,7 +693,7 @@ class FileTransferCoordinator {
     );
     await _messageRepository.markMessageFailed(
       localMessageId: prepared.localMessageId,
-      errorMessage: '$transferFileFailedFailureReason: $error',
+      errorMessage: _outgoingFailureMessage(error),
     );
     await _transferNotificationService.showFailed(
       attachmentId: prepared.attachmentId,
@@ -719,6 +727,16 @@ class FileTransferCoordinator {
       localMessageId: prepared.localMessageId,
       errorMessage: transferFileCancelledFailureReason,
     );
+  }
+
+  String _outgoingFailureMessage(Object? error) {
+    if (error == null) {
+      return transferFileFailedFailureReason;
+    }
+    if (error is FileTransferException) {
+      return error.message;
+    }
+    return '$transferFileFailedFailureReason: $error';
   }
 
   Future<bool> _isAutoResumeEnabled() async {
@@ -891,6 +909,23 @@ class FileTransferCoordinator {
       deviceId: senderDeviceId,
       connectionStatus: DeviceConnectionStatus.localNetwork,
     );
+    final senderDevice = await _deviceRepository.getDevice(senderDeviceId);
+    if (senderDevice?.autoReceiveFilesEnabled != true) {
+      await connection.sendFrame(
+        TransferFrame(
+          header: {
+            'type': transferFrameTypeFileOfferAck,
+            'protocolVersion': transferProtocolVersion,
+            'requestId': requestId,
+            'attachmentId': attachmentId,
+            'accepted': false,
+            'reason': 'Automatic file receiving is disabled for this device.',
+            'sentAt': _now().millisecondsSinceEpoch,
+          },
+        ),
+      );
+      return;
+    }
     final existingAttachment = await _messageRepository
         .getAttachmentByAttachmentId(attachmentId);
     final targetFile = await _resolveIncomingTargetFile(

@@ -54,6 +54,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     onLanguageChanged: _setLanguage,
                     onTransferEncryptionChanged: _setTransferEncryption,
                     onAutoResumeChanged: _setAutoResume,
+                    onAutoReceiveByDefaultChanged: _setAutoReceiveByDefault,
                   ),
                   error: (error, stackTrace) => HdPanel(
                     child: _CenteredState(
@@ -109,6 +110,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 onLanguageChanged: _setLanguage,
                 onTransferEncryptionChanged: _setTransferEncryption,
                 onAutoResumeChanged: _setAutoResume,
+                onAutoReceiveByDefaultChanged: _setAutoReceiveByDefault,
               ),
             );
           },
@@ -135,6 +137,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     return ref
         .read(settingRepositoryProvider)
         .setAutoResumeTransfersEnabled(enabled);
+  }
+
+  Future<void> _setAutoReceiveByDefault(bool enabled) {
+    return ref
+        .read(settingRepositoryProvider)
+        .setAutoReceiveFilesByDefaultEnabled(enabled);
   }
 }
 
@@ -181,6 +189,7 @@ class _SettingsContent extends StatelessWidget {
     required this.onLanguageChanged,
     required this.onTransferEncryptionChanged,
     required this.onAutoResumeChanged,
+    required this.onAutoReceiveByDefaultChanged,
   });
 
   final AppSettings settings;
@@ -191,6 +200,7 @@ class _SettingsContent extends StatelessWidget {
   final ValueChanged<AppLanguage> onLanguageChanged;
   final ValueChanged<bool> onTransferEncryptionChanged;
   final ValueChanged<bool> onAutoResumeChanged;
+  final ValueChanged<bool> onAutoReceiveByDefaultChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -232,6 +242,7 @@ class _SettingsContent extends StatelessWidget {
               onLanguageChanged: onLanguageChanged,
               onTransferEncryptionChanged: onTransferEncryptionChanged,
               onAutoResumeChanged: onAutoResumeChanged,
+              onAutoReceiveByDefaultChanged: onAutoReceiveByDefaultChanged,
             ),
           ),
         ),
@@ -313,6 +324,7 @@ class _SettingsDetail extends StatelessWidget {
     required this.onLanguageChanged,
     required this.onTransferEncryptionChanged,
     required this.onAutoResumeChanged,
+    required this.onAutoReceiveByDefaultChanged,
   });
 
   final _SettingsSectionId section;
@@ -321,6 +333,7 @@ class _SettingsDetail extends StatelessWidget {
   final ValueChanged<AppLanguage> onLanguageChanged;
   final ValueChanged<bool> onTransferEncryptionChanged;
   final ValueChanged<bool> onAutoResumeChanged;
+  final ValueChanged<bool> onAutoReceiveByDefaultChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -369,6 +382,11 @@ class _SettingsDetail extends StatelessWidget {
           title: l10n.autoResumeTransfers,
           value: settings.autoResumeTransfersEnabled,
           onChanged: onAutoResumeChanged,
+        ),
+        _SwitchSetting(
+          title: l10n.autoReceiveFilesByDefault,
+          value: settings.autoReceiveFilesByDefaultEnabled,
+          onChanged: onAutoReceiveByDefaultChanged,
         ),
       ],
       _SettingsSectionId.discovery => const [_DiscoverySummarySetting()],

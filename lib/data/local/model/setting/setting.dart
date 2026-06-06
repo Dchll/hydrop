@@ -18,4 +18,7 @@ class SettingItems extends Table {
   )();
   late final transferEncryptionEnabled = boolean().clientDefault(() => false)();
   late final autoResumeTransfersEnabled = boolean().clientDefault(() => true)();
+  late final autoReceiveFilesByDefaultEnabled = boolean().clientDefault(
+    () => true,
+  )();
 }

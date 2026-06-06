@@ -309,6 +309,18 @@ abstract class AppLocalizations {
   /// **'Retry and continue interrupted file transfers when possible'**
   String get autoResumeTransfersSubtitle;
 
+  /// No description provided for @autoReceiveFilesByDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto receive files for new devices'**
+  String get autoReceiveFilesByDefault;
+
+  /// No description provided for @autoReceiveFilesForDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto receive files from this device'**
+  String get autoReceiveFilesForDevice;
+
   /// No description provided for @nearbyDevices.
   ///
   /// In en, this message translates to:
@@ -1382,6 +1394,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Pending'**
   String get statusPending;
+
+  /// No description provided for @statusWaitingForReceiver.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for receiver'**
+  String get statusWaitingForReceiver;
 
   /// No description provided for @statusTransferring.
   ///

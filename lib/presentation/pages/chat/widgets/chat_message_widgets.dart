@@ -29,6 +29,12 @@ class EmptyChatPanel extends StatelessWidget {
   }
 }
 
+typedef AttachmentOpenRequest =
+    void Function(
+      MessageAttachmentSnapshot attachment,
+      MessageDirection direction,
+    );
+
 class ChatMessageTimeline extends StatefulWidget {
   const ChatMessageTimeline({
     super.key,
@@ -36,10 +42,8 @@ class ChatMessageTimeline extends StatefulWidget {
     required this.searchQuery,
     required this.peerDisplayName,
     required this.highlightedMessageId,
-    required this.onShowAttachmentActions,
     required this.onOpenAttachment,
     required this.onShowMessageActions,
-    required this.onOpenLink,
     this.hasOlderMessages = false,
     this.onLoadOlder,
     this.emptyTitle,
@@ -50,10 +54,8 @@ class ChatMessageTimeline extends StatefulWidget {
   final String searchQuery;
   final String peerDisplayName;
   final int? highlightedMessageId;
-  final ValueChanged<MessageAttachmentSnapshot> onShowAttachmentActions;
-  final ValueChanged<MessageAttachmentSnapshot> onOpenAttachment;
+  final AttachmentOpenRequest onOpenAttachment;
   final ValueChanged<ConversationMessage> onShowMessageActions;
-  final ValueChanged<Uri> onOpenLink;
   final bool hasOlderMessages;
   final VoidCallback? onLoadOlder;
   final String? emptyTitle;
@@ -161,10 +163,8 @@ class _ChatMessageTimelineState extends State<ChatMessageTimeline> {
                     searchQuery: widget.searchQuery,
                     isHighlighted:
                         widget.highlightedMessageId == entry.message.id,
-                    onShowAttachmentActions: widget.onShowAttachmentActions,
                     onOpenAttachment: widget.onOpenAttachment,
                     onShowMessageActions: widget.onShowMessageActions,
-                    onOpenLink: widget.onOpenLink,
                   ),
                 ),
               };
@@ -217,20 +217,16 @@ class _GroupedChatMessage extends StatelessWidget {
     required this.peerDisplayName,
     required this.searchQuery,
     required this.isHighlighted,
-    required this.onShowAttachmentActions,
     required this.onOpenAttachment,
     required this.onShowMessageActions,
-    required this.onOpenLink,
   });
 
   final _ChatTimelineMessageEntry entry;
   final String peerDisplayName;
   final String searchQuery;
   final bool isHighlighted;
-  final ValueChanged<MessageAttachmentSnapshot> onShowAttachmentActions;
-  final ValueChanged<MessageAttachmentSnapshot> onOpenAttachment;
+  final AttachmentOpenRequest onOpenAttachment;
   final ValueChanged<ConversationMessage> onShowMessageActions;
-  final ValueChanged<Uri> onOpenLink;
 
   @override
   Widget build(BuildContext context) {
@@ -240,11 +236,8 @@ class _GroupedChatMessage extends StatelessWidget {
         message: entry.message,
         searchQuery: searchQuery,
         isHighlighted: isHighlighted,
-        showMeta: entry.showMeta,
-        onShowAttachmentActions: onShowAttachmentActions,
         onOpenAttachment: onOpenAttachment,
         onShowMessageActions: onShowMessageActions,
-        onOpenLink: onOpenLink,
       );
     }
 
@@ -263,11 +256,8 @@ class _GroupedChatMessage extends StatelessWidget {
             message: entry.message,
             searchQuery: searchQuery,
             isHighlighted: isHighlighted,
-            showMeta: entry.showMeta,
-            onShowAttachmentActions: onShowAttachmentActions,
             onOpenAttachment: onOpenAttachment,
             onShowMessageActions: onShowMessageActions,
-            onOpenLink: onOpenLink,
           ),
         ),
       ],
@@ -290,13 +280,11 @@ class _ChatTimelineMessageEntry extends _ChatTimelineEntry {
     required this.message,
     required this.showAvatar,
     required this.isGrouped,
-    required this.showMeta,
   });
 
   final ConversationMessage message;
   final bool showAvatar;
   final bool isGrouped;
-  final bool showMeta;
 }
 
 List<_ChatTimelineEntry> _buildTimelineEntries(
@@ -307,7 +295,6 @@ List<_ChatTimelineEntry> _buildTimelineEntries(
   for (var index = 0; index < messages.length; index += 1) {
     final message = messages[index];
     final previous = index > 0 ? messages[index - 1] : null;
-    final next = index < messages.length - 1 ? messages[index + 1] : null;
     final isSeparator =
         previous == null ||
         !_isSameMinuteBucket(previous.createdAt, message.createdAt);
@@ -322,16 +309,11 @@ List<_ChatTimelineEntry> _buildTimelineEntries(
         previous != null &&
         previous.direction == message.direction &&
         message.createdAt.difference(previous.createdAt).inMinutes < 2;
-    final groupedWithNext =
-        next != null &&
-        next.direction == message.direction &&
-        next.createdAt.difference(message.createdAt).inMinutes < 2;
     entries.add(
       _ChatTimelineMessageEntry(
         message: message,
         showAvatar: !grouped,
         isGrouped: grouped,
-        showMeta: !groupedWithNext,
       ),
     );
   }
@@ -344,21 +326,15 @@ class ChatMessageBubble extends StatelessWidget {
     required this.message,
     required this.searchQuery,
     required this.isHighlighted,
-    required this.showMeta,
-    required this.onShowAttachmentActions,
     required this.onOpenAttachment,
     required this.onShowMessageActions,
-    required this.onOpenLink,
   });
 
   final ConversationMessage message;
   final String searchQuery;
   final bool isHighlighted;
-  final bool showMeta;
-  final ValueChanged<MessageAttachmentSnapshot> onShowAttachmentActions;
-  final ValueChanged<MessageAttachmentSnapshot> onOpenAttachment;
+  final AttachmentOpenRequest onOpenAttachment;
   final ValueChanged<ConversationMessage> onShowMessageActions;
-  final ValueChanged<Uri> onOpenLink;
 
   @override
   Widget build(BuildContext context) {
@@ -368,7 +344,6 @@ class ChatMessageBubble extends StatelessWidget {
     final alignment = isSent ? Alignment.centerRight : Alignment.centerLeft;
     final bubbleColor = _bubbleColor(colorScheme, isSent);
     final foreground = _bubbleForeground(colorScheme, isSent);
-    final mutedForeground = foreground.withValues(alpha: 0.62);
 
     return Align(
       alignment: alignment,
@@ -401,7 +376,6 @@ class ChatMessageBubble extends StatelessWidget {
                   _MessageText(
                     text: message.textContent!,
                     highlightQuery: searchQuery,
-                    onOpenLink: onOpenLink,
                     style: theme.textTheme.bodyLarge?.copyWith(
                       color: foreground,
                     ),
@@ -410,53 +384,34 @@ class ChatMessageBubble extends StatelessWidget {
                   if (message.textContent != null &&
                       message.textContent!.trim().isNotEmpty)
                     const SizedBox(height: 10),
-                  ...message.attachments.map(
-                    (attachment) =>
-                        _isImageAttachment(
-                          attachment,
-                          attachment.fileName ?? '',
-                        )
-                        ? ChatImageAttachment(
-                            attachment: attachment,
-                            foreground: foreground,
-                            onOpen: () => onOpenAttachment(attachment),
-                            onShowActions: () =>
-                                onShowAttachmentActions(attachment),
-                          )
-                        : ChatAttachmentCard(
-                            attachment: attachment,
-                            foreground: foreground,
-                            onOpen: () => onOpenAttachment(attachment),
-                            onShowActions: () =>
-                                onShowAttachmentActions(attachment),
-                          ),
-                  ),
-                ],
-                if (showMeta) ...[
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        formatLocalizedTime(message.createdAt),
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: mutedForeground,
-                        ),
-                      ),
-                      if (isSent) ...[
-                        const SizedBox(width: 6),
-                        Icon(
-                          _statusIcon(message.sendStatus),
-                          size: 14,
-                          color: _statusColor(
-                            context,
-                            message.sendStatus,
-                            foreground,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
+                  ...message.attachments.map((attachment) {
+                    final fileName = attachment.fileName ?? '';
+                    if (_isImageAttachment(attachment, fileName)) {
+                      return ChatImageAttachment(
+                        attachment: attachment,
+                        foreground: foreground,
+                        onOpen: () =>
+                            onOpenAttachment(attachment, message.direction),
+                        onShowActions: () => onShowMessageActions(message),
+                      );
+                    }
+                    if (_isVideoAttachment(attachment, fileName)) {
+                      return ChatVideoAttachment(
+                        attachment: attachment,
+                        foreground: foreground,
+                        onOpen: () =>
+                            onOpenAttachment(attachment, message.direction),
+                        onShowActions: () => onShowMessageActions(message),
+                      );
+                    }
+                    return ChatAttachmentCard(
+                      attachment: attachment,
+                      foreground: foreground,
+                      onOpen: () =>
+                          onOpenAttachment(attachment, message.direction),
+                      onShowActions: () => onShowMessageActions(message),
+                    );
+                  }),
                 ],
               ],
             ),
@@ -464,28 +419,6 @@ class ChatMessageBubble extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  static IconData _statusIcon(MessageSendStatus status) {
-    return switch (status) {
-      MessageSendStatus.pending => Icons.schedule_rounded,
-      MessageSendStatus.sending => Icons.sync_rounded,
-      MessageSendStatus.sent => Icons.done_all_rounded,
-      MessageSendStatus.failed => Icons.error_outline_rounded,
-      MessageSendStatus.received => Icons.done_rounded,
-    };
-  }
-
-  static Color _statusColor(
-    BuildContext context,
-    MessageSendStatus status,
-    Color foreground,
-  ) {
-    final colorScheme = Theme.of(context).colorScheme;
-    if (status == MessageSendStatus.failed) {
-      return colorScheme.error;
-    }
-    return foreground.withValues(alpha: 0.62);
   }
 
   static Color _bubbleColor(ColorScheme colorScheme, bool isSent) {
@@ -507,7 +440,7 @@ class ChatMessageBubble extends StatelessWidget {
   }
 }
 
-class ChatAttachmentCard extends ConsumerWidget {
+class ChatAttachmentCard extends StatelessWidget {
   const ChatAttachmentCard({
     super.key,
     required this.attachment,
@@ -522,17 +455,11 @@ class ChatAttachmentCard extends ConsumerWidget {
   final VoidCallback onShowActions;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final live = _watchTransferProgress(ref, attachment);
-    final total = live?.totalBytes ?? attachment.totalBytes;
-    final transferred = _clampedTransferredBytes(attachment, live);
-    final progress = _attachmentProgress(attachment, live);
-    final transferStatus = _effectiveTransferStatus(attachment, live);
     final l10n = AppLocalizations.of(context);
     final fileName = attachment.fileName ?? l10n.fileAttachment;
     final dividerColor = foreground.withValues(alpha: 0.22);
-    final mutedForeground = foreground.withValues(alpha: 0.62);
 
     return InkWell(
       onTap: onOpen,
@@ -544,79 +471,21 @@ class ChatAttachmentCard extends ConsumerWidget {
         decoration: BoxDecoration(
           border: Border(top: BorderSide(color: dividerColor, width: 2)),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Row(
-              children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  clipBehavior: Clip.hardEdge,
-                  decoration: BoxDecoration(
-                    border: Border(
-                      right: BorderSide(color: dividerColor, width: 2),
-                    ),
-                  ),
-                  child:
-                      _isImageAttachment(attachment, fileName) &&
-                          attachment.filePath != null
-                      ? ImageWidget(
-                          url: attachment.filePath,
-                          width: 42,
-                          height: 42,
-                          fit: BoxFit.cover,
-                        )
-                      : _isVideoAttachment(attachment, fileName)
-                      ? const Icon(Icons.movie_creation_outlined)
-                      : Icon(
-                          _fileIcon(attachment.mimeType, fileName),
-                          color: foreground,
-                        ),
+            Icon(_fileIcon(attachment.mimeType, fileName), color: foreground),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                fileName,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: foreground,
+                  fontWeight: FontWeight.w700,
                 ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 2),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          fileName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: foreground,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          _fileStatusText(
-                            l10n,
-                            transferStatus,
-                            transferred,
-                            total,
-                            live,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: mutedForeground,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            LinearProgressIndicator(
-              value: total > 0 ? progress : null,
-              color: foreground,
-              backgroundColor: foreground.withValues(alpha: 0.18),
-              minHeight: 4,
+              ),
             ),
           ],
         ),
@@ -638,29 +507,9 @@ class ChatAttachmentCard extends ConsumerWidget {
     }
     return Icons.insert_drive_file_rounded;
   }
-
-  static String _fileStatusText(
-    AppLocalizations l10n,
-    MessageAttachmentTransferStatus status,
-    int transferred,
-    int total,
-    TransferProgressSnapshot? live,
-  ) {
-    final progress = formatLocalizedByteProgress(l10n, transferred, total);
-    if (live != null && live.bytesPerSecond > 0) {
-      return l10n.transferProgressSpeed(
-        progress,
-        formatLocalizedByteRate(l10n, live.bytesPerSecond),
-      );
-    }
-    return l10n.attachmentStatusProgress(
-      localizedAttachmentTransferStatus(l10n, status),
-      progress,
-    );
-  }
 }
 
-class ChatImageAttachment extends ConsumerWidget {
+class ChatImageAttachment extends StatelessWidget {
   const ChatImageAttachment({
     super.key,
     required this.attachment,
@@ -675,21 +524,9 @@ class ChatImageAttachment extends ConsumerWidget {
   final VoidCallback onShowActions;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final live = _watchTransferProgress(ref, attachment);
+  Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final fileName = attachment.fileName ?? l10n.fileAttachment;
-    final total = live?.totalBytes ?? attachment.totalBytes;
-    final transferred = _clampedTransferredBytes(attachment, live);
-    final progress = _attachmentProgress(attachment, live);
-    final transferStatus = _effectiveTransferStatus(attachment, live);
-    final statusText = ChatAttachmentCard._fileStatusText(
-      l10n,
-      transferStatus,
-      transferred,
-      total,
-      live,
-    );
 
     return Container(
       margin: const EdgeInsets.only(top: 4),
@@ -715,62 +552,94 @@ class ChatImageAttachment extends ConsumerWidget {
                     ImageWidget(url: attachment.filePath, fit: BoxFit.cover)
                   else
                     Container(color: foreground.withValues(alpha: 0.08)),
-                  if (_canCancelAttachment(attachment, live) ||
-                      transferStatus == MessageAttachmentTransferStatus.failed)
-                    Container(
-                      color: Colors.black.withValues(alpha: 0.38),
-                      padding: const EdgeInsets.all(12),
-                      alignment: Alignment.bottomLeft,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            fileName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                          ),
-                          const SizedBox(height: 6),
-                          LinearProgressIndicator(
-                            value: total > 0 ? progress : null,
-                            minHeight: 3,
-                            color: Colors.white,
-                            backgroundColor: Colors.white.withValues(
-                              alpha: 0.22,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            statusText,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.labelSmall
-                                ?.copyWith(color: Colors.white),
-                          ),
-                        ],
-                      ),
-                    ),
                 ],
               ),
             ),
-            if (!_canCancelAttachment(attachment, live) &&
-                transferStatus != MessageAttachmentTransferStatus.failed) ...[
-              const SizedBox(height: 8),
-              Text(
-                fileName,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: foreground,
-                  fontWeight: FontWeight.w700,
+            const SizedBox(height: 8),
+            Text(
+              fileName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: foreground,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ChatVideoAttachment extends StatelessWidget {
+  const ChatVideoAttachment({
+    super.key,
+    required this.attachment,
+    required this.foreground,
+    required this.onOpen,
+    required this.onShowActions,
+  });
+
+  final MessageAttachmentSnapshot attachment;
+  final Color foreground;
+  final VoidCallback onOpen;
+  final VoidCallback onShowActions;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final fileName = attachment.fileName ?? l10n.fileAttachment;
+
+    return Container(
+      margin: const EdgeInsets.only(top: 4),
+      padding: const EdgeInsets.only(top: 12),
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(color: foreground.withValues(alpha: 0.22), width: 2),
+        ),
+      ),
+      child: InkWell(
+        onTap: onOpen,
+        onLongPress: onShowActions,
+        onSecondaryTap: onShowActions,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AspectRatio(
+              aspectRatio: 16 / 9,
+              child: Container(
+                color: foreground.withValues(alpha: 0.10),
+                alignment: Alignment.center,
+                child: Container(
+                  width: 54,
+                  height: 54,
+                  decoration: BoxDecoration(
+                    color: foreground.withValues(alpha: 0.16),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: foreground.withValues(alpha: 0.42),
+                      width: 2,
+                    ),
+                  ),
+                  child: Icon(
+                    Icons.play_arrow_rounded,
+                    color: foreground,
+                    size: 34,
+                  ),
                 ),
               ),
-            ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              fileName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: foreground,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ],
         ),
       ),
@@ -782,15 +651,11 @@ class ChatAttachmentDetail extends ConsumerWidget {
   const ChatAttachmentDetail({
     super.key,
     required this.attachment,
-    required this.onSave,
-    required this.onPause,
-    required this.onCancel,
+    required this.direction,
   });
 
   final MessageAttachmentSnapshot attachment;
-  final VoidCallback onSave;
-  final VoidCallback onPause;
-  final VoidCallback onCancel;
+  final MessageDirection direction;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -846,28 +711,6 @@ class ChatAttachmentDetail extends ConsumerWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 6),
-              if (_canPauseAttachment(attachment, live)) ...[
-                OutlinedButton.icon(
-                  onPressed: onPause,
-                  icon: const Icon(Icons.pause_rounded),
-                  label: Text(l10n.pause),
-                ),
-                const SizedBox(width: 6),
-              ],
-              if (_canCancelAttachment(attachment, live)) ...[
-                OutlinedButton.icon(
-                  onPressed: onCancel,
-                  icon: const Icon(Icons.close_rounded),
-                  label: Text(l10n.cancelTransfer),
-                ),
-                const SizedBox(width: 6),
-              ],
-              OutlinedButton.icon(
-                onPressed: attachment.filePath == null ? null : onSave,
-                icon: const Icon(Icons.save_alt_rounded),
-                label: Text(l10n.save),
-              ),
             ],
           ),
           const SizedBox(height: 18),
@@ -875,7 +718,11 @@ class ChatAttachmentDetail extends ConsumerWidget {
           const SizedBox(height: 18),
           _DetailRow(
             label: l10n.status,
-            value: localizedAttachmentTransferStatus(l10n, transferStatus),
+            value: localizedAttachmentTransferStatus(
+              l10n,
+              transferStatus,
+              direction: direction,
+            ),
           ),
           _DetailRow(
             label: l10n.progress,
@@ -886,7 +733,7 @@ class ChatAttachmentDetail extends ConsumerWidget {
               label: l10n.speed,
               value: formatLocalizedByteRate(l10n, live.bytesPerSecond),
             ),
-          if (live?.errorMessage?.isNotEmpty == true)
+          if ((live?.errorMessage ?? '').isNotEmpty)
             _DetailRow(label: l10n.lastError, value: live!.errorMessage!),
           if (attachment.mimeType != null)
             _DetailRow(label: l10n.mimeType, value: attachment.mimeType!),
@@ -1022,48 +869,17 @@ class _MessageText extends StatelessWidget {
   const _MessageText({
     required this.text,
     required this.highlightQuery,
-    required this.onOpenLink,
     this.style,
   });
 
   final String text;
   final String highlightQuery;
-  final ValueChanged<Uri> onOpenLink;
   final TextStyle? style;
 
   @override
   Widget build(BuildContext context) {
-    final links = _extractLinks(text);
-    if (links.isEmpty) {
-      return SelectableText.rich(
-        TextSpan(children: _highlightedTextSpans(context, style)),
-      );
-    }
-
-    final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SelectableText.rich(
-          TextSpan(children: _highlightedTextSpans(context, style)),
-        ),
-        const SizedBox(height: 8),
-        ...links.map(
-          (uri) => Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: OutlinedButton.icon(
-              onPressed: () => onOpenLink(uri),
-              icon: const Icon(Icons.open_in_new_rounded, size: 16),
-              label: Text(
-                uri.toString(),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.labelMedium,
-              ),
-            ),
-          ),
-        ),
-      ],
+    return SelectableText.rich(
+      TextSpan(children: _highlightedTextSpans(context, style)),
     );
   }
 
@@ -1400,26 +1216,6 @@ double _attachmentProgress(
   return (transferred / total).clamp(0.0, 1.0).toDouble();
 }
 
-bool _canPauseAttachment(
-  MessageAttachmentSnapshot attachment, [
-  TransferProgressSnapshot? live,
-]) {
-  return _effectiveTransferStatus(attachment, live) ==
-      MessageAttachmentTransferStatus.transferring;
-}
-
-bool _canCancelAttachment(
-  MessageAttachmentSnapshot attachment, [
-  TransferProgressSnapshot? live,
-]) {
-  if (attachment.attachmentId == null || attachment.attachmentId!.isEmpty) {
-    return false;
-  }
-  final status = _effectiveTransferStatus(attachment, live);
-  return status == MessageAttachmentTransferStatus.pending ||
-      status == MessageAttachmentTransferStatus.transferring;
-}
-
 MessageAttachmentTransferStatus _effectiveTransferStatus(
   MessageAttachmentSnapshot attachment,
   TransferProgressSnapshot? live,
@@ -1444,18 +1240,6 @@ TransferProgressSnapshot? _watchTransferProgress(
     return null;
   }
   return ref.watch(transferProgressProvider(attachmentId));
-}
-
-List<Uri> _extractLinks(String text) {
-  final matches = RegExp(
-    r'(?:(?:https?):\/\/)[^\s<>()"]+',
-    caseSensitive: false,
-  ).allMatches(text);
-  return matches
-      .map((match) => Uri.tryParse(match.group(0)!))
-      .whereType<Uri>()
-      .where((uri) => uri.scheme == 'http' || uri.scheme == 'https')
-      .toList(growable: false);
 }
 
 bool _isSameMinuteBucket(DateTime previous, DateTime current) {

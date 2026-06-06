@@ -66,6 +66,21 @@ class $DeviceItemsTable extends DeviceItems
       ).withConverter<DeviceConnectionStatus>(
         $DeviceItemsTable.$converterconnectionStatus,
       );
+  static const VerificationMeta _autoReceiveFilesEnabledMeta =
+      const VerificationMeta('autoReceiveFilesEnabled');
+  @override
+  late final GeneratedColumn<bool> autoReceiveFilesEnabled =
+      GeneratedColumn<bool>(
+        'auto_receive_files_enabled',
+        aliasedName,
+        false,
+        type: DriftSqlType.bool,
+        requiredDuringInsert: false,
+        defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("auto_receive_files_enabled" IN (0, 1))',
+        ),
+        clientDefault: () => true,
+      );
   static const VerificationMeta _averageTransferSpeedBytesPerSecondMeta =
       const VerificationMeta('averageTransferSpeedBytesPerSecond');
   @override
@@ -130,6 +145,7 @@ class $DeviceItemsTable extends DeviceItems
     displayName,
     deviceId,
     connectionStatus,
+    autoReceiveFilesEnabled,
     averageTransferSpeedBytesPerSecond,
     lastConnectedAt,
     lastDisconnectedAt,
@@ -169,6 +185,15 @@ class $DeviceItemsTable extends DeviceItems
       );
     } else if (isInserting) {
       context.missing(_deviceIdMeta);
+    }
+    if (data.containsKey('auto_receive_files_enabled')) {
+      context.handle(
+        _autoReceiveFilesEnabledMeta,
+        autoReceiveFilesEnabled.isAcceptableOrUnknown(
+          data['auto_receive_files_enabled']!,
+          _autoReceiveFilesEnabledMeta,
+        ),
+      );
     }
     if (data.containsKey('average_transfer_speed_bytes_per_second')) {
       context.handle(
@@ -239,6 +264,10 @@ class $DeviceItemsTable extends DeviceItems
           data['${effectivePrefix}connection_status'],
         )!,
       ),
+      autoReceiveFilesEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}auto_receive_files_enabled'],
+      )!,
       averageTransferSpeedBytesPerSecond: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}average_transfer_speed_bytes_per_second'],
@@ -278,6 +307,7 @@ class DeviceItem extends DataClass implements Insertable<DeviceItem> {
   final String displayName;
   final String deviceId;
   final DeviceConnectionStatus connectionStatus;
+  final bool autoReceiveFilesEnabled;
   final int averageTransferSpeedBytesPerSecond;
   final DateTime? lastConnectedAt;
   final DateTime? lastDisconnectedAt;
@@ -288,6 +318,7 @@ class DeviceItem extends DataClass implements Insertable<DeviceItem> {
     required this.displayName,
     required this.deviceId,
     required this.connectionStatus,
+    required this.autoReceiveFilesEnabled,
     required this.averageTransferSpeedBytesPerSecond,
     this.lastConnectedAt,
     this.lastDisconnectedAt,
@@ -305,6 +336,7 @@ class DeviceItem extends DataClass implements Insertable<DeviceItem> {
         $DeviceItemsTable.$converterconnectionStatus.toSql(connectionStatus),
       );
     }
+    map['auto_receive_files_enabled'] = Variable<bool>(autoReceiveFilesEnabled);
     map['average_transfer_speed_bytes_per_second'] = Variable<int>(
       averageTransferSpeedBytesPerSecond,
     );
@@ -329,6 +361,7 @@ class DeviceItem extends DataClass implements Insertable<DeviceItem> {
       displayName: Value(displayName),
       deviceId: Value(deviceId),
       connectionStatus: Value(connectionStatus),
+      autoReceiveFilesEnabled: Value(autoReceiveFilesEnabled),
       averageTransferSpeedBytesPerSecond: Value(
         averageTransferSpeedBytesPerSecond,
       ),
@@ -359,6 +392,9 @@ class DeviceItem extends DataClass implements Insertable<DeviceItem> {
       connectionStatus: $DeviceItemsTable.$converterconnectionStatus.fromJson(
         serializer.fromJson<String>(json['connectionStatus']),
       ),
+      autoReceiveFilesEnabled: serializer.fromJson<bool>(
+        json['autoReceiveFilesEnabled'],
+      ),
       averageTransferSpeedBytesPerSecond: serializer.fromJson<int>(
         json['averageTransferSpeedBytesPerSecond'],
       ),
@@ -380,6 +416,9 @@ class DeviceItem extends DataClass implements Insertable<DeviceItem> {
       'connectionStatus': serializer.toJson<String>(
         $DeviceItemsTable.$converterconnectionStatus.toJson(connectionStatus),
       ),
+      'autoReceiveFilesEnabled': serializer.toJson<bool>(
+        autoReceiveFilesEnabled,
+      ),
       'averageTransferSpeedBytesPerSecond': serializer.toJson<int>(
         averageTransferSpeedBytesPerSecond,
       ),
@@ -395,6 +434,7 @@ class DeviceItem extends DataClass implements Insertable<DeviceItem> {
     String? displayName,
     String? deviceId,
     DeviceConnectionStatus? connectionStatus,
+    bool? autoReceiveFilesEnabled,
     int? averageTransferSpeedBytesPerSecond,
     Value<DateTime?> lastConnectedAt = const Value.absent(),
     Value<DateTime?> lastDisconnectedAt = const Value.absent(),
@@ -405,6 +445,8 @@ class DeviceItem extends DataClass implements Insertable<DeviceItem> {
     displayName: displayName ?? this.displayName,
     deviceId: deviceId ?? this.deviceId,
     connectionStatus: connectionStatus ?? this.connectionStatus,
+    autoReceiveFilesEnabled:
+        autoReceiveFilesEnabled ?? this.autoReceiveFilesEnabled,
     averageTransferSpeedBytesPerSecond:
         averageTransferSpeedBytesPerSecond ??
         this.averageTransferSpeedBytesPerSecond,
@@ -429,6 +471,9 @@ class DeviceItem extends DataClass implements Insertable<DeviceItem> {
       connectionStatus: data.connectionStatus.present
           ? data.connectionStatus.value
           : this.connectionStatus,
+      autoReceiveFilesEnabled: data.autoReceiveFilesEnabled.present
+          ? data.autoReceiveFilesEnabled.value
+          : this.autoReceiveFilesEnabled,
       averageTransferSpeedBytesPerSecond:
           data.averageTransferSpeedBytesPerSecond.present
           ? data.averageTransferSpeedBytesPerSecond.value
@@ -453,6 +498,7 @@ class DeviceItem extends DataClass implements Insertable<DeviceItem> {
           ..write('displayName: $displayName, ')
           ..write('deviceId: $deviceId, ')
           ..write('connectionStatus: $connectionStatus, ')
+          ..write('autoReceiveFilesEnabled: $autoReceiveFilesEnabled, ')
           ..write(
             'averageTransferSpeedBytesPerSecond: $averageTransferSpeedBytesPerSecond, ',
           )
@@ -470,6 +516,7 @@ class DeviceItem extends DataClass implements Insertable<DeviceItem> {
     displayName,
     deviceId,
     connectionStatus,
+    autoReceiveFilesEnabled,
     averageTransferSpeedBytesPerSecond,
     lastConnectedAt,
     lastDisconnectedAt,
@@ -484,6 +531,7 @@ class DeviceItem extends DataClass implements Insertable<DeviceItem> {
           other.displayName == this.displayName &&
           other.deviceId == this.deviceId &&
           other.connectionStatus == this.connectionStatus &&
+          other.autoReceiveFilesEnabled == this.autoReceiveFilesEnabled &&
           other.averageTransferSpeedBytesPerSecond ==
               this.averageTransferSpeedBytesPerSecond &&
           other.lastConnectedAt == this.lastConnectedAt &&
@@ -497,6 +545,7 @@ class DeviceItemsCompanion extends UpdateCompanion<DeviceItem> {
   final Value<String> displayName;
   final Value<String> deviceId;
   final Value<DeviceConnectionStatus> connectionStatus;
+  final Value<bool> autoReceiveFilesEnabled;
   final Value<int> averageTransferSpeedBytesPerSecond;
   final Value<DateTime?> lastConnectedAt;
   final Value<DateTime?> lastDisconnectedAt;
@@ -507,6 +556,7 @@ class DeviceItemsCompanion extends UpdateCompanion<DeviceItem> {
     this.displayName = const Value.absent(),
     this.deviceId = const Value.absent(),
     this.connectionStatus = const Value.absent(),
+    this.autoReceiveFilesEnabled = const Value.absent(),
     this.averageTransferSpeedBytesPerSecond = const Value.absent(),
     this.lastConnectedAt = const Value.absent(),
     this.lastDisconnectedAt = const Value.absent(),
@@ -518,6 +568,7 @@ class DeviceItemsCompanion extends UpdateCompanion<DeviceItem> {
     required String displayName,
     required String deviceId,
     this.connectionStatus = const Value.absent(),
+    this.autoReceiveFilesEnabled = const Value.absent(),
     this.averageTransferSpeedBytesPerSecond = const Value.absent(),
     this.lastConnectedAt = const Value.absent(),
     this.lastDisconnectedAt = const Value.absent(),
@@ -530,6 +581,7 @@ class DeviceItemsCompanion extends UpdateCompanion<DeviceItem> {
     Expression<String>? displayName,
     Expression<String>? deviceId,
     Expression<String>? connectionStatus,
+    Expression<bool>? autoReceiveFilesEnabled,
     Expression<int>? averageTransferSpeedBytesPerSecond,
     Expression<DateTime>? lastConnectedAt,
     Expression<DateTime>? lastDisconnectedAt,
@@ -541,6 +593,8 @@ class DeviceItemsCompanion extends UpdateCompanion<DeviceItem> {
       if (displayName != null) 'display_name': displayName,
       if (deviceId != null) 'device_id': deviceId,
       if (connectionStatus != null) 'connection_status': connectionStatus,
+      if (autoReceiveFilesEnabled != null)
+        'auto_receive_files_enabled': autoReceiveFilesEnabled,
       if (averageTransferSpeedBytesPerSecond != null)
         'average_transfer_speed_bytes_per_second':
             averageTransferSpeedBytesPerSecond,
@@ -557,6 +611,7 @@ class DeviceItemsCompanion extends UpdateCompanion<DeviceItem> {
     Value<String>? displayName,
     Value<String>? deviceId,
     Value<DeviceConnectionStatus>? connectionStatus,
+    Value<bool>? autoReceiveFilesEnabled,
     Value<int>? averageTransferSpeedBytesPerSecond,
     Value<DateTime?>? lastConnectedAt,
     Value<DateTime?>? lastDisconnectedAt,
@@ -568,6 +623,8 @@ class DeviceItemsCompanion extends UpdateCompanion<DeviceItem> {
       displayName: displayName ?? this.displayName,
       deviceId: deviceId ?? this.deviceId,
       connectionStatus: connectionStatus ?? this.connectionStatus,
+      autoReceiveFilesEnabled:
+          autoReceiveFilesEnabled ?? this.autoReceiveFilesEnabled,
       averageTransferSpeedBytesPerSecond:
           averageTransferSpeedBytesPerSecond ??
           this.averageTransferSpeedBytesPerSecond,
@@ -595,6 +652,11 @@ class DeviceItemsCompanion extends UpdateCompanion<DeviceItem> {
         $DeviceItemsTable.$converterconnectionStatus.toSql(
           connectionStatus.value,
         ),
+      );
+    }
+    if (autoReceiveFilesEnabled.present) {
+      map['auto_receive_files_enabled'] = Variable<bool>(
+        autoReceiveFilesEnabled.value,
       );
     }
     if (averageTransferSpeedBytesPerSecond.present) {
@@ -626,6 +688,7 @@ class DeviceItemsCompanion extends UpdateCompanion<DeviceItem> {
           ..write('displayName: $displayName, ')
           ..write('deviceId: $deviceId, ')
           ..write('connectionStatus: $connectionStatus, ')
+          ..write('autoReceiveFilesEnabled: $autoReceiveFilesEnabled, ')
           ..write(
             'averageTransferSpeedBytesPerSecond: $averageTransferSpeedBytesPerSecond, ',
           )
@@ -2571,6 +2634,21 @@ class $SettingItemsTable extends SettingItems
         ),
         clientDefault: () => true,
       );
+  static const VerificationMeta _autoReceiveFilesByDefaultEnabledMeta =
+      const VerificationMeta('autoReceiveFilesByDefaultEnabled');
+  @override
+  late final GeneratedColumn<bool> autoReceiveFilesByDefaultEnabled =
+      GeneratedColumn<bool>(
+        'auto_receive_files_by_default_enabled',
+        aliasedName,
+        false,
+        type: DriftSqlType.bool,
+        requiredDuringInsert: false,
+        defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("auto_receive_files_by_default_enabled" IN (0, 1))',
+        ),
+        clientDefault: () => true,
+      );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -2578,6 +2656,7 @@ class $SettingItemsTable extends SettingItems
     language,
     transferEncryptionEnabled,
     autoResumeTransfersEnabled,
+    autoReceiveFilesByDefaultEnabled,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2609,6 +2688,15 @@ class $SettingItemsTable extends SettingItems
         autoResumeTransfersEnabled.isAcceptableOrUnknown(
           data['auto_resume_transfers_enabled']!,
           _autoResumeTransfersEnabledMeta,
+        ),
+      );
+    }
+    if (data.containsKey('auto_receive_files_by_default_enabled')) {
+      context.handle(
+        _autoReceiveFilesByDefaultEnabledMeta,
+        autoReceiveFilesByDefaultEnabled.isAcceptableOrUnknown(
+          data['auto_receive_files_by_default_enabled']!,
+          _autoReceiveFilesByDefaultEnabledMeta,
         ),
       );
     }
@@ -2645,6 +2733,10 @@ class $SettingItemsTable extends SettingItems
         DriftSqlType.bool,
         data['${effectivePrefix}auto_resume_transfers_enabled'],
       )!,
+      autoReceiveFilesByDefaultEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}auto_receive_files_by_default_enabled'],
+      )!,
     );
   }
 
@@ -2665,12 +2757,14 @@ class SettingItem extends DataClass implements Insertable<SettingItem> {
   final AppLanguage language;
   final bool transferEncryptionEnabled;
   final bool autoResumeTransfersEnabled;
+  final bool autoReceiveFilesByDefaultEnabled;
   const SettingItem({
     required this.id,
     required this.themeMode,
     required this.language,
     required this.transferEncryptionEnabled,
     required this.autoResumeTransfersEnabled,
+    required this.autoReceiveFilesByDefaultEnabled,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2692,6 +2786,9 @@ class SettingItem extends DataClass implements Insertable<SettingItem> {
     map['auto_resume_transfers_enabled'] = Variable<bool>(
       autoResumeTransfersEnabled,
     );
+    map['auto_receive_files_by_default_enabled'] = Variable<bool>(
+      autoReceiveFilesByDefaultEnabled,
+    );
     return map;
   }
 
@@ -2702,6 +2799,7 @@ class SettingItem extends DataClass implements Insertable<SettingItem> {
       language: Value(language),
       transferEncryptionEnabled: Value(transferEncryptionEnabled),
       autoResumeTransfersEnabled: Value(autoResumeTransfersEnabled),
+      autoReceiveFilesByDefaultEnabled: Value(autoReceiveFilesByDefaultEnabled),
     );
   }
 
@@ -2724,6 +2822,9 @@ class SettingItem extends DataClass implements Insertable<SettingItem> {
       autoResumeTransfersEnabled: serializer.fromJson<bool>(
         json['autoResumeTransfersEnabled'],
       ),
+      autoReceiveFilesByDefaultEnabled: serializer.fromJson<bool>(
+        json['autoReceiveFilesByDefaultEnabled'],
+      ),
     );
   }
   @override
@@ -2743,6 +2844,9 @@ class SettingItem extends DataClass implements Insertable<SettingItem> {
       'autoResumeTransfersEnabled': serializer.toJson<bool>(
         autoResumeTransfersEnabled,
       ),
+      'autoReceiveFilesByDefaultEnabled': serializer.toJson<bool>(
+        autoReceiveFilesByDefaultEnabled,
+      ),
     };
   }
 
@@ -2752,6 +2856,7 @@ class SettingItem extends DataClass implements Insertable<SettingItem> {
     AppLanguage? language,
     bool? transferEncryptionEnabled,
     bool? autoResumeTransfersEnabled,
+    bool? autoReceiveFilesByDefaultEnabled,
   }) => SettingItem(
     id: id ?? this.id,
     themeMode: themeMode ?? this.themeMode,
@@ -2760,6 +2865,9 @@ class SettingItem extends DataClass implements Insertable<SettingItem> {
         transferEncryptionEnabled ?? this.transferEncryptionEnabled,
     autoResumeTransfersEnabled:
         autoResumeTransfersEnabled ?? this.autoResumeTransfersEnabled,
+    autoReceiveFilesByDefaultEnabled:
+        autoReceiveFilesByDefaultEnabled ??
+        this.autoReceiveFilesByDefaultEnabled,
   );
   SettingItem copyWithCompanion(SettingItemsCompanion data) {
     return SettingItem(
@@ -2772,6 +2880,10 @@ class SettingItem extends DataClass implements Insertable<SettingItem> {
       autoResumeTransfersEnabled: data.autoResumeTransfersEnabled.present
           ? data.autoResumeTransfersEnabled.value
           : this.autoResumeTransfersEnabled,
+      autoReceiveFilesByDefaultEnabled:
+          data.autoReceiveFilesByDefaultEnabled.present
+          ? data.autoReceiveFilesByDefaultEnabled.value
+          : this.autoReceiveFilesByDefaultEnabled,
     );
   }
 
@@ -2782,7 +2894,10 @@ class SettingItem extends DataClass implements Insertable<SettingItem> {
           ..write('themeMode: $themeMode, ')
           ..write('language: $language, ')
           ..write('transferEncryptionEnabled: $transferEncryptionEnabled, ')
-          ..write('autoResumeTransfersEnabled: $autoResumeTransfersEnabled')
+          ..write('autoResumeTransfersEnabled: $autoResumeTransfersEnabled, ')
+          ..write(
+            'autoReceiveFilesByDefaultEnabled: $autoReceiveFilesByDefaultEnabled',
+          )
           ..write(')'))
         .toString();
   }
@@ -2794,6 +2909,7 @@ class SettingItem extends DataClass implements Insertable<SettingItem> {
     language,
     transferEncryptionEnabled,
     autoResumeTransfersEnabled,
+    autoReceiveFilesByDefaultEnabled,
   );
   @override
   bool operator ==(Object other) =>
@@ -2803,7 +2919,9 @@ class SettingItem extends DataClass implements Insertable<SettingItem> {
           other.themeMode == this.themeMode &&
           other.language == this.language &&
           other.transferEncryptionEnabled == this.transferEncryptionEnabled &&
-          other.autoResumeTransfersEnabled == this.autoResumeTransfersEnabled);
+          other.autoResumeTransfersEnabled == this.autoResumeTransfersEnabled &&
+          other.autoReceiveFilesByDefaultEnabled ==
+              this.autoReceiveFilesByDefaultEnabled);
 }
 
 class SettingItemsCompanion extends UpdateCompanion<SettingItem> {
@@ -2812,12 +2930,14 @@ class SettingItemsCompanion extends UpdateCompanion<SettingItem> {
   final Value<AppLanguage> language;
   final Value<bool> transferEncryptionEnabled;
   final Value<bool> autoResumeTransfersEnabled;
+  final Value<bool> autoReceiveFilesByDefaultEnabled;
   const SettingItemsCompanion({
     this.id = const Value.absent(),
     this.themeMode = const Value.absent(),
     this.language = const Value.absent(),
     this.transferEncryptionEnabled = const Value.absent(),
     this.autoResumeTransfersEnabled = const Value.absent(),
+    this.autoReceiveFilesByDefaultEnabled = const Value.absent(),
   });
   SettingItemsCompanion.insert({
     this.id = const Value.absent(),
@@ -2825,6 +2945,7 @@ class SettingItemsCompanion extends UpdateCompanion<SettingItem> {
     this.language = const Value.absent(),
     this.transferEncryptionEnabled = const Value.absent(),
     this.autoResumeTransfersEnabled = const Value.absent(),
+    this.autoReceiveFilesByDefaultEnabled = const Value.absent(),
   });
   static Insertable<SettingItem> custom({
     Expression<int>? id,
@@ -2832,6 +2953,7 @@ class SettingItemsCompanion extends UpdateCompanion<SettingItem> {
     Expression<String>? language,
     Expression<bool>? transferEncryptionEnabled,
     Expression<bool>? autoResumeTransfersEnabled,
+    Expression<bool>? autoReceiveFilesByDefaultEnabled,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -2841,6 +2963,9 @@ class SettingItemsCompanion extends UpdateCompanion<SettingItem> {
         'transfer_encryption_enabled': transferEncryptionEnabled,
       if (autoResumeTransfersEnabled != null)
         'auto_resume_transfers_enabled': autoResumeTransfersEnabled,
+      if (autoReceiveFilesByDefaultEnabled != null)
+        'auto_receive_files_by_default_enabled':
+            autoReceiveFilesByDefaultEnabled,
     });
   }
 
@@ -2850,6 +2975,7 @@ class SettingItemsCompanion extends UpdateCompanion<SettingItem> {
     Value<AppLanguage>? language,
     Value<bool>? transferEncryptionEnabled,
     Value<bool>? autoResumeTransfersEnabled,
+    Value<bool>? autoReceiveFilesByDefaultEnabled,
   }) {
     return SettingItemsCompanion(
       id: id ?? this.id,
@@ -2859,6 +2985,9 @@ class SettingItemsCompanion extends UpdateCompanion<SettingItem> {
           transferEncryptionEnabled ?? this.transferEncryptionEnabled,
       autoResumeTransfersEnabled:
           autoResumeTransfersEnabled ?? this.autoResumeTransfersEnabled,
+      autoReceiveFilesByDefaultEnabled:
+          autoReceiveFilesByDefaultEnabled ??
+          this.autoReceiveFilesByDefaultEnabled,
     );
   }
 
@@ -2888,6 +3017,11 @@ class SettingItemsCompanion extends UpdateCompanion<SettingItem> {
         autoResumeTransfersEnabled.value,
       );
     }
+    if (autoReceiveFilesByDefaultEnabled.present) {
+      map['auto_receive_files_by_default_enabled'] = Variable<bool>(
+        autoReceiveFilesByDefaultEnabled.value,
+      );
+    }
     return map;
   }
 
@@ -2898,7 +3032,10 @@ class SettingItemsCompanion extends UpdateCompanion<SettingItem> {
           ..write('themeMode: $themeMode, ')
           ..write('language: $language, ')
           ..write('transferEncryptionEnabled: $transferEncryptionEnabled, ')
-          ..write('autoResumeTransfersEnabled: $autoResumeTransfersEnabled')
+          ..write('autoResumeTransfersEnabled: $autoResumeTransfersEnabled, ')
+          ..write(
+            'autoReceiveFilesByDefaultEnabled: $autoReceiveFilesByDefaultEnabled',
+          )
           ..write(')'))
         .toString();
   }
@@ -5502,6 +5639,7 @@ typedef $$DeviceItemsTableCreateCompanionBuilder =
       required String displayName,
       required String deviceId,
       Value<DeviceConnectionStatus> connectionStatus,
+      Value<bool> autoReceiveFilesEnabled,
       Value<int> averageTransferSpeedBytesPerSecond,
       Value<DateTime?> lastConnectedAt,
       Value<DateTime?> lastDisconnectedAt,
@@ -5514,6 +5652,7 @@ typedef $$DeviceItemsTableUpdateCompanionBuilder =
       Value<String> displayName,
       Value<String> deviceId,
       Value<DeviceConnectionStatus> connectionStatus,
+      Value<bool> autoReceiveFilesEnabled,
       Value<int> averageTransferSpeedBytesPerSecond,
       Value<DateTime?> lastConnectedAt,
       Value<DateTime?> lastDisconnectedAt,
@@ -5641,6 +5780,11 @@ class $$DeviceItemsTableFilterComposer
   get connectionStatus => $composableBuilder(
     column: $table.connectionStatus,
     builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<bool> get autoReceiveFilesEnabled => $composableBuilder(
+    column: $table.autoReceiveFilesEnabled,
+    builder: (column) => ColumnFilters(column),
   );
 
   ColumnFilters<int> get averageTransferSpeedBytesPerSecond =>
@@ -5775,6 +5919,11 @@ class $$DeviceItemsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get autoReceiveFilesEnabled => $composableBuilder(
+    column: $table.autoReceiveFilesEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get averageTransferSpeedBytesPerSecond =>
       $composableBuilder(
         column: $table.averageTransferSpeedBytesPerSecond,
@@ -5825,6 +5974,11 @@ class $$DeviceItemsTableAnnotationComposer
   GeneratedColumnWithTypeConverter<DeviceConnectionStatus, String>
   get connectionStatus => $composableBuilder(
     column: $table.connectionStatus,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get autoReceiveFilesEnabled => $composableBuilder(
+    column: $table.autoReceiveFilesEnabled,
     builder: (column) => column,
   );
 
@@ -5967,6 +6121,7 @@ class $$DeviceItemsTableTableManager
                 Value<String> deviceId = const Value.absent(),
                 Value<DeviceConnectionStatus> connectionStatus =
                     const Value.absent(),
+                Value<bool> autoReceiveFilesEnabled = const Value.absent(),
                 Value<int> averageTransferSpeedBytesPerSecond =
                     const Value.absent(),
                 Value<DateTime?> lastConnectedAt = const Value.absent(),
@@ -5978,6 +6133,7 @@ class $$DeviceItemsTableTableManager
                 displayName: displayName,
                 deviceId: deviceId,
                 connectionStatus: connectionStatus,
+                autoReceiveFilesEnabled: autoReceiveFilesEnabled,
                 averageTransferSpeedBytesPerSecond:
                     averageTransferSpeedBytesPerSecond,
                 lastConnectedAt: lastConnectedAt,
@@ -5992,6 +6148,7 @@ class $$DeviceItemsTableTableManager
                 required String deviceId,
                 Value<DeviceConnectionStatus> connectionStatus =
                     const Value.absent(),
+                Value<bool> autoReceiveFilesEnabled = const Value.absent(),
                 Value<int> averageTransferSpeedBytesPerSecond =
                     const Value.absent(),
                 Value<DateTime?> lastConnectedAt = const Value.absent(),
@@ -6003,6 +6160,7 @@ class $$DeviceItemsTableTableManager
                 displayName: displayName,
                 deviceId: deviceId,
                 connectionStatus: connectionStatus,
+                autoReceiveFilesEnabled: autoReceiveFilesEnabled,
                 averageTransferSpeedBytesPerSecond:
                     averageTransferSpeedBytesPerSecond,
                 lastConnectedAt: lastConnectedAt,
@@ -7430,6 +7588,7 @@ typedef $$SettingItemsTableCreateCompanionBuilder =
       Value<AppLanguage> language,
       Value<bool> transferEncryptionEnabled,
       Value<bool> autoResumeTransfersEnabled,
+      Value<bool> autoReceiveFilesByDefaultEnabled,
     });
 typedef $$SettingItemsTableUpdateCompanionBuilder =
     SettingItemsCompanion Function({
@@ -7438,6 +7597,7 @@ typedef $$SettingItemsTableUpdateCompanionBuilder =
       Value<AppLanguage> language,
       Value<bool> transferEncryptionEnabled,
       Value<bool> autoResumeTransfersEnabled,
+      Value<bool> autoReceiveFilesByDefaultEnabled,
     });
 
 class $$SettingItemsTableFilterComposer
@@ -7475,6 +7635,12 @@ class $$SettingItemsTableFilterComposer
     column: $table.autoResumeTransfersEnabled,
     builder: (column) => ColumnFilters(column),
   );
+
+  ColumnFilters<bool> get autoReceiveFilesByDefaultEnabled =>
+      $composableBuilder(
+        column: $table.autoReceiveFilesByDefaultEnabled,
+        builder: (column) => ColumnFilters(column),
+      );
 }
 
 class $$SettingItemsTableOrderingComposer
@@ -7510,6 +7676,12 @@ class $$SettingItemsTableOrderingComposer
     column: $table.autoResumeTransfersEnabled,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get autoReceiveFilesByDefaultEnabled =>
+      $composableBuilder(
+        column: $table.autoReceiveFilesByDefaultEnabled,
+        builder: (column) => ColumnOrderings(column),
+      );
 }
 
 class $$SettingItemsTableAnnotationComposer
@@ -7539,6 +7711,12 @@ class $$SettingItemsTableAnnotationComposer
     column: $table.autoResumeTransfersEnabled,
     builder: (column) => column,
   );
+
+  GeneratedColumn<bool> get autoReceiveFilesByDefaultEnabled =>
+      $composableBuilder(
+        column: $table.autoReceiveFilesByDefaultEnabled,
+        builder: (column) => column,
+      );
 }
 
 class $$SettingItemsTableTableManager
@@ -7577,12 +7755,16 @@ class $$SettingItemsTableTableManager
                 Value<AppLanguage> language = const Value.absent(),
                 Value<bool> transferEncryptionEnabled = const Value.absent(),
                 Value<bool> autoResumeTransfersEnabled = const Value.absent(),
+                Value<bool> autoReceiveFilesByDefaultEnabled =
+                    const Value.absent(),
               }) => SettingItemsCompanion(
                 id: id,
                 themeMode: themeMode,
                 language: language,
                 transferEncryptionEnabled: transferEncryptionEnabled,
                 autoResumeTransfersEnabled: autoResumeTransfersEnabled,
+                autoReceiveFilesByDefaultEnabled:
+                    autoReceiveFilesByDefaultEnabled,
               ),
           createCompanionCallback:
               ({
@@ -7591,12 +7773,16 @@ class $$SettingItemsTableTableManager
                 Value<AppLanguage> language = const Value.absent(),
                 Value<bool> transferEncryptionEnabled = const Value.absent(),
                 Value<bool> autoResumeTransfersEnabled = const Value.absent(),
+                Value<bool> autoReceiveFilesByDefaultEnabled =
+                    const Value.absent(),
               }) => SettingItemsCompanion.insert(
                 id: id,
                 themeMode: themeMode,
                 language: language,
                 transferEncryptionEnabled: transferEncryptionEnabled,
                 autoResumeTransfersEnabled: autoResumeTransfersEnabled,
+                autoReceiveFilesByDefaultEnabled:
+                    autoReceiveFilesByDefaultEnabled,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

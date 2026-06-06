@@ -46,13 +46,26 @@ class AppDataBase extends _$AppDataBase {
   AppDataBase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration {
     return MigrationStrategy(
       onCreate: (migrator) async {
         await migrator.createAll();
+        await _createCustomIndexes();
+      },
+      onUpgrade: (migrator, from, to) async {
+        if (from < 2) {
+          await migrator.addColumn(
+            settingItems,
+            settingItems.autoReceiveFilesByDefaultEnabled,
+          );
+          await migrator.addColumn(
+            deviceItems,
+            deviceItems.autoReceiveFilesEnabled,
+          );
+        }
         await _createCustomIndexes();
       },
       beforeOpen: (details) async {

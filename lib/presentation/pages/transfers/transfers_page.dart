@@ -273,9 +273,6 @@ class _TransferContent extends ConsumerWidget {
   }
 
   _TransferItem? _selectedItem(List<_TransferItem> liveItems) {
-    if (liveItems.isEmpty) {
-      return null;
-    }
     if (selectedAttachmentId != null) {
       for (final item in liveItems) {
         if (item.attachment.attachmentId == selectedAttachmentId) {
@@ -283,7 +280,7 @@ class _TransferContent extends ConsumerWidget {
         }
       }
     }
-    return liveItems.first;
+    return null;
   }
 }
 
@@ -731,7 +728,11 @@ class _TransferItem {
   }
 
   String statusLabel(AppLocalizations l10n) {
-    return localizedAttachmentTransferStatus(l10n, transferStatus);
+    return localizedAttachmentTransferStatus(
+      l10n,
+      transferStatus,
+      direction: message.direction,
+    );
   }
 
   String messageStatusLabel(AppLocalizations l10n) {
