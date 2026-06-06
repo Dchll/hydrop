@@ -57,6 +57,28 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsPrivacySubtitle => '本地优先的数据处理';
 
   @override
+  String get settingsDangerZone => '危险操作';
+
+  @override
+  String get resetDatabaseTitle => '重置 Drift 数据库';
+
+  @override
+  String get resetDatabaseSubtitle => '清除本地所有数据库内容并重新初始化，用于修复升级后可能出现的数据库问题';
+
+  @override
+  String get resetDatabaseConfirmTitle => '确认重置数据库';
+
+  @override
+  String get resetDatabaseConfirmMessage =>
+      '这会删除本地所有设备、消息、传输记录和设置，并重新初始化数据库。此操作无法撤销。';
+
+  @override
+  String get resetDatabaseAction => '重置数据库';
+
+  @override
+  String get resetDatabaseDone => '数据库已重置并重新初始化。';
+
+  @override
   String get settingsAbout => '关于';
 
   @override
@@ -745,6 +767,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get byteUnitGb => 'GB';
 
   @override
+  String get byteUnitTb => 'TB';
+
+  @override
   String byteProgress(String transferred, String total) {
     return '$transferred / $total';
   }
@@ -771,6 +796,40 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get speed => '速度';
+
+  @override
+  String get averageSpeed => '平均速度';
+
+  @override
+  String get elapsedTime => '耗时';
+
+  @override
+  String get remainingTime => '剩余时间';
+
+  @override
+  String durationSeconds(int seconds) {
+    return '$seconds秒';
+  }
+
+  @override
+  String durationMinutesSeconds(int minutes, int seconds) {
+    return '$minutes分 $seconds秒';
+  }
+
+  @override
+  String durationHoursMinutes(int hours, int minutes) {
+    return '$hours时 $minutes分';
+  }
+
+  @override
+  String transferSpeedAndRemaining(String speed, String remaining) {
+    return '$speed · 剩余 $remaining';
+  }
+
+  @override
+  String transferCompletedSummary(String size, String speed, String duration) {
+    return '$size · 平均 $speed · $duration';
+  }
 
   @override
   String get lastError => '最后错误';
@@ -858,6 +917,28 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get settingsPrivacySubtitle => '本地優先的資料處理';
+
+  @override
+  String get settingsDangerZone => '危險操作';
+
+  @override
+  String get resetDatabaseTitle => '重置 Drift 資料庫';
+
+  @override
+  String get resetDatabaseSubtitle => '清除本地所有資料庫內容並重新初始化，用於修復升級後可能出現的資料庫問題';
+
+  @override
+  String get resetDatabaseConfirmTitle => '確認重置資料庫';
+
+  @override
+  String get resetDatabaseConfirmMessage =>
+      '這會刪除本地所有裝置、訊息、傳輸記錄和設定，並重新初始化資料庫。此操作無法撤銷。';
+
+  @override
+  String get resetDatabaseAction => '重置資料庫';
+
+  @override
+  String get resetDatabaseDone => '資料庫已重置並重新初始化。';
 
   @override
   String get settingsAbout => '關於';
@@ -1548,6 +1629,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get byteUnitGb => 'GB';
 
   @override
+  String get byteUnitTb => 'TB';
+
+  @override
   String byteProgress(String transferred, String total) {
     return '$transferred / $total';
   }
@@ -1574,6 +1658,40 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get speed => '速度';
+
+  @override
+  String get averageSpeed => '平均速度';
+
+  @override
+  String get elapsedTime => '耗時';
+
+  @override
+  String get remainingTime => '剩餘時間';
+
+  @override
+  String durationSeconds(int seconds) {
+    return '$seconds秒';
+  }
+
+  @override
+  String durationMinutesSeconds(int minutes, int seconds) {
+    return '$minutes分 $seconds秒';
+  }
+
+  @override
+  String durationHoursMinutes(int hours, int minutes) {
+    return '$hours時 $minutes分';
+  }
+
+  @override
+  String transferSpeedAndRemaining(String speed, String remaining) {
+    return '$speed · 剩餘 $remaining';
+  }
+
+  @override
+  String transferCompletedSummary(String size, String speed, String duration) {
+    return '$size · 平均 $speed · $duration';
+  }
 
   @override
   String get lastError => '最後錯誤';

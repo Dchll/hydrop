@@ -79,7 +79,7 @@ class $DeviceItemsTable extends DeviceItems
         defaultConstraints: GeneratedColumn.constraintIsAlways(
           'CHECK ("auto_receive_files_enabled" IN (0, 1))',
         ),
-        clientDefault: () => true,
+        defaultValue: const Constant(true),
       );
   static const VerificationMeta _averageTransferSpeedBytesPerSecondMeta =
       const VerificationMeta('averageTransferSpeedBytesPerSecond');
@@ -2647,7 +2647,7 @@ class $SettingItemsTable extends SettingItems
         defaultConstraints: GeneratedColumn.constraintIsAlways(
           'CHECK ("auto_receive_files_by_default_enabled" IN (0, 1))',
         ),
-        clientDefault: () => true,
+        defaultValue: const Constant(true),
       );
   @override
   List<GeneratedColumn> get $columns => [
@@ -4235,6 +4235,52 @@ class $MessageAttachmentItemsTable extends MessageAttachmentItems
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _transferStartedAtMeta = const VerificationMeta(
+    'transferStartedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> transferStartedAt =
+      GeneratedColumn<DateTime>(
+        'transfer_started_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _transferCompletedAtMeta =
+      const VerificationMeta('transferCompletedAt');
+  @override
+  late final GeneratedColumn<DateTime> transferCompletedAt =
+      GeneratedColumn<DateTime>(
+        'transfer_completed_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _averageTransferSpeedBytesPerSecondMeta =
+      const VerificationMeta('averageTransferSpeedBytesPerSecond');
+  @override
+  late final GeneratedColumn<int> averageTransferSpeedBytesPerSecond =
+      GeneratedColumn<int>(
+        'average_transfer_speed_bytes_per_second',
+        aliasedName,
+        false,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+        clientDefault: () => 0,
+      );
+  static const VerificationMeta _transferDurationMsMeta =
+      const VerificationMeta('transferDurationMs');
+  @override
+  late final GeneratedColumn<int> transferDurationMs = GeneratedColumn<int>(
+    'transfer_duration_ms',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    clientDefault: () => 0,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -4275,6 +4321,10 @@ class $MessageAttachmentItemsTable extends MessageAttachmentItems
     thumbnailPath,
     transferStatus,
     transferTaskId,
+    transferStartedAt,
+    transferCompletedAt,
+    averageTransferSpeedBytesPerSecond,
+    transferDurationMs,
     createdAt,
     updatedAt,
   ];
@@ -4379,6 +4429,42 @@ class $MessageAttachmentItemsTable extends MessageAttachmentItems
         ),
       );
     }
+    if (data.containsKey('transfer_started_at')) {
+      context.handle(
+        _transferStartedAtMeta,
+        transferStartedAt.isAcceptableOrUnknown(
+          data['transfer_started_at']!,
+          _transferStartedAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('transfer_completed_at')) {
+      context.handle(
+        _transferCompletedAtMeta,
+        transferCompletedAt.isAcceptableOrUnknown(
+          data['transfer_completed_at']!,
+          _transferCompletedAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('average_transfer_speed_bytes_per_second')) {
+      context.handle(
+        _averageTransferSpeedBytesPerSecondMeta,
+        averageTransferSpeedBytesPerSecond.isAcceptableOrUnknown(
+          data['average_transfer_speed_bytes_per_second']!,
+          _averageTransferSpeedBytesPerSecondMeta,
+        ),
+      );
+    }
+    if (data.containsKey('transfer_duration_ms')) {
+      context.handle(
+        _transferDurationMsMeta,
+        transferDurationMs.isAcceptableOrUnknown(
+          data['transfer_duration_ms']!,
+          _transferDurationMsMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -4461,6 +4547,22 @@ class $MessageAttachmentItemsTable extends MessageAttachmentItems
         DriftSqlType.string,
         data['${effectivePrefix}transfer_task_id'],
       ),
+      transferStartedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}transfer_started_at'],
+      ),
+      transferCompletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}transfer_completed_at'],
+      ),
+      averageTransferSpeedBytesPerSecond: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}average_transfer_speed_bytes_per_second'],
+      )!,
+      transferDurationMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}transfer_duration_ms'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -4504,6 +4606,10 @@ class MessageAttachmentItem extends DataClass
   final String? thumbnailPath;
   final MessageAttachmentTransferStatus transferStatus;
   final String? transferTaskId;
+  final DateTime? transferStartedAt;
+  final DateTime? transferCompletedAt;
+  final int averageTransferSpeedBytesPerSecond;
+  final int transferDurationMs;
   final DateTime createdAt;
   final DateTime updatedAt;
   const MessageAttachmentItem({
@@ -4521,6 +4627,10 @@ class MessageAttachmentItem extends DataClass
     this.thumbnailPath,
     required this.transferStatus,
     this.transferTaskId,
+    this.transferStartedAt,
+    this.transferCompletedAt,
+    required this.averageTransferSpeedBytesPerSecond,
+    required this.transferDurationMs,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -4565,6 +4675,16 @@ class MessageAttachmentItem extends DataClass
     if (!nullToAbsent || transferTaskId != null) {
       map['transfer_task_id'] = Variable<String>(transferTaskId);
     }
+    if (!nullToAbsent || transferStartedAt != null) {
+      map['transfer_started_at'] = Variable<DateTime>(transferStartedAt);
+    }
+    if (!nullToAbsent || transferCompletedAt != null) {
+      map['transfer_completed_at'] = Variable<DateTime>(transferCompletedAt);
+    }
+    map['average_transfer_speed_bytes_per_second'] = Variable<int>(
+      averageTransferSpeedBytesPerSecond,
+    );
+    map['transfer_duration_ms'] = Variable<int>(transferDurationMs);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -4600,6 +4720,16 @@ class MessageAttachmentItem extends DataClass
       transferTaskId: transferTaskId == null && nullToAbsent
           ? const Value.absent()
           : Value(transferTaskId),
+      transferStartedAt: transferStartedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(transferStartedAt),
+      transferCompletedAt: transferCompletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(transferCompletedAt),
+      averageTransferSpeedBytesPerSecond: Value(
+        averageTransferSpeedBytesPerSecond,
+      ),
+      transferDurationMs: Value(transferDurationMs),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -4628,6 +4758,16 @@ class MessageAttachmentItem extends DataClass
       transferStatus: $MessageAttachmentItemsTable.$convertertransferStatus
           .fromJson(serializer.fromJson<String>(json['transferStatus'])),
       transferTaskId: serializer.fromJson<String?>(json['transferTaskId']),
+      transferStartedAt: serializer.fromJson<DateTime?>(
+        json['transferStartedAt'],
+      ),
+      transferCompletedAt: serializer.fromJson<DateTime?>(
+        json['transferCompletedAt'],
+      ),
+      averageTransferSpeedBytesPerSecond: serializer.fromJson<int>(
+        json['averageTransferSpeedBytesPerSecond'],
+      ),
+      transferDurationMs: serializer.fromJson<int>(json['transferDurationMs']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -4656,6 +4796,12 @@ class MessageAttachmentItem extends DataClass
         ),
       ),
       'transferTaskId': serializer.toJson<String?>(transferTaskId),
+      'transferStartedAt': serializer.toJson<DateTime?>(transferStartedAt),
+      'transferCompletedAt': serializer.toJson<DateTime?>(transferCompletedAt),
+      'averageTransferSpeedBytesPerSecond': serializer.toJson<int>(
+        averageTransferSpeedBytesPerSecond,
+      ),
+      'transferDurationMs': serializer.toJson<int>(transferDurationMs),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -4676,6 +4822,10 @@ class MessageAttachmentItem extends DataClass
     Value<String?> thumbnailPath = const Value.absent(),
     MessageAttachmentTransferStatus? transferStatus,
     Value<String?> transferTaskId = const Value.absent(),
+    Value<DateTime?> transferStartedAt = const Value.absent(),
+    Value<DateTime?> transferCompletedAt = const Value.absent(),
+    int? averageTransferSpeedBytesPerSecond,
+    int? transferDurationMs,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => MessageAttachmentItem(
@@ -4699,6 +4849,16 @@ class MessageAttachmentItem extends DataClass
     transferTaskId: transferTaskId.present
         ? transferTaskId.value
         : this.transferTaskId,
+    transferStartedAt: transferStartedAt.present
+        ? transferStartedAt.value
+        : this.transferStartedAt,
+    transferCompletedAt: transferCompletedAt.present
+        ? transferCompletedAt.value
+        : this.transferCompletedAt,
+    averageTransferSpeedBytesPerSecond:
+        averageTransferSpeedBytesPerSecond ??
+        this.averageTransferSpeedBytesPerSecond,
+    transferDurationMs: transferDurationMs ?? this.transferDurationMs,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -4738,6 +4898,19 @@ class MessageAttachmentItem extends DataClass
       transferTaskId: data.transferTaskId.present
           ? data.transferTaskId.value
           : this.transferTaskId,
+      transferStartedAt: data.transferStartedAt.present
+          ? data.transferStartedAt.value
+          : this.transferStartedAt,
+      transferCompletedAt: data.transferCompletedAt.present
+          ? data.transferCompletedAt.value
+          : this.transferCompletedAt,
+      averageTransferSpeedBytesPerSecond:
+          data.averageTransferSpeedBytesPerSecond.present
+          ? data.averageTransferSpeedBytesPerSecond.value
+          : this.averageTransferSpeedBytesPerSecond,
+      transferDurationMs: data.transferDurationMs.present
+          ? data.transferDurationMs.value
+          : this.transferDurationMs,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -4760,6 +4933,12 @@ class MessageAttachmentItem extends DataClass
           ..write('thumbnailPath: $thumbnailPath, ')
           ..write('transferStatus: $transferStatus, ')
           ..write('transferTaskId: $transferTaskId, ')
+          ..write('transferStartedAt: $transferStartedAt, ')
+          ..write('transferCompletedAt: $transferCompletedAt, ')
+          ..write(
+            'averageTransferSpeedBytesPerSecond: $averageTransferSpeedBytesPerSecond, ',
+          )
+          ..write('transferDurationMs: $transferDurationMs, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -4782,6 +4961,10 @@ class MessageAttachmentItem extends DataClass
     thumbnailPath,
     transferStatus,
     transferTaskId,
+    transferStartedAt,
+    transferCompletedAt,
+    averageTransferSpeedBytesPerSecond,
+    transferDurationMs,
     createdAt,
     updatedAt,
   );
@@ -4803,6 +4986,11 @@ class MessageAttachmentItem extends DataClass
           other.thumbnailPath == this.thumbnailPath &&
           other.transferStatus == this.transferStatus &&
           other.transferTaskId == this.transferTaskId &&
+          other.transferStartedAt == this.transferStartedAt &&
+          other.transferCompletedAt == this.transferCompletedAt &&
+          other.averageTransferSpeedBytesPerSecond ==
+              this.averageTransferSpeedBytesPerSecond &&
+          other.transferDurationMs == this.transferDurationMs &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -4823,6 +5011,10 @@ class MessageAttachmentItemsCompanion
   final Value<String?> thumbnailPath;
   final Value<MessageAttachmentTransferStatus> transferStatus;
   final Value<String?> transferTaskId;
+  final Value<DateTime?> transferStartedAt;
+  final Value<DateTime?> transferCompletedAt;
+  final Value<int> averageTransferSpeedBytesPerSecond;
+  final Value<int> transferDurationMs;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   const MessageAttachmentItemsCompanion({
@@ -4840,6 +5032,10 @@ class MessageAttachmentItemsCompanion
     this.thumbnailPath = const Value.absent(),
     this.transferStatus = const Value.absent(),
     this.transferTaskId = const Value.absent(),
+    this.transferStartedAt = const Value.absent(),
+    this.transferCompletedAt = const Value.absent(),
+    this.averageTransferSpeedBytesPerSecond = const Value.absent(),
+    this.transferDurationMs = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -4858,6 +5054,10 @@ class MessageAttachmentItemsCompanion
     this.thumbnailPath = const Value.absent(),
     this.transferStatus = const Value.absent(),
     this.transferTaskId = const Value.absent(),
+    this.transferStartedAt = const Value.absent(),
+    this.transferCompletedAt = const Value.absent(),
+    this.averageTransferSpeedBytesPerSecond = const Value.absent(),
+    this.transferDurationMs = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   }) : messageId = Value(messageId);
@@ -4876,6 +5076,10 @@ class MessageAttachmentItemsCompanion
     Expression<String>? thumbnailPath,
     Expression<String>? transferStatus,
     Expression<String>? transferTaskId,
+    Expression<DateTime>? transferStartedAt,
+    Expression<DateTime>? transferCompletedAt,
+    Expression<int>? averageTransferSpeedBytesPerSecond,
+    Expression<int>? transferDurationMs,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
   }) {
@@ -4894,6 +5098,14 @@ class MessageAttachmentItemsCompanion
       if (thumbnailPath != null) 'thumbnail_path': thumbnailPath,
       if (transferStatus != null) 'transfer_status': transferStatus,
       if (transferTaskId != null) 'transfer_task_id': transferTaskId,
+      if (transferStartedAt != null) 'transfer_started_at': transferStartedAt,
+      if (transferCompletedAt != null)
+        'transfer_completed_at': transferCompletedAt,
+      if (averageTransferSpeedBytesPerSecond != null)
+        'average_transfer_speed_bytes_per_second':
+            averageTransferSpeedBytesPerSecond,
+      if (transferDurationMs != null)
+        'transfer_duration_ms': transferDurationMs,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -4914,6 +5126,10 @@ class MessageAttachmentItemsCompanion
     Value<String?>? thumbnailPath,
     Value<MessageAttachmentTransferStatus>? transferStatus,
     Value<String?>? transferTaskId,
+    Value<DateTime?>? transferStartedAt,
+    Value<DateTime?>? transferCompletedAt,
+    Value<int>? averageTransferSpeedBytesPerSecond,
+    Value<int>? transferDurationMs,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
   }) {
@@ -4932,6 +5148,12 @@ class MessageAttachmentItemsCompanion
       thumbnailPath: thumbnailPath ?? this.thumbnailPath,
       transferStatus: transferStatus ?? this.transferStatus,
       transferTaskId: transferTaskId ?? this.transferTaskId,
+      transferStartedAt: transferStartedAt ?? this.transferStartedAt,
+      transferCompletedAt: transferCompletedAt ?? this.transferCompletedAt,
+      averageTransferSpeedBytesPerSecond:
+          averageTransferSpeedBytesPerSecond ??
+          this.averageTransferSpeedBytesPerSecond,
+      transferDurationMs: transferDurationMs ?? this.transferDurationMs,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -4990,6 +5212,22 @@ class MessageAttachmentItemsCompanion
     if (transferTaskId.present) {
       map['transfer_task_id'] = Variable<String>(transferTaskId.value);
     }
+    if (transferStartedAt.present) {
+      map['transfer_started_at'] = Variable<DateTime>(transferStartedAt.value);
+    }
+    if (transferCompletedAt.present) {
+      map['transfer_completed_at'] = Variable<DateTime>(
+        transferCompletedAt.value,
+      );
+    }
+    if (averageTransferSpeedBytesPerSecond.present) {
+      map['average_transfer_speed_bytes_per_second'] = Variable<int>(
+        averageTransferSpeedBytesPerSecond.value,
+      );
+    }
+    if (transferDurationMs.present) {
+      map['transfer_duration_ms'] = Variable<int>(transferDurationMs.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -5016,6 +5254,12 @@ class MessageAttachmentItemsCompanion
           ..write('thumbnailPath: $thumbnailPath, ')
           ..write('transferStatus: $transferStatus, ')
           ..write('transferTaskId: $transferTaskId, ')
+          ..write('transferStartedAt: $transferStartedAt, ')
+          ..write('transferCompletedAt: $transferCompletedAt, ')
+          ..write(
+            'averageTransferSpeedBytesPerSecond: $averageTransferSpeedBytesPerSecond, ',
+          )
+          ..write('transferDurationMs: $transferDurationMs, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -8556,6 +8800,10 @@ typedef $$MessageAttachmentItemsTableCreateCompanionBuilder =
       Value<String?> thumbnailPath,
       Value<MessageAttachmentTransferStatus> transferStatus,
       Value<String?> transferTaskId,
+      Value<DateTime?> transferStartedAt,
+      Value<DateTime?> transferCompletedAt,
+      Value<int> averageTransferSpeedBytesPerSecond,
+      Value<int> transferDurationMs,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -8575,6 +8823,10 @@ typedef $$MessageAttachmentItemsTableUpdateCompanionBuilder =
       Value<String?> thumbnailPath,
       Value<MessageAttachmentTransferStatus> transferStatus,
       Value<String?> transferTaskId,
+      Value<DateTime?> transferStartedAt,
+      Value<DateTime?> transferCompletedAt,
+      Value<int> averageTransferSpeedBytesPerSecond,
+      Value<int> transferDurationMs,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -8699,6 +8951,27 @@ class $$MessageAttachmentItemsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<DateTime> get transferStartedAt => $composableBuilder(
+    column: $table.transferStartedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get transferCompletedAt => $composableBuilder(
+    column: $table.transferCompletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get averageTransferSpeedBytesPerSecond =>
+      $composableBuilder(
+        column: $table.averageTransferSpeedBytesPerSecond,
+        builder: (column) => ColumnFilters(column),
+      );
+
+  ColumnFilters<int> get transferDurationMs => $composableBuilder(
+    column: $table.transferDurationMs,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnFilters(column),
@@ -8807,6 +9080,27 @@ class $$MessageAttachmentItemsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<DateTime> get transferStartedAt => $composableBuilder(
+    column: $table.transferStartedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get transferCompletedAt => $composableBuilder(
+    column: $table.transferCompletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get averageTransferSpeedBytesPerSecond =>
+      $composableBuilder(
+        column: $table.averageTransferSpeedBytesPerSecond,
+        builder: (column) => ColumnOrderings(column),
+      );
+
+  ColumnOrderings<int> get transferDurationMs => $composableBuilder(
+    column: $table.transferDurationMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -8909,6 +9203,27 @@ class $$MessageAttachmentItemsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<DateTime> get transferStartedAt => $composableBuilder(
+    column: $table.transferStartedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get transferCompletedAt => $composableBuilder(
+    column: $table.transferCompletedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get averageTransferSpeedBytesPerSecond =>
+      $composableBuilder(
+        column: $table.averageTransferSpeedBytesPerSecond,
+        builder: (column) => column,
+      );
+
+  GeneratedColumn<int> get transferDurationMs => $composableBuilder(
+    column: $table.transferDurationMs,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -8994,6 +9309,11 @@ class $$MessageAttachmentItemsTableTableManager
                 Value<MessageAttachmentTransferStatus> transferStatus =
                     const Value.absent(),
                 Value<String?> transferTaskId = const Value.absent(),
+                Value<DateTime?> transferStartedAt = const Value.absent(),
+                Value<DateTime?> transferCompletedAt = const Value.absent(),
+                Value<int> averageTransferSpeedBytesPerSecond =
+                    const Value.absent(),
+                Value<int> transferDurationMs = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => MessageAttachmentItemsCompanion(
@@ -9011,6 +9331,11 @@ class $$MessageAttachmentItemsTableTableManager
                 thumbnailPath: thumbnailPath,
                 transferStatus: transferStatus,
                 transferTaskId: transferTaskId,
+                transferStartedAt: transferStartedAt,
+                transferCompletedAt: transferCompletedAt,
+                averageTransferSpeedBytesPerSecond:
+                    averageTransferSpeedBytesPerSecond,
+                transferDurationMs: transferDurationMs,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -9032,6 +9357,11 @@ class $$MessageAttachmentItemsTableTableManager
                 Value<MessageAttachmentTransferStatus> transferStatus =
                     const Value.absent(),
                 Value<String?> transferTaskId = const Value.absent(),
+                Value<DateTime?> transferStartedAt = const Value.absent(),
+                Value<DateTime?> transferCompletedAt = const Value.absent(),
+                Value<int> averageTransferSpeedBytesPerSecond =
+                    const Value.absent(),
+                Value<int> transferDurationMs = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => MessageAttachmentItemsCompanion.insert(
@@ -9049,6 +9379,11 @@ class $$MessageAttachmentItemsTableTableManager
                 thumbnailPath: thumbnailPath,
                 transferStatus: transferStatus,
                 transferTaskId: transferTaskId,
+                transferStartedAt: transferStartedAt,
+                transferCompletedAt: transferCompletedAt,
+                averageTransferSpeedBytesPerSecond:
+                    averageTransferSpeedBytesPerSecond,
+                transferDurationMs: transferDurationMs,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),

@@ -1,12 +1,18 @@
 import 'dart:io';
 
+import 'package:hydrop/core/constants/transfer_constants.dart';
 import 'package:path_provider/path_provider.dart';
 
 class AttachmentStorage {
-  const AttachmentStorage({Future<Directory> Function()? rootProvider})
-    : _rootProvider = rootProvider ?? _defaultRootProvider;
+  const AttachmentStorage({
+    Future<Directory> Function()? rootProvider,
+    Future<int?> Function(String path)? availableSpaceResolver,
+  }) : _rootProvider = rootProvider ?? _defaultRootProvider,
+       _availableSpaceResolver =
+           availableSpaceResolver ?? _defaultAvailableSpaceResolver;
 
   final Future<Directory> Function() _rootProvider;
+  final Future<int?> Function(String path) _availableSpaceResolver;
 
   Future<File> prepareIncomingFile({
     required String remoteDeviceId,
@@ -23,6 +29,21 @@ class AttachmentStorage {
       directory: directory,
       fileName: sanitizeFileName(fileName),
     );
+  }
+
+  Future<bool> hasSufficientSpaceForIncomingFile({
+    required Directory directory,
+    required int requiredBytes,
+  }) async {
+    if (requiredBytes <= 0) {
+      return true;
+    }
+    final availableBytes = await _availableSpaceResolver(directory.path);
+    if (availableBytes == null) {
+      return true;
+    }
+    return availableBytes >=
+        requiredBytes + transferIncomingStorageSafetyMarginBytes;
   }
 
   String sanitizeFileName(String value) {
@@ -70,4 +91,46 @@ class AttachmentStorage {
 Future<Directory> _defaultRootProvider() async {
   return await getDownloadsDirectory() ??
       await getApplicationSupportDirectory();
+}
+
+Future<int?> _defaultAvailableSpaceResolver(String path) async {
+  try {
+    if (Platform.isWindows) {
+      final escapedPath = path.replaceAll("'", "''");
+      final result = await Process.run('powershell', [
+        '-NoProfile',
+        '-Command',
+        "(Get-Item -LiteralPath '$escapedPath').PSDrive.Free",
+      ]);
+      if (result.exitCode != 0) {
+        return null;
+      }
+      return int.tryParse(result.stdout.toString().trim());
+    }
+
+    final result = await Process.run('df', ['-Pk', path]);
+    if (result.exitCode != 0) {
+      return null;
+    }
+    final lines = result.stdout
+        .toString()
+        .trim()
+        .split('\n')
+        .where((line) => line.trim().isNotEmpty)
+        .toList(growable: false);
+    if (lines.length < 2) {
+      return null;
+    }
+    final columns = lines[1].trim().split(RegExp(r'\s+'));
+    if (columns.length < 4) {
+      return null;
+    }
+    final availableBlocks = int.tryParse(columns[3]);
+    if (availableBlocks == null) {
+      return null;
+    }
+    return availableBlocks * 1024;
+  } on ProcessException {
+    return null;
+  }
 }

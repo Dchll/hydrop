@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:hydrop/application/home/home_page_state.dart';
 import 'package:hydrop/application/mine/mine_page_state.dart';
+import 'package:hydrop/application/settings/database_reset_controller.dart';
 import 'package:hydrop/core/feedback/transient_feedback.dart';
 import 'package:hydrop/data/local/model/setting/setting.dart';
 import 'package:hydrop/data/local/repository/setting_repository.dart';
@@ -55,11 +56,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     onTransferEncryptionChanged: _setTransferEncryption,
                     onAutoResumeChanged: _setAutoResume,
                     onAutoReceiveByDefaultChanged: _setAutoReceiveByDefault,
+                    onResetDatabase: () => _resetDatabase(context),
                   ),
                   error: (error, stackTrace) => HdPanel(
                     child: _CenteredState(
                       title: l10n.settingsUnableToLoad,
                       message: error.toString(),
+                      action: _ErrorResetDatabaseAction(
+                        onPressed: () => _resetDatabase(context),
+                      ),
                     ),
                   ),
                   loading: () => const HdPanel(
@@ -111,6 +116,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 onTransferEncryptionChanged: _setTransferEncryption,
                 onAutoResumeChanged: _setAutoResume,
                 onAutoReceiveByDefaultChanged: _setAutoReceiveByDefault,
+                onResetDatabase: () => _resetDatabase(context),
               ),
             );
           },
@@ -143,6 +149,48 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     return ref
         .read(settingRepositoryProvider)
         .setAutoReceiveFilesByDefaultEnabled(enabled);
+  }
+
+  Future<void> _resetDatabase(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(l10n.resetDatabaseConfirmTitle),
+          content: Text(l10n.resetDatabaseConfirmMessage),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(l10n.cancel),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+                foregroundColor: Theme.of(context).colorScheme.onError,
+              ),
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(l10n.resetDatabaseAction),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirmed != true) {
+      return;
+    }
+
+    try {
+      await ref.read(databaseResetControllerProvider).resetDatabase();
+      ref.invalidate(settingsProvider);
+      if (context.mounted) {
+        await TransientFeedback.show(context, l10n.resetDatabaseDone);
+      }
+    } catch (error) {
+      if (context.mounted) {
+        await TransientFeedback.show(context, l10n.actionFailed('$error'));
+      }
+    }
   }
 }
 
@@ -190,6 +238,7 @@ class _SettingsContent extends StatelessWidget {
     required this.onTransferEncryptionChanged,
     required this.onAutoResumeChanged,
     required this.onAutoReceiveByDefaultChanged,
+    required this.onResetDatabase,
   });
 
   final AppSettings settings;
@@ -201,6 +250,7 @@ class _SettingsContent extends StatelessWidget {
   final ValueChanged<bool> onTransferEncryptionChanged;
   final ValueChanged<bool> onAutoResumeChanged;
   final ValueChanged<bool> onAutoReceiveByDefaultChanged;
+  final Future<void> Function() onResetDatabase;
 
   @override
   Widget build(BuildContext context) {
@@ -243,6 +293,7 @@ class _SettingsContent extends StatelessWidget {
               onTransferEncryptionChanged: onTransferEncryptionChanged,
               onAutoResumeChanged: onAutoResumeChanged,
               onAutoReceiveByDefaultChanged: onAutoReceiveByDefaultChanged,
+              onResetDatabase: onResetDatabase,
             ),
           ),
         ),
@@ -325,6 +376,7 @@ class _SettingsDetail extends StatelessWidget {
     required this.onTransferEncryptionChanged,
     required this.onAutoResumeChanged,
     required this.onAutoReceiveByDefaultChanged,
+    required this.onResetDatabase,
   });
 
   final _SettingsSectionId section;
@@ -334,6 +386,7 @@ class _SettingsDetail extends StatelessWidget {
   final ValueChanged<bool> onTransferEncryptionChanged;
   final ValueChanged<bool> onAutoResumeChanged;
   final ValueChanged<bool> onAutoReceiveByDefaultChanged;
+  final Future<void> Function() onResetDatabase;
 
   @override
   Widget build(BuildContext context) {
@@ -390,7 +443,9 @@ class _SettingsDetail extends StatelessWidget {
         ),
       ],
       _SettingsSectionId.discovery => const [_DiscoverySummarySetting()],
-      _SettingsSectionId.privacy => const [_PrivacySummarySetting()],
+      _SettingsSectionId.privacy => [
+        _PrivacySummarySetting(onResetDatabase: onResetDatabase),
+      ],
       _SettingsSectionId.about => [
         _InfoSetting(title: l10n.appLabel, value: 'Hydrop'),
         _InfoSetting(title: l10n.versionLabel, value: '0.1.0'),
@@ -733,7 +788,9 @@ class _DiscoverySummarySetting extends ConsumerWidget {
 }
 
 class _PrivacySummarySetting extends ConsumerWidget {
-  const _PrivacySummarySetting();
+  const _PrivacySummarySetting({required this.onResetDatabase});
+
+  final Future<void> Function() onResetDatabase;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -750,7 +807,72 @@ class _PrivacySummarySetting extends ConsumerWidget {
           ),
         ),
         _InfoSetting(title: l10n.network, value: l10n.networkValue),
+        _DangerActionSetting(
+          title: l10n.resetDatabaseTitle,
+          subtitle: l10n.resetDatabaseSubtitle,
+          buttonLabel: l10n.resetDatabaseAction,
+          onPressed: onResetDatabase,
+        ),
       ],
+    );
+  }
+}
+
+class _DangerActionSetting extends StatelessWidget {
+  const _DangerActionSetting({
+    required this.title,
+    required this.subtitle,
+    required this.buttonLabel,
+    required this.onPressed,
+  });
+
+  final String title;
+  final String subtitle;
+  final String buttonLabel;
+  final Future<void> Function() onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: colorScheme.outlineVariant, width: 2),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: theme.textTheme.titleSmall?.copyWith(
+              color: colorScheme.error,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            subtitle,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurface.withValues(alpha: 0.72),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: colorScheme.error,
+                side: BorderSide(color: colorScheme.error, width: 2),
+              ),
+              onPressed: onPressed,
+              child: Text(buttonLabel),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -946,11 +1068,36 @@ class _SettingBlock extends StatelessWidget {
   }
 }
 
+class _ErrorResetDatabaseAction extends StatelessWidget {
+  const _ErrorResetDatabaseAction({required this.onPressed});
+
+  final Future<void> Function() onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context);
+    return FilledButton(
+      style: FilledButton.styleFrom(
+        backgroundColor: colorScheme.error,
+        foregroundColor: colorScheme.onError,
+      ),
+      onPressed: onPressed,
+      child: Text(l10n.resetDatabaseAction),
+    );
+  }
+}
+
 class _CenteredState extends StatelessWidget {
-  const _CenteredState({required this.title, required this.message});
+  const _CenteredState({
+    required this.title,
+    required this.message,
+    this.action,
+  });
 
   final String title;
   final String message;
+  final Widget? action;
 
   @override
   Widget build(BuildContext context) {
@@ -976,6 +1123,7 @@ class _CenteredState extends StatelessWidget {
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.66),
               ),
             ),
+            if (action != null) ...[const SizedBox(height: 20), action!],
           ],
         ),
       ),

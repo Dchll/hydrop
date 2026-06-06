@@ -22,6 +22,9 @@ dependencies:
   # https://pub.dev/packages/dio
   dio: ^5.9.2
 
+  # https://pub.dev/packages/device_info_plus
+  device_info_plus: ^10.1.2
+
   # https://pub.dev/packages/file_picker
   file_picker: ^11.0.2
 

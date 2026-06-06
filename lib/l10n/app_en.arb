@@ -16,6 +16,13 @@
   "settingsDiscoverySubtitle": "Nearby discovery behavior",
   "settingsPrivacy": "Privacy",
   "settingsPrivacySubtitle": "Local-first data handling",
+  "settingsDangerZone": "Danger zone",
+  "resetDatabaseTitle": "Reset Drift database",
+  "resetDatabaseSubtitle": "Clear all local database content and reinitialize it to recover from database issues after upgrades",
+  "resetDatabaseConfirmTitle": "Confirm database reset",
+  "resetDatabaseConfirmMessage": "This deletes all local devices, messages, transfer records, and settings, then reinitializes the database. This action cannot be undone.",
+  "resetDatabaseAction": "Reset database",
+  "resetDatabaseDone": "The database has been reset and reinitialized.",
   "settingsAbout": "About",
   "settingsAboutSubtitle": "Version and project information",
   "themeModeTitle": "Theme mode",
@@ -359,6 +366,7 @@
   "byteUnitKb": "KB",
   "byteUnitMb": "MB",
   "byteUnitGb": "GB",
+  "byteUnitTb": "TB",
   "byteProgress": "{transferred} / {total}",
   "@byteProgress": {
     "placeholders": {
@@ -395,6 +403,44 @@
     }
   },
   "speed": "Speed",
+  "averageSpeed": "Average speed",
+  "elapsedTime": "Elapsed time",
+  "remainingTime": "Time remaining",
+  "durationSeconds": "{seconds}s",
+  "@durationSeconds": {
+    "placeholders": {
+      "seconds": { "type": "int" }
+    }
+  },
+  "durationMinutesSeconds": "{minutes}m {seconds}s",
+  "@durationMinutesSeconds": {
+    "placeholders": {
+      "minutes": { "type": "int" },
+      "seconds": { "type": "int" }
+    }
+  },
+  "durationHoursMinutes": "{hours}h {minutes}m",
+  "@durationHoursMinutes": {
+    "placeholders": {
+      "hours": { "type": "int" },
+      "minutes": { "type": "int" }
+    }
+  },
+  "transferSpeedAndRemaining": "{speed} · {remaining} left",
+  "@transferSpeedAndRemaining": {
+    "placeholders": {
+      "speed": { "type": "String" },
+      "remaining": { "type": "String" }
+    }
+  },
+  "transferCompletedSummary": "{size} · avg {speed} · {duration}",
+  "@transferCompletedSummary": {
+    "placeholders": {
+      "size": { "type": "String" },
+      "speed": { "type": "String" },
+      "duration": { "type": "String" }
+    }
+  },
   "lastError": "Last error",
   "todayLabel": "Today",
   "yesterdayLabel": "Yesterday",

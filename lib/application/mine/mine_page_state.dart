@@ -1,8 +1,7 @@
-import 'dart:io';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hydrop/application/mine/connection_qr_payload.dart';
 import 'package:hydrop/data/local/repository/mine_repository.dart';
+import 'package:hydrop/data/remote/service/local_device_name_service.dart';
 import 'package:hydrop/data/remote/service/local_network_address_service.dart';
 
 export 'package:hydrop/data/remote/service/local_network_address_service.dart'
@@ -11,10 +10,12 @@ export 'package:hydrop/data/remote/service/local_network_address_service.dart'
 final mineOverviewProvider = FutureProvider<MineOverviewState>((ref) async {
   final repository = ref.watch(mineRepositoryProvider);
   final networkAddressService = ref.watch(localNetworkAddressServiceProvider);
-  final hostName = _defaultHostName();
+  final deviceNameService = ref.watch(localDeviceNameServiceProvider);
+  final hostName = await deviceNameService.resolveDefaultDisplayName();
+  final stableSeed = deviceNameService.resolveStableSeed();
   final profile = await repository.ensureMineProfile(
     displayName: hostName,
-    stableSeed: hostName,
+    stableSeed: stableSeed,
   );
   final localAddresses = await networkAddressService
       .listLocalNetworkAddresses();
@@ -35,6 +36,7 @@ final mineOverviewProvider = FutureProvider<MineOverviewState>((ref) async {
 final minePageControllerProvider = Provider<MinePageController>((ref) {
   return MinePageController(
     repository: ref.watch(mineRepositoryProvider),
+    deviceNameService: ref.watch(localDeviceNameServiceProvider),
     invalidateOverview: () => ref.invalidate(mineOverviewProvider),
   );
 });
@@ -42,11 +44,14 @@ final minePageControllerProvider = Provider<MinePageController>((ref) {
 class MinePageController {
   const MinePageController({
     required MineRepository repository,
+    required LocalDeviceNameService deviceNameService,
     required void Function() invalidateOverview,
   }) : _repository = repository,
+       _deviceNameService = deviceNameService,
        _invalidateOverview = invalidateOverview;
 
   final MineRepository _repository;
+  final LocalDeviceNameService _deviceNameService;
   final void Function() _invalidateOverview;
 
   Future<void> updateDisplayName(String displayName) async {
@@ -56,10 +61,10 @@ class MinePageController {
     }
     final profile = await _repository.getMineProfile();
     if (profile == null) {
-      final hostName = _defaultHostName();
+      final hostName = await _deviceNameService.resolveDefaultDisplayName();
       await _repository.ensureMineProfile(
         displayName: hostName,
-        stableSeed: hostName,
+        stableSeed: _deviceNameService.resolveStableSeed(),
       );
       return updateDisplayName(trimmed);
     }
@@ -88,13 +93,4 @@ class MineOverviewState {
   final String hostName;
   final List<LocalNetworkAddressInfo> localAddresses;
   final String connectionQrPayload;
-}
-
-String _defaultHostName() {
-  final hostName = Platform.localHostname.trim();
-  if (hostName.isNotEmpty) {
-    return hostName;
-  }
-
-  return '${Platform.operatingSystem}-${Platform.numberOfProcessors}';
 }

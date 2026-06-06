@@ -1,6 +1,4 @@
 import 'dart:async';
-import 'dart:io';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hydrop/application/connection/speed_test_runner.dart';
 import 'package:hydrop/core/constants/discovery_constants.dart';
@@ -14,6 +12,7 @@ import 'package:hydrop/data/local/repository/mine_repository.dart';
 import 'package:hydrop/data/remote/service/discovery_broadcast_service.dart';
 import 'package:hydrop/data/remote/service/discovery_payload_codec.dart';
 import 'package:hydrop/data/remote/service/discovery_socket_service.dart';
+import 'package:hydrop/data/remote/service/local_device_name_service.dart';
 import 'package:hydrop/data/remote/service/local_network_address_service.dart';
 
 typedef DiscoveryControllerTimerFactory =
@@ -31,6 +30,7 @@ final discoveryControllerProvider = Provider<DiscoveryController>((ref) {
     mineRepository: ref.watch(mineRepositoryProvider),
     deviceRepository: ref.watch(deviceRepositoryProvider),
     deviceAddressRepository: ref.watch(deviceAddressRepositoryProvider),
+    deviceNameService: ref.watch(localDeviceNameServiceProvider),
     speedTestRunner: ref.watch(speedTestRunnerProvider),
     broadcastService: DiscoveryBroadcastService(
       localNetworkAddressService: ref.watch(localNetworkAddressServiceProvider),
@@ -52,6 +52,7 @@ class DiscoveryController {
     required MineRepository mineRepository,
     required DeviceRepository deviceRepository,
     required DeviceAddressRepository deviceAddressRepository,
+    LocalDeviceNameService? deviceNameService,
     SpeedTestRunner? speedTestRunner,
     required DiscoveryBroadcastService broadcastService,
     required DiscoverySocketService socketService,
@@ -60,6 +61,7 @@ class DiscoveryController {
   }) : _mineRepository = mineRepository,
        _deviceRepository = deviceRepository,
        _deviceAddressRepository = deviceAddressRepository,
+       _deviceNameService = deviceNameService ?? LocalDeviceNameService(),
        _speedTestRunner = speedTestRunner,
        _broadcastService = broadcastService,
        _socketService = socketService,
@@ -69,6 +71,7 @@ class DiscoveryController {
   final MineRepository _mineRepository;
   final DeviceRepository _deviceRepository;
   final DeviceAddressRepository _deviceAddressRepository;
+  final LocalDeviceNameService _deviceNameService;
   final SpeedTestRunner? _speedTestRunner;
   final DiscoveryBroadcastService _broadcastService;
   final DiscoverySocketService _socketService;
@@ -100,10 +103,10 @@ class DiscoveryController {
   }
 
   Future<void> _startInternal() async {
-    final hostName = _defaultHostName();
+    final hostName = await _deviceNameService.resolveDefaultDisplayName();
     final profile = await _mineRepository.ensureMineProfile(
       displayName: hostName,
-      stableSeed: hostName,
+      stableSeed: _deviceNameService.resolveStableSeed(),
     );
     _localDeviceId = profile.deviceId;
 
@@ -307,13 +310,4 @@ class _DiscoveryTimerHandle implements DiscoveryControllerTimerHandle {
   void cancel() {
     _timer.cancel();
   }
-}
-
-String _defaultHostName() {
-  final hostName = Platform.localHostname.trim();
-  if (hostName.isNotEmpty) {
-    return hostName;
-  }
-
-  return '${Platform.operatingSystem}-${Platform.numberOfProcessors}';
 }

@@ -754,6 +754,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   Future<void> _showAttachmentDetail(
     MessageAttachmentSnapshot attachment,
     MessageDirection direction,
+    String? messageError,
   ) {
     final fileName = attachment.fileName ?? '';
     final isImage =
@@ -815,6 +816,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           child: ChatAttachmentDetail(
             attachment: attachment,
             direction: direction,
+            messageError: messageError,
           ),
         );
       },

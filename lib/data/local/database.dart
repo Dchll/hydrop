@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:async';
 
 import 'package:drift/drift.dart';
@@ -41,12 +42,14 @@ part 'database.g.dart';
   ],
 )
 class AppDataBase extends _$AppDataBase {
+  static const databaseName = 'app_database';
+
   AppDataBase({bool debugLog = false}) : super(_openConnection(debugLog));
 
   AppDataBase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration {
@@ -66,6 +69,24 @@ class AppDataBase extends _$AppDataBase {
             deviceItems.autoReceiveFilesEnabled,
           );
         }
+        if (from < 3) {
+          await migrator.addColumn(
+            messageAttachmentItems,
+            messageAttachmentItems.transferStartedAt,
+          );
+          await migrator.addColumn(
+            messageAttachmentItems,
+            messageAttachmentItems.transferCompletedAt,
+          );
+          await migrator.addColumn(
+            messageAttachmentItems,
+            messageAttachmentItems.averageTransferSpeedBytesPerSecond,
+          );
+          await migrator.addColumn(
+            messageAttachmentItems,
+            messageAttachmentItems.transferDurationMs,
+          );
+        }
         await _createCustomIndexes();
       },
       beforeOpen: (details) async {
@@ -76,12 +97,32 @@ class AppDataBase extends _$AppDataBase {
 
   static QueryExecutor _openConnection(bool debugLog) {
     return driftDatabase(
-      name: 'app_database',
+      name: databaseName,
       native: DriftNativeOptions(
         databaseDirectory: getApplicationSupportDirectory,
         isolateDebugLog: debugLog,
       ),
     );
+  }
+
+  static Future<File> resolveDatabaseFile() async {
+    final directory = await getApplicationSupportDirectory();
+    return File('${directory.path}/$databaseName.sqlite');
+  }
+
+  static Future<void> deleteDatabaseFiles() async {
+    final databaseFile = await resolveDatabaseFile();
+    final filePaths = <String>{
+      databaseFile.path,
+      '${databaseFile.path}-wal',
+      '${databaseFile.path}-shm',
+    };
+    for (final path in filePaths) {
+      final file = File(path);
+      if (await file.exists()) {
+        await file.delete();
+      }
+    }
   }
 
   Future<void> _createCustomIndexes() async {
@@ -99,5 +140,14 @@ class AppDataBase extends _$AppDataBase {
       ON message_attachment_items (attachment_id)
       WHERE attachment_id IS NOT NULL
       ''');
+  }
+
+  Future<void> clearAllData() {
+    return transaction(() async {
+      await delete(pointItems).go();
+      await delete(settingItems).go();
+      await delete(mineItems).go();
+      await delete(deviceItems).go();
+    });
   }
 }

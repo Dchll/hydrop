@@ -76,6 +76,12 @@ class MessageAttachmentItems extends Table {
   late final transferStatus = textEnum<MessageAttachmentTransferStatus>()
       .clientDefault(() => MessageAttachmentTransferStatus.pending.name)();
   late final transferTaskId = text().nullable()();
+  late final transferStartedAt = dateTime().nullable()();
+  late final transferCompletedAt = dateTime().nullable()();
+  late final averageTransferSpeedBytesPerSecond = integer().clientDefault(
+    () => 0,
+  )();
+  late final transferDurationMs = integer().clientDefault(() => 0)();
   late final createdAt = dateTime().clientDefault(DateTime.now)();
   late final updatedAt = dateTime().clientDefault(DateTime.now)();
 }

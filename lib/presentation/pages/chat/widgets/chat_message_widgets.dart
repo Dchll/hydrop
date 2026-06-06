@@ -33,6 +33,7 @@ typedef AttachmentOpenRequest =
     void Function(
       MessageAttachmentSnapshot attachment,
       MessageDirection direction,
+      String? messageError,
     );
 
 class ChatMessageTimeline extends StatefulWidget {
@@ -389,26 +390,41 @@ class ChatMessageBubble extends StatelessWidget {
                     if (_isImageAttachment(attachment, fileName)) {
                       return ChatImageAttachment(
                         attachment: attachment,
+                        direction: message.direction,
+                        messageError: message.errorMessage,
                         foreground: foreground,
-                        onOpen: () =>
-                            onOpenAttachment(attachment, message.direction),
+                        onOpen: () => onOpenAttachment(
+                          attachment,
+                          message.direction,
+                          message.errorMessage,
+                        ),
                         onShowActions: () => onShowMessageActions(message),
                       );
                     }
                     if (_isVideoAttachment(attachment, fileName)) {
                       return ChatVideoAttachment(
                         attachment: attachment,
+                        direction: message.direction,
+                        messageError: message.errorMessage,
                         foreground: foreground,
-                        onOpen: () =>
-                            onOpenAttachment(attachment, message.direction),
+                        onOpen: () => onOpenAttachment(
+                          attachment,
+                          message.direction,
+                          message.errorMessage,
+                        ),
                         onShowActions: () => onShowMessageActions(message),
                       );
                     }
                     return ChatAttachmentCard(
                       attachment: attachment,
+                      direction: message.direction,
+                      messageError: message.errorMessage,
                       foreground: foreground,
-                      onOpen: () =>
-                          onOpenAttachment(attachment, message.direction),
+                      onOpen: () => onOpenAttachment(
+                        attachment,
+                        message.direction,
+                        message.errorMessage,
+                      ),
                       onShowActions: () => onShowMessageActions(message),
                     );
                   }),
@@ -440,26 +456,38 @@ class ChatMessageBubble extends StatelessWidget {
   }
 }
 
-class ChatAttachmentCard extends StatelessWidget {
+class ChatAttachmentCard extends ConsumerWidget {
   const ChatAttachmentCard({
     super.key,
     required this.attachment,
+    required this.direction,
+    required this.messageError,
     required this.foreground,
     required this.onOpen,
     required this.onShowActions,
   });
 
   final MessageAttachmentSnapshot attachment;
+  final MessageDirection direction;
+  final String? messageError;
   final Color foreground;
   final VoidCallback onOpen;
   final VoidCallback onShowActions;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final fileName = attachment.fileName ?? l10n.fileAttachment;
     final dividerColor = foreground.withValues(alpha: 0.22);
+    final meta = _attachmentTransferMeta(
+      l10n,
+      attachment: attachment,
+      direction: direction,
+      live: _watchTransferProgress(ref, attachment),
+      kind: _AttachmentCardKind.file,
+      messageError: messageError,
+    );
 
     return InkWell(
       onTap: onOpen,
@@ -477,14 +505,30 @@ class ChatAttachmentCard extends StatelessWidget {
             Icon(_fileIcon(attachment.mimeType, fileName), color: foreground),
             const SizedBox(width: 8),
             Expanded(
-              child: Text(
-                fileName,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: foreground,
-                  fontWeight: FontWeight.w700,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    fileName,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: foreground,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  if (meta != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      meta,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: foreground.withValues(alpha: 0.68),
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
           ],
@@ -509,24 +553,36 @@ class ChatAttachmentCard extends StatelessWidget {
   }
 }
 
-class ChatImageAttachment extends StatelessWidget {
+class ChatImageAttachment extends ConsumerWidget {
   const ChatImageAttachment({
     super.key,
     required this.attachment,
+    required this.direction,
+    required this.messageError,
     required this.foreground,
     required this.onOpen,
     required this.onShowActions,
   });
 
   final MessageAttachmentSnapshot attachment;
+  final MessageDirection direction;
+  final String? messageError;
   final Color foreground;
   final VoidCallback onOpen;
   final VoidCallback onShowActions;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final fileName = attachment.fileName ?? l10n.fileAttachment;
+    final meta = _attachmentTransferMeta(
+      l10n,
+      attachment: attachment,
+      direction: direction,
+      live: _watchTransferProgress(ref, attachment),
+      kind: _AttachmentCardKind.image,
+      messageError: messageError,
+    );
 
     return Container(
       margin: const EdgeInsets.only(top: 4),
@@ -565,6 +621,17 @@ class ChatImageAttachment extends StatelessWidget {
                 fontWeight: FontWeight.w700,
               ),
             ),
+            if (meta != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                meta,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: foreground.withValues(alpha: 0.68),
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -572,24 +639,36 @@ class ChatImageAttachment extends StatelessWidget {
   }
 }
 
-class ChatVideoAttachment extends StatelessWidget {
+class ChatVideoAttachment extends ConsumerWidget {
   const ChatVideoAttachment({
     super.key,
     required this.attachment,
+    required this.direction,
+    required this.messageError,
     required this.foreground,
     required this.onOpen,
     required this.onShowActions,
   });
 
   final MessageAttachmentSnapshot attachment;
+  final MessageDirection direction;
+  final String? messageError;
   final Color foreground;
   final VoidCallback onOpen;
   final VoidCallback onShowActions;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final fileName = attachment.fileName ?? l10n.fileAttachment;
+    final meta = _attachmentTransferMeta(
+      l10n,
+      attachment: attachment,
+      direction: direction,
+      live: _watchTransferProgress(ref, attachment),
+      kind: _AttachmentCardKind.video,
+      messageError: messageError,
+    );
 
     return Container(
       margin: const EdgeInsets.only(top: 4),
@@ -640,6 +719,17 @@ class ChatVideoAttachment extends StatelessWidget {
                 fontWeight: FontWeight.w700,
               ),
             ),
+            if (meta != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                meta,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: foreground.withValues(alpha: 0.68),
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -652,10 +742,12 @@ class ChatAttachmentDetail extends ConsumerWidget {
     super.key,
     required this.attachment,
     required this.direction,
+    this.messageError,
   });
 
   final MessageAttachmentSnapshot attachment;
   final MessageDirection direction;
+  final String? messageError;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -728,13 +820,40 @@ class ChatAttachmentDetail extends ConsumerWidget {
             label: l10n.progress,
             value: formatLocalizedByteProgress(l10n, transferred, total),
           ),
-          if (live != null)
+          if ((live?.bytesPerSecond ?? 0) > 0)
             _DetailRow(
               label: l10n.speed,
-              value: formatLocalizedByteRate(l10n, live.bytesPerSecond),
+              value: formatLocalizedByteRate(l10n, live!.bytesPerSecond),
             ),
-          if ((live?.errorMessage ?? '').isNotEmpty)
-            _DetailRow(label: l10n.lastError, value: live!.errorMessage!),
+          if (live?.remainingDuration != null)
+            _DetailRow(
+              label: l10n.remainingTime,
+              value: formatLocalizedDuration(l10n, live!.remainingDuration!),
+            ),
+          if (attachment.averageTransferSpeedBytesPerSecond > 0)
+            _DetailRow(
+              label: l10n.averageSpeed,
+              value: formatLocalizedByteRate(
+                l10n,
+                attachment.averageTransferSpeedBytesPerSecond,
+              ),
+            ),
+          if (attachment.transferDuration != null)
+            _DetailRow(
+              label: l10n.elapsedTime,
+              value: formatLocalizedDuration(
+                l10n,
+                attachment.transferDuration!,
+              ),
+            ),
+          if (((live?.errorMessage ?? '').isNotEmpty) ||
+              ((messageError ?? '').trim().isNotEmpty))
+            _DetailRow(
+              label: l10n.lastError,
+              value: (live?.errorMessage?.isNotEmpty ?? false)
+                  ? live!.errorMessage!
+                  : messageError!.trim(),
+            ),
           if (attachment.mimeType != null)
             _DetailRow(label: l10n.mimeType, value: attachment.mimeType!),
           if (attachment.filePath != null)
@@ -1240,6 +1359,98 @@ TransferProgressSnapshot? _watchTransferProgress(
     return null;
   }
   return ref.watch(transferProgressProvider(attachmentId));
+}
+
+enum _AttachmentCardKind { file, image, video }
+
+String? _attachmentTransferMeta(
+  AppLocalizations l10n, {
+  required MessageAttachmentSnapshot attachment,
+  required MessageDirection direction,
+  required TransferProgressSnapshot? live,
+  required _AttachmentCardKind kind,
+  String? messageError,
+}) {
+  final status = _effectiveTransferStatus(attachment, live);
+  final activeLine = _activeTransferMetaLine(
+    l10n,
+    direction: direction,
+    attachment: attachment,
+    live: live,
+    status: status,
+    messageError: messageError,
+  );
+  final isCompleted = status == MessageAttachmentTransferStatus.saved;
+
+  switch (kind) {
+    case _AttachmentCardKind.file:
+      if (isCompleted) {
+        final duration = attachment.transferDuration;
+        if (duration != null &&
+            attachment.totalBytes > 0 &&
+            attachment.averageTransferSpeedBytesPerSecond > 0) {
+          return formatCompletedTransferSummary(
+            l10n,
+            totalBytes: attachment.totalBytes,
+            averageBytesPerSecond:
+                attachment.averageTransferSpeedBytesPerSecond,
+            elapsedDuration: duration,
+          );
+        }
+        if (attachment.totalBytes > 0) {
+          return formatLocalizedBytes(l10n, attachment.totalBytes);
+        }
+      }
+      return activeLine;
+    case _AttachmentCardKind.image:
+    case _AttachmentCardKind.video:
+      return isCompleted ? null : activeLine;
+  }
+}
+
+String? _activeTransferMetaLine(
+  AppLocalizations l10n, {
+  required MessageDirection direction,
+  required MessageAttachmentSnapshot attachment,
+  required TransferProgressSnapshot? live,
+  required MessageAttachmentTransferStatus status,
+  String? messageError,
+}) {
+  if (status == MessageAttachmentTransferStatus.failed) {
+    final errorMessage = live?.errorMessage;
+    if (errorMessage != null && errorMessage.isNotEmpty) {
+      return errorMessage;
+    }
+    final persistedError = messageError?.trim();
+    if (persistedError != null && persistedError.isNotEmpty) {
+      return persistedError;
+    }
+    return localizedAttachmentTransferStatus(
+      l10n,
+      status,
+      direction: direction,
+    );
+  }
+  if (status == MessageAttachmentTransferStatus.pending) {
+    return localizedAttachmentTransferStatus(
+      l10n,
+      status,
+      direction: direction,
+    );
+  }
+  final bytesPerSecond = live?.bytesPerSecond ?? 0;
+  if (bytesPerSecond <= 0) {
+    return localizedAttachmentTransferStatus(
+      l10n,
+      status,
+      direction: direction,
+    );
+  }
+  return formatActiveTransferSummary(
+    l10n,
+    bytesPerSecond: bytesPerSecond,
+    remainingDuration: live?.remainingDuration,
+  );
 }
 
 bool _isSameMinuteBucket(DateTime previous, DateTime current) {

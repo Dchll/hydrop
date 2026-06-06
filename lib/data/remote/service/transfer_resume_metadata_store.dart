@@ -93,13 +93,10 @@ class TransferResumeMetadataStore {
       return 0;
     }
     if (validCheckpoints.length != metadata.checkpoints.length) {
-      await _writeMetadata(
-        attachmentId,
-        TransferResumeMetadata(
-          totalBytes: totalBytes,
-          segmentBytes: _segmentBytes,
-          checkpoints: validCheckpoints,
-        ),
+      await rewrite(
+        attachmentId: attachmentId,
+        totalBytes: totalBytes,
+        checkpoints: validCheckpoints,
       );
     }
     return validBytes;
@@ -110,24 +107,24 @@ class TransferResumeMetadataStore {
     required int totalBytes,
     required TransferResumeCheckpoint checkpoint,
   }) async {
-    final current =
-        await read(attachmentId) ??
-        TransferResumeMetadata(
-          totalBytes: totalBytes,
-          segmentBytes: _segmentBytes,
-          checkpoints: const [],
-        );
-    final retained = current.checkpoints
-        .where((item) => item.endOffset < checkpoint.endOffset)
-        .toList(growable: true);
-    retained.add(checkpoint);
-    await _writeMetadata(
-      attachmentId,
-      TransferResumeMetadata(
-        totalBytes: totalBytes,
-        segmentBytes: _segmentBytes,
-        checkpoints: retained,
-      ),
+    final file = await _metadataFile(attachmentId);
+    if (!await file.exists()) {
+      final sink = file.openWrite(mode: FileMode.writeOnlyAppend);
+      sink.writeln(
+        jsonEncode({
+          'type': 'header',
+          'totalBytes': totalBytes,
+          'segmentBytes': _segmentBytes,
+        }),
+      );
+      sink.writeln(jsonEncode(_checkpointLogRecord(checkpoint)));
+      await sink.close();
+      return;
+    }
+
+    await file.writeAsString(
+      '${jsonEncode(_checkpointLogRecord(checkpoint))}\n',
+      mode: FileMode.append,
     );
   }
 
@@ -137,16 +134,60 @@ class TransferResumeMetadataStore {
       return null;
     }
     try {
-      final json = jsonDecode(await file.readAsString());
-      if (json is! Map<String, Object?>) {
+      final lines = await file.readAsLines();
+      if (lines.isEmpty) {
         return null;
       }
-      return TransferResumeMetadata.fromJson(json);
+      final headerLine = lines.first.trim();
+      if (headerLine.isEmpty) {
+        return null;
+      }
+      final headerJson = jsonDecode(headerLine);
+      if (headerJson is! Map<String, Object?> ||
+          headerJson['type'] != 'header') {
+        return null;
+      }
+
+      final checkpointsByOffset = <int, TransferResumeCheckpoint>{};
+      for (final line in lines.skip(1)) {
+        final trimmed = line.trim();
+        if (trimmed.isEmpty) {
+          continue;
+        }
+        final item = jsonDecode(trimmed);
+        if (item is! Map<String, Object?> || item['type'] != 'checkpoint') {
+          continue;
+        }
+        final checkpoint = TransferResumeCheckpoint.fromJson(item);
+        checkpointsByOffset[checkpoint.endOffset] = checkpoint;
+      }
+      final checkpoints = checkpointsByOffset.values.toList(growable: false)
+        ..sort((left, right) => left.endOffset.compareTo(right.endOffset));
+      return TransferResumeMetadata(
+        totalBytes: headerJson['totalBytes'] as int? ?? 0,
+        segmentBytes: headerJson['segmentBytes'] as int? ?? _segmentBytes,
+        checkpoints: checkpoints,
+      );
     } on FormatException {
       return null;
     } on FileSystemException {
       return null;
     }
+  }
+
+  Future<void> rewrite({
+    required String attachmentId,
+    required int totalBytes,
+    required List<TransferResumeCheckpoint> checkpoints,
+  }) {
+    return _writeMetadata(
+      attachmentId,
+      TransferResumeMetadata(
+        totalBytes: totalBytes,
+        segmentBytes: _segmentBytes,
+        checkpoints: checkpoints,
+      ),
+    );
   }
 
   Future<void> clear(String attachmentId) async {
@@ -175,7 +216,29 @@ class TransferResumeMetadataStore {
     TransferResumeMetadata metadata,
   ) async {
     final file = await _metadataFile(attachmentId);
-    await file.writeAsString(jsonEncode(metadata.toJson()));
+    final sink = file.openWrite();
+    sink.writeln(
+      jsonEncode({
+        'type': 'header',
+        'totalBytes': metadata.totalBytes,
+        'segmentBytes': metadata.segmentBytes,
+      }),
+    );
+    for (final checkpoint in metadata.checkpoints) {
+      sink.writeln(jsonEncode(_checkpointLogRecord(checkpoint)));
+    }
+    await sink.close();
+  }
+
+  Map<String, Object?> _checkpointLogRecord(
+    TransferResumeCheckpoint checkpoint,
+  ) {
+    return {
+      'type': 'checkpoint',
+      'endOffset': checkpoint.endOffset,
+      'length': checkpoint.length,
+      'sha256': checkpoint.sha256,
+    };
   }
 }
 
@@ -186,31 +249,9 @@ class TransferResumeMetadata {
     required this.checkpoints,
   });
 
-  factory TransferResumeMetadata.fromJson(Map<String, Object?> json) {
-    final checkpoints =
-        (json['checkpoints'] as List<Object?>? ?? const <Object?>[])
-            .whereType<Map<String, Object?>>()
-            .map(TransferResumeCheckpoint.fromJson)
-            .toList(growable: false);
-    return TransferResumeMetadata(
-      totalBytes: json['totalBytes'] as int? ?? 0,
-      segmentBytes:
-          json['segmentBytes'] as int? ?? transferResumeCheckpointBytes,
-      checkpoints: checkpoints,
-    );
-  }
-
   final int totalBytes;
   final int segmentBytes;
   final List<TransferResumeCheckpoint> checkpoints;
-
-  Map<String, Object?> toJson() {
-    return {
-      'totalBytes': totalBytes,
-      'segmentBytes': segmentBytes,
-      'checkpoints': checkpoints.map((item) => item.toJson()).toList(),
-    };
-  }
 }
 
 class TransferResumeCheckpoint {
@@ -231,10 +272,6 @@ class TransferResumeCheckpoint {
   final int endOffset;
   final int length;
   final String sha256;
-
-  Map<String, Object?> toJson() {
-    return {'endOffset': endOffset, 'length': length, 'sha256': sha256};
-  }
 }
 
 class TransferSegmentCheckpointBuilder {

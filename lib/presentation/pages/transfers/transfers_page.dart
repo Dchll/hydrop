@@ -543,10 +543,35 @@ class _TransferDetail extends ConsumerWidget {
             label: l10n.progress,
             value: displayItem.byteProgressLabel(l10n),
           ),
-          _DetailRow(
-            label: l10n.speed,
-            value: formatLocalizedByteRate(l10n, displayItem.bytesPerSecond),
-          ),
+          if (displayItem.bytesPerSecond > 0)
+            _DetailRow(
+              label: l10n.speed,
+              value: formatLocalizedByteRate(l10n, displayItem.bytesPerSecond),
+            ),
+          if (displayItem.remainingDuration != null)
+            _DetailRow(
+              label: l10n.remainingTime,
+              value: formatLocalizedDuration(
+                l10n,
+                displayItem.remainingDuration!,
+              ),
+            ),
+          if (displayItem.averageBytesPerSecond > 0)
+            _DetailRow(
+              label: l10n.averageSpeed,
+              value: formatLocalizedByteRate(
+                l10n,
+                displayItem.averageBytesPerSecond,
+              ),
+            ),
+          if (displayItem.elapsedDuration != null)
+            _DetailRow(
+              label: l10n.elapsedTime,
+              value: formatLocalizedDuration(
+                l10n,
+                displayItem.elapsedDuration!,
+              ),
+            ),
           _DetailRow(
             label: l10n.message,
             value: displayItem.messageStatusLabel(l10n),
@@ -709,6 +734,22 @@ class _TransferItem {
 
   int get bytesPerSecond => live?.bytesPerSecond ?? 0;
 
+  int get averageBytesPerSecond {
+    if (live?.phase == TransferProgressPhase.completed) {
+      return live?.averageBytesPerSecond ?? 0;
+    }
+    return attachment.averageTransferSpeedBytesPerSecond;
+  }
+
+  Duration? get elapsedDuration {
+    if (live != null) {
+      return live!.elapsedDuration;
+    }
+    return attachment.transferDuration;
+  }
+
+  Duration? get remainingDuration => live?.remainingDuration;
+
   String? get errorMessage => live?.errorMessage ?? message.errorMessage;
 
   MessageAttachmentTransferStatus get transferStatus {
@@ -782,10 +823,39 @@ class _TransferItem {
   }
 
   String progressSummaryLabel(AppLocalizations l10n) {
+    if (transferStatus == MessageAttachmentTransferStatus.failed) {
+      final message = errorMessage?.trim();
+      if (message != null && message.isNotEmpty) {
+        return message;
+      }
+      return statusLabel(l10n);
+    }
+    if (transferStatus == MessageAttachmentTransferStatus.pending) {
+      return statusLabel(l10n);
+    }
+    if (transferStatus == MessageAttachmentTransferStatus.saved &&
+        elapsedDuration != null &&
+        totalBytes > 0 &&
+        averageBytesPerSecond > 0) {
+      return formatCompletedTransferSummary(
+        l10n,
+        totalBytes: totalBytes,
+        averageBytesPerSecond: averageBytesPerSecond,
+        elapsedDuration: elapsedDuration!,
+      );
+    }
+    if (transferStatus == MessageAttachmentTransferStatus.saved &&
+        totalBytes > 0) {
+      return formatLocalizedBytes(l10n, totalBytes);
+    }
     if (bytesPerSecond > 0) {
       return l10n.transferProgressSpeed(
         byteProgressLabel(l10n),
-        formatLocalizedByteRate(l10n, bytesPerSecond),
+        formatActiveTransferSummary(
+          l10n,
+          bytesPerSecond: bytesPerSecond,
+          remainingDuration: remainingDuration,
+        ),
       );
     }
     return progressUpdatedLabel(l10n);

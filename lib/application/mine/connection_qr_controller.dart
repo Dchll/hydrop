@@ -1,6 +1,4 @@
 import 'dart:async';
-import 'dart:io';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hydrop/application/connection/speed_test_runner.dart';
@@ -10,6 +8,7 @@ import 'package:hydrop/data/local/model/device/device.dart';
 import 'package:hydrop/data/local/repository/device_address_repository.dart';
 import 'package:hydrop/data/local/repository/device_repository.dart';
 import 'package:hydrop/data/local/repository/mine_repository.dart';
+import 'package:hydrop/data/remote/service/local_device_name_service.dart';
 
 final connectionQrControllerProvider = Provider<ConnectionQrController>((ref) {
   return ConnectionQrController(
@@ -17,6 +16,7 @@ final connectionQrControllerProvider = Provider<ConnectionQrController>((ref) {
     deviceRepository: ref.watch(deviceRepositoryProvider),
     deviceAddressRepository: ref.watch(deviceAddressRepositoryProvider),
     speedTestRunner: ref.watch(speedTestRunnerProvider),
+    deviceNameService: ref.watch(localDeviceNameServiceProvider),
   );
 });
 
@@ -42,12 +42,14 @@ class ConnectionQrController {
     required DeviceRepository deviceRepository,
     required DeviceAddressRepository deviceAddressRepository,
     required SpeedTestRunner speedTestRunner,
+    required LocalDeviceNameService deviceNameService,
     ConnectionQrPayloadCodec codec = const ConnectionQrPayloadCodec(),
     DateTime Function()? now,
   }) : _mineRepository = mineRepository,
        _deviceRepository = deviceRepository,
        _deviceAddressRepository = deviceAddressRepository,
        _speedTestRunner = speedTestRunner,
+       _deviceNameService = deviceNameService,
        _codec = codec,
        _now = now ?? DateTime.now;
 
@@ -55,6 +57,7 @@ class ConnectionQrController {
   final DeviceRepository _deviceRepository;
   final DeviceAddressRepository _deviceAddressRepository;
   final SpeedTestRunner _speedTestRunner;
+  final LocalDeviceNameService _deviceNameService;
   final ConnectionQrPayloadCodec _codec;
   final DateTime Function() _now;
 
@@ -64,10 +67,10 @@ class ConnectionQrController {
       throw const FormatException('Unsupported Hydrop connection QR code.');
     }
 
-    final hostName = _defaultHostName();
+    final hostName = await _deviceNameService.resolveDefaultDisplayName();
     final profile = await _mineRepository.ensureMineProfile(
       displayName: hostName,
-      stableSeed: hostName,
+      stableSeed: _deviceNameService.resolveStableSeed(),
     );
     if (payload.deviceId == profile.deviceId) {
       throw StateError('This QR code belongs to the current device.');
@@ -130,13 +133,4 @@ bool isConnectionQrScanSupported() {
     TargetPlatform.linux ||
     TargetPlatform.windows => false,
   };
-}
-
-String _defaultHostName() {
-  final hostName = Platform.localHostname.trim();
-  if (hostName.isNotEmpty) {
-    return hostName;
-  }
-
-  return '${Platform.operatingSystem}-${Platform.numberOfProcessors}';
 }

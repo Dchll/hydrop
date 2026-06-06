@@ -16,7 +16,13 @@ class MessageAttachmentDraft {
     this.thumbnailPath,
     this.transferStatus = MessageAttachmentTransferStatus.pending,
     this.transferTaskId,
+    this.transferStartedAt,
+    this.transferCompletedAt,
+    this.averageTransferSpeedBytesPerSecond = 0,
+    this.transferDurationMs = 0,
   }) : assert(totalBytes >= 0),
+       assert(averageTransferSpeedBytesPerSecond >= 0),
+       assert(transferDurationMs >= 0),
        assert(transferredBytes >= 0);
 
   final String attachmentId;
@@ -29,6 +35,10 @@ class MessageAttachmentDraft {
   final String? thumbnailPath;
   final MessageAttachmentTransferStatus transferStatus;
   final String? transferTaskId;
+  final DateTime? transferStartedAt;
+  final DateTime? transferCompletedAt;
+  final int averageTransferSpeedBytesPerSecond;
+  final int transferDurationMs;
 }
 
 class MessageWithAttachmentRows {
@@ -235,6 +245,12 @@ class MessageDao extends DatabaseAccessor<AppDataBase> with _$MessageDaoMixin {
             thumbnailPath: Value(attachment.thumbnailPath),
             transferStatus: Value(attachment.transferStatus),
             transferTaskId: Value(attachment.transferTaskId),
+            transferStartedAt: Value(attachment.transferStartedAt),
+            transferCompletedAt: Value(attachment.transferCompletedAt),
+            averageTransferSpeedBytesPerSecond: Value(
+              attachment.averageTransferSpeedBytesPerSecond,
+            ),
+            transferDurationMs: Value(attachment.transferDurationMs),
             createdAt: Value(now),
             updatedAt: Value(now),
           ),
@@ -253,6 +269,10 @@ class MessageDao extends DatabaseAccessor<AppDataBase> with _$MessageDaoMixin {
     MessageAttachmentTransferStatus? transferStatus,
     MessageAttachmentSaveStatus? saveStatus,
     int? downloadProgress,
+    DateTime? transferStartedAt,
+    DateTime? transferCompletedAt,
+    int? averageTransferSpeedBytesPerSecond,
+    int? transferDurationMs,
   }) {
     return (update(
       messageAttachmentItems,
@@ -264,6 +284,12 @@ class MessageDao extends DatabaseAccessor<AppDataBase> with _$MessageDaoMixin {
         transferStatus: Value.absentIfNull(transferStatus),
         saveStatus: Value.absentIfNull(saveStatus),
         downloadProgress: Value.absentIfNull(downloadProgress),
+        transferStartedAt: Value.absentIfNull(transferStartedAt),
+        transferCompletedAt: Value.absentIfNull(transferCompletedAt),
+        averageTransferSpeedBytesPerSecond: Value.absentIfNull(
+          averageTransferSpeedBytesPerSecond,
+        ),
+        transferDurationMs: Value.absentIfNull(transferDurationMs),
         updatedAt: Value(DateTime.now()),
       ),
     );

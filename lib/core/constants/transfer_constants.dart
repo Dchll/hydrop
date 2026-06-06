@@ -14,7 +14,6 @@ const transferHeartbeatTimeout = Duration(seconds: 18);
 const transferAutoResumeMaxAttempts = 3;
 const transferAutoResumeRetryDelay = Duration(seconds: 2);
 const transferMaxConcurrentTransfers = 2;
-const transferMaxFileBytes = 16 * 1024 * 1024 * 1024;
 
 /// Frame header is JSON and must stay small enough to parse safely.
 const transferFrameMaxHeaderBytes = 16 * 1024;
@@ -52,8 +51,9 @@ const transferFileCancelledFailureReason = 'file_transfer_cancelled';
 const transferFileChecksumMismatchReason = 'file_checksum_mismatch';
 const transferChunkSendMaxAttempts = 3;
 const transferChunkSendRetryDelay = Duration(milliseconds: 300);
-const transferProgressPersistInterval = Duration(milliseconds: 500);
-const transferProgressPersistMinBytes = 1024 * 1024;
-const transferResumeCheckpointBytes = 8 * 1024 * 1024;
+const transferProgressPersistInterval = Duration(seconds: 2);
+const transferProgressPersistMinBytes = 16 * 1024 * 1024;
+const transferResumeCheckpointBytes = 64 * 1024 * 1024;
+const transferIncomingStorageSafetyMarginBytes = 32 * 1024 * 1024;
 const speedTestProbeRounds = 3;
 const speedTestLargeProbePayloadBytes = transferFrameMaxBodyBytes;

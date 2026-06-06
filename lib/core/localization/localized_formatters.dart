@@ -5,6 +5,10 @@ String formatLocalizedBytes(AppLocalizations l10n, int bytes) {
   if (bytes <= 0) {
     return '0 ${l10n.byteUnitB}';
   }
+  if (bytes >= 1024 * 1024 * 1024 * 1024) {
+    return '${(bytes / 1024 / 1024 / 1024 / 1024).toStringAsFixed(1)} '
+        '${l10n.byteUnitTb}';
+  }
   if (bytes >= 1024 * 1024 * 1024) {
     return '${(bytes / 1024 / 1024 / 1024).toStringAsFixed(1)} '
         '${l10n.byteUnitGb}';
@@ -31,6 +35,56 @@ String formatLocalizedByteProgress(
 
 String formatLocalizedByteRate(AppLocalizations l10n, int bytesPerSecond) {
   return '${formatLocalizedBytes(l10n, bytesPerSecond)}/s';
+}
+
+String formatLocalizedDuration(AppLocalizations l10n, Duration duration) {
+  final totalSeconds = duration.inSeconds;
+  if (totalSeconds <= 0) {
+    return l10n.durationSeconds(0);
+  }
+  if (totalSeconds < 60) {
+    return l10n.durationSeconds(totalSeconds);
+  }
+  final totalMinutes = duration.inMinutes;
+  if (totalMinutes < 60) {
+    return l10n.durationMinutesSeconds(
+      totalMinutes,
+      totalSeconds - totalMinutes * 60,
+    );
+  }
+  final totalHours = duration.inHours;
+  return l10n.durationHoursMinutes(
+    totalHours,
+    duration.inMinutes - totalHours * 60,
+  );
+}
+
+String formatActiveTransferSummary(
+  AppLocalizations l10n, {
+  required int bytesPerSecond,
+  required Duration? remainingDuration,
+}) {
+  final speed = formatLocalizedByteRate(l10n, bytesPerSecond);
+  if (remainingDuration == null) {
+    return speed;
+  }
+  return l10n.transferSpeedAndRemaining(
+    speed,
+    formatLocalizedDuration(l10n, remainingDuration),
+  );
+}
+
+String formatCompletedTransferSummary(
+  AppLocalizations l10n, {
+  required int totalBytes,
+  required int averageBytesPerSecond,
+  required Duration elapsedDuration,
+}) {
+  return l10n.transferCompletedSummary(
+    formatLocalizedBytes(l10n, totalBytes),
+    formatLocalizedByteRate(l10n, averageBytesPerSecond),
+    formatLocalizedDuration(l10n, elapsedDuration),
+  );
 }
 
 String formatLocalizedDateTime(DateTime dateTime) {

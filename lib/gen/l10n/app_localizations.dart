@@ -195,6 +195,48 @@ abstract class AppLocalizations {
   /// **'Local-first data handling'**
   String get settingsPrivacySubtitle;
 
+  /// No description provided for @settingsDangerZone.
+  ///
+  /// In en, this message translates to:
+  /// **'Danger zone'**
+  String get settingsDangerZone;
+
+  /// No description provided for @resetDatabaseTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset Drift database'**
+  String get resetDatabaseTitle;
+
+  /// No description provided for @resetDatabaseSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear all local database content and reinitialize it to recover from database issues after upgrades'**
+  String get resetDatabaseSubtitle;
+
+  /// No description provided for @resetDatabaseConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm database reset'**
+  String get resetDatabaseConfirmTitle;
+
+  /// No description provided for @resetDatabaseConfirmMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This deletes all local devices, messages, transfer records, and settings, then reinitializes the database. This action cannot be undone.'**
+  String get resetDatabaseConfirmMessage;
+
+  /// No description provided for @resetDatabaseAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset database'**
+  String get resetDatabaseAction;
+
+  /// No description provided for @resetDatabaseDone.
+  ///
+  /// In en, this message translates to:
+  /// **'The database has been reset and reinitialized.'**
+  String get resetDatabaseDone;
+
   /// No description provided for @settingsAbout.
   ///
   /// In en, this message translates to:
@@ -1473,6 +1515,12 @@ abstract class AppLocalizations {
   /// **'GB'**
   String get byteUnitGb;
 
+  /// No description provided for @byteUnitTb.
+  ///
+  /// In en, this message translates to:
+  /// **'TB'**
+  String get byteUnitTb;
+
   /// No description provided for @byteProgress.
   ///
   /// In en, this message translates to:
@@ -1508,6 +1556,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Speed'**
   String get speed;
+
+  /// No description provided for @averageSpeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Average speed'**
+  String get averageSpeed;
+
+  /// No description provided for @elapsedTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Elapsed time'**
+  String get elapsedTime;
+
+  /// No description provided for @remainingTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Time remaining'**
+  String get remainingTime;
+
+  /// No description provided for @durationSeconds.
+  ///
+  /// In en, this message translates to:
+  /// **'{seconds}s'**
+  String durationSeconds(int seconds);
+
+  /// No description provided for @durationMinutesSeconds.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes}m {seconds}s'**
+  String durationMinutesSeconds(int minutes, int seconds);
+
+  /// No description provided for @durationHoursMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours}h {minutes}m'**
+  String durationHoursMinutes(int hours, int minutes);
+
+  /// No description provided for @transferSpeedAndRemaining.
+  ///
+  /// In en, this message translates to:
+  /// **'{speed} · {remaining} left'**
+  String transferSpeedAndRemaining(String speed, String remaining);
+
+  /// No description provided for @transferCompletedSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{size} · avg {speed} · {duration}'**
+  String transferCompletedSummary(String size, String speed, String duration);
 
   /// No description provided for @lastError.
   ///

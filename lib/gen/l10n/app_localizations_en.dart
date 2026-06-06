@@ -59,6 +59,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsPrivacySubtitle => 'Local-first data handling';
 
   @override
+  String get settingsDangerZone => 'Danger zone';
+
+  @override
+  String get resetDatabaseTitle => 'Reset Drift database';
+
+  @override
+  String get resetDatabaseSubtitle =>
+      'Clear all local database content and reinitialize it to recover from database issues after upgrades';
+
+  @override
+  String get resetDatabaseConfirmTitle => 'Confirm database reset';
+
+  @override
+  String get resetDatabaseConfirmMessage =>
+      'This deletes all local devices, messages, transfer records, and settings, then reinitializes the database. This action cannot be undone.';
+
+  @override
+  String get resetDatabaseAction => 'Reset database';
+
+  @override
+  String get resetDatabaseDone =>
+      'The database has been reset and reinitialized.';
+
+  @override
   String get settingsAbout => 'About';
 
   @override
@@ -767,6 +791,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get byteUnitGb => 'GB';
 
   @override
+  String get byteUnitTb => 'TB';
+
+  @override
   String byteProgress(String transferred, String total) {
     return '$transferred / $total';
   }
@@ -793,6 +820,40 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get speed => 'Speed';
+
+  @override
+  String get averageSpeed => 'Average speed';
+
+  @override
+  String get elapsedTime => 'Elapsed time';
+
+  @override
+  String get remainingTime => 'Time remaining';
+
+  @override
+  String durationSeconds(int seconds) {
+    return '${seconds}s';
+  }
+
+  @override
+  String durationMinutesSeconds(int minutes, int seconds) {
+    return '${minutes}m ${seconds}s';
+  }
+
+  @override
+  String durationHoursMinutes(int hours, int minutes) {
+    return '${hours}h ${minutes}m';
+  }
+
+  @override
+  String transferSpeedAndRemaining(String speed, String remaining) {
+    return '$speed · $remaining left';
+  }
+
+  @override
+  String transferCompletedSummary(String size, String speed, String duration) {
+    return '$size · avg $speed · $duration';
+  }
 
   @override
   String get lastError => 'Last error';

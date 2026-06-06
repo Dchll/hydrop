@@ -2,6 +2,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hydrop/application/home/home_page_state.dart';
+import 'package:hydrop/application/settings/database_reset_controller.dart';
 import 'package:hydrop/core/feedback/transient_feedback.dart';
 import 'package:hydrop/gen/l10n/app_localizations.dart';
 import 'package:hydrop/presentation/pages/chat/chat_page.dart';
@@ -120,6 +121,14 @@ class _HomeContent extends ConsumerWidget {
         child: _CenteredState(
           title: l10n.homeUnableToLoadDevices,
           message: devices.error.toString(),
+          action: FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
+            onPressed: () => _resetDatabase(context, ref),
+            child: Text(l10n.resetDatabaseAction),
+          ),
         ),
       );
     }
@@ -222,6 +231,50 @@ class _HomeContent extends ConsumerWidget {
       return;
     }
     onSelectedChanged(device.deviceId);
+  }
+
+  Future<void> _resetDatabase(BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(l10n.resetDatabaseConfirmTitle),
+          content: Text(l10n.resetDatabaseConfirmMessage),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(l10n.cancel),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+                foregroundColor: Theme.of(context).colorScheme.onError,
+              ),
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(l10n.resetDatabaseAction),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirmed != true) {
+      return;
+    }
+
+    try {
+      await ref.read(databaseResetControllerProvider).resetDatabase();
+      ref.invalidate(homeDeviceListProvider);
+      ref.invalidate(homeLastMessageByDeviceProvider);
+      ref.invalidate(homeUnreadCountByDeviceProvider);
+      if (context.mounted) {
+        await TransientFeedback.show(context, l10n.resetDatabaseDone);
+      }
+    } catch (error) {
+      if (context.mounted) {
+        await TransientFeedback.show(context, l10n.actionFailed('$error'));
+      }
+    }
   }
 }
 

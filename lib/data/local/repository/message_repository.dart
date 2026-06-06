@@ -21,7 +21,13 @@ class MessageAttachmentInput {
     this.thumbnailPath,
     this.transferStatus = MessageAttachmentTransferStatus.pending,
     this.transferTaskId,
+    this.transferStartedAt,
+    this.transferCompletedAt,
+    this.averageTransferSpeedBytesPerSecond = 0,
+    this.transferDurationMs = 0,
   }) : assert(totalBytes >= 0),
+       assert(averageTransferSpeedBytesPerSecond >= 0),
+       assert(transferDurationMs >= 0),
        assert(transferredBytes >= 0);
 
   final String? attachmentId;
@@ -34,6 +40,10 @@ class MessageAttachmentInput {
   final String? thumbnailPath;
   final MessageAttachmentTransferStatus transferStatus;
   final String? transferTaskId;
+  final DateTime? transferStartedAt;
+  final DateTime? transferCompletedAt;
+  final int averageTransferSpeedBytesPerSecond;
+  final int transferDurationMs;
 
   MessageAttachmentDraft toDraft() {
     final resolvedAttachmentId =
@@ -49,6 +59,10 @@ class MessageAttachmentInput {
       thumbnailPath: thumbnailPath,
       transferStatus: transferStatus,
       transferTaskId: transferTaskId,
+      transferStartedAt: transferStartedAt,
+      transferCompletedAt: transferCompletedAt,
+      averageTransferSpeedBytesPerSecond: averageTransferSpeedBytesPerSecond,
+      transferDurationMs: transferDurationMs,
     );
   }
 }
@@ -68,6 +82,10 @@ class MessageAttachmentSnapshot {
     required this.thumbnailPath,
     required this.transferStatus,
     required this.transferTaskId,
+    required this.transferStartedAt,
+    required this.transferCompletedAt,
+    required this.averageTransferSpeedBytesPerSecond,
+    required this.transferDurationMs,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -87,6 +105,11 @@ class MessageAttachmentSnapshot {
       thumbnailPath: row.thumbnailPath,
       transferStatus: row.transferStatus,
       transferTaskId: row.transferTaskId,
+      transferStartedAt: row.transferStartedAt,
+      transferCompletedAt: row.transferCompletedAt,
+      averageTransferSpeedBytesPerSecond:
+          row.averageTransferSpeedBytesPerSecond,
+      transferDurationMs: row.transferDurationMs,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     );
@@ -105,8 +128,19 @@ class MessageAttachmentSnapshot {
   final String? thumbnailPath;
   final MessageAttachmentTransferStatus transferStatus;
   final String? transferTaskId;
+  final DateTime? transferStartedAt;
+  final DateTime? transferCompletedAt;
+  final int averageTransferSpeedBytesPerSecond;
+  final int transferDurationMs;
   final DateTime createdAt;
   final DateTime updatedAt;
+
+  Duration? get transferDuration {
+    if (transferDurationMs <= 0) {
+      return null;
+    }
+    return Duration(milliseconds: transferDurationMs);
+  }
 }
 
 class ConversationMessage {
@@ -409,6 +443,7 @@ class MessageRepository {
         MessageAttachmentTransferStatus.transferring,
     required String transferTaskId,
     String? remoteMessageId,
+    DateTime? transferStartedAt,
   }) {
     return _messageDao.insertMessageWithAttachments(
       remoteDeviceId: remoteDeviceId,
@@ -428,6 +463,7 @@ class MessageRepository {
           thumbnailPath: thumbnailPath,
           transferStatus: transferStatus,
           transferTaskId: transferTaskId,
+          transferStartedAt: transferStartedAt,
         ),
       ],
     );
@@ -441,6 +477,10 @@ class MessageRepository {
     MessageAttachmentTransferStatus? transferStatus,
     MessageAttachmentSaveStatus? saveStatus,
     int? downloadProgress,
+    DateTime? transferStartedAt,
+    DateTime? transferCompletedAt,
+    int? averageTransferSpeedBytesPerSecond,
+    int? transferDurationMs,
   }) {
     return _messageDao.updateAttachmentTransfer(
       attachmentId: attachmentId,
@@ -450,6 +490,10 @@ class MessageRepository {
       transferStatus: transferStatus,
       saveStatus: saveStatus,
       downloadProgress: downloadProgress,
+      transferStartedAt: transferStartedAt,
+      transferCompletedAt: transferCompletedAt,
+      averageTransferSpeedBytesPerSecond: averageTransferSpeedBytesPerSecond,
+      transferDurationMs: transferDurationMs,
     );
   }
 

@@ -27,7 +27,9 @@ class TransferProgressSnapshot {
     required this.transferredBytes,
     required this.totalBytes,
     required this.bytesPerSecond,
+    required this.startedAt,
     required this.updatedAt,
+    this.completedAt,
     this.errorMessage,
   });
 
@@ -37,7 +39,9 @@ class TransferProgressSnapshot {
   final int transferredBytes;
   final int totalBytes;
   final int bytesPerSecond;
+  final DateTime startedAt;
   final DateTime updatedAt;
+  final DateTime? completedAt;
   final String? errorMessage;
 
   double get progress {
@@ -48,6 +52,35 @@ class TransferProgressSnapshot {
   }
 
   bool get isActive => phase == TransferProgressPhase.transferring;
+
+  Duration get elapsedDuration {
+    final end = completedAt ?? updatedAt;
+    final value = end.difference(startedAt);
+    return value.isNegative ? Duration.zero : value;
+  }
+
+  int get averageBytesPerSecond {
+    final elapsedMs = elapsedDuration.inMilliseconds;
+    if (elapsedMs <= 0 || transferredBytes <= 0) {
+      return 0;
+    }
+    return (transferredBytes * 1000) ~/ elapsedMs;
+  }
+
+  Duration? get remainingDuration {
+    if (phase == TransferProgressPhase.completed) {
+      return Duration.zero;
+    }
+    if (bytesPerSecond <= 0 || totalBytes <= 0) {
+      return null;
+    }
+    final remainingBytes = totalBytes - transferredBytes;
+    if (remainingBytes <= 0) {
+      return Duration.zero;
+    }
+    final remainingSeconds = (remainingBytes / bytesPerSecond).ceil();
+    return Duration(seconds: remainingSeconds);
+  }
 }
 
 class TransferProgressStore
@@ -71,6 +104,7 @@ class TransferProgressStore
     required TransferProgressDirection direction,
     required int transferredBytes,
     required int totalBytes,
+    DateTime? startedAt,
   }) {
     _emit(
       attachmentId: attachmentId,
@@ -78,6 +112,7 @@ class TransferProgressStore
       phase: TransferProgressPhase.transferring,
       transferredBytes: transferredBytes,
       totalBytes: totalBytes,
+      startedAt: startedAt,
     );
   }
 
@@ -86,6 +121,7 @@ class TransferProgressStore
     required TransferProgressDirection direction,
     required int transferredBytes,
     required int totalBytes,
+    DateTime? startedAt,
     String? message,
   }) {
     _emit(
@@ -94,6 +130,7 @@ class TransferProgressStore
       phase: TransferProgressPhase.pending,
       transferredBytes: transferredBytes,
       totalBytes: totalBytes,
+      startedAt: startedAt,
       bytesPerSecond: 0,
       errorMessage: message,
     );
@@ -104,6 +141,7 @@ class TransferProgressStore
     required TransferProgressDirection direction,
     required int transferredBytes,
     required int totalBytes,
+    DateTime? startedAt,
   }) {
     _emit(
       attachmentId: attachmentId,
@@ -111,6 +149,7 @@ class TransferProgressStore
       phase: TransferProgressPhase.paused,
       transferredBytes: transferredBytes,
       totalBytes: totalBytes,
+      startedAt: startedAt,
       bytesPerSecond: 0,
     );
   }
@@ -119,6 +158,7 @@ class TransferProgressStore
     required String attachmentId,
     required TransferProgressDirection direction,
     required int totalBytes,
+    DateTime? startedAt,
   }) {
     _emit(
       attachmentId: attachmentId,
@@ -126,6 +166,7 @@ class TransferProgressStore
       phase: TransferProgressPhase.completed,
       transferredBytes: totalBytes,
       totalBytes: totalBytes,
+      startedAt: startedAt,
       bytesPerSecond: 0,
     );
   }
@@ -135,6 +176,7 @@ class TransferProgressStore
     required TransferProgressDirection direction,
     required int transferredBytes,
     required int totalBytes,
+    DateTime? startedAt,
     Object? error,
   }) {
     _emit(
@@ -143,6 +185,7 @@ class TransferProgressStore
       phase: TransferProgressPhase.failed,
       transferredBytes: transferredBytes,
       totalBytes: totalBytes,
+      startedAt: startedAt,
       bytesPerSecond: 0,
       errorMessage: error?.toString(),
     );
@@ -154,6 +197,7 @@ class TransferProgressStore
     required TransferProgressPhase phase,
     required int transferredBytes,
     required int totalBytes,
+    DateTime? startedAt,
     int? bytesPerSecond,
     String? errorMessage,
   }) {
@@ -167,6 +211,7 @@ class TransferProgressStore
     final computedSpeed =
         bytesPerSecond ??
         _computeBytesPerSecond(previous, normalizedTransferred, now);
+    final resolvedStartedAt = startedAt ?? previous?.startedAt ?? now;
     final snapshot = TransferProgressSnapshot(
       attachmentId: attachmentId,
       direction: direction,
@@ -174,7 +219,9 @@ class TransferProgressStore
       transferredBytes: normalizedTransferred,
       totalBytes: totalBytes < 0 ? 0 : totalBytes,
       bytesPerSecond: computedSpeed,
+      startedAt: resolvedStartedAt,
       updatedAt: now,
+      completedAt: phase == TransferProgressPhase.completed ? now : null,
       errorMessage: errorMessage,
     );
     state = {...state, attachmentId: snapshot};
