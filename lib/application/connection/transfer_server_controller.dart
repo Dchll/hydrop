@@ -473,7 +473,11 @@ class TransferServerController {
     unawaited(
       (pendingFrames ?? Future<void>.value()).whenComplete(
         () =>
-            _fileTransferCoordinator?.handleConnectionClosed(connection) ??
+            _fileTransferCoordinator?.handleConnectionClosed(
+              connection,
+              reason: reason,
+              notifyPeer: _shouldNotifyPeerOnConnectionClose(reason),
+            ) ??
             Future<void>.value(),
       ),
     );
@@ -493,6 +497,19 @@ class TransferServerController {
     unawaited(connection.close());
   }
 
+  bool _shouldNotifyPeerOnConnectionClose(String reason) {
+    switch (reason) {
+      case 'heartbeat_timeout':
+      case 'incoming_stream_error':
+      case 'socket_error':
+        return true;
+      case 'incoming_stream_done':
+      case 'socket_done':
+      default:
+        return false;
+    }
+  }
+
   void _startHeartbeatTimeout(TransferConnection connection) {
     _heartbeats.remove(connection)?.cancel();
     _heartbeats[connection] = Timer(transferHeartbeatTimeout, () {
@@ -501,6 +518,12 @@ class TransferServerController {
           false;
       talker.warning(
         '[$_transferDiagTag] heartbeat timeout closing '
+        'remote=${connection.remoteAddress}:${connection.remotePort} '
+        'timeout=${transferHeartbeatTimeout.inSeconds}s '
+        'activeTransfer=$hasActiveTransfer',
+      );
+      talker.warning(
+        '[DCHLL_TRANSFER_ALERT] heartbeat timeout closing '
         'remote=${connection.remoteAddress}:${connection.remotePort} '
         'timeout=${transferHeartbeatTimeout.inSeconds}s '
         'activeTransfer=$hasActiveTransfer',

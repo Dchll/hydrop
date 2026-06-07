@@ -418,6 +418,15 @@ class FileTransferCoordinator {
           'lastSentOffset=${queued.prepared.lastSentOffset} '
           'totalBytes=${queued.prepared.totalBytes} error=$error',
         );
+        talker.warning(
+          '[DCHLL_TRANSFER_ALERT] outgoing attempt failed '
+          'attachmentId=${queued.prepared.attachmentId} '
+          'remoteDeviceId=${queued.prepared.remoteDeviceId} '
+          'attempt=$attempt/$maxAttempts target=$host:$port '
+          'ackedBytes=${queued.prepared.acknowledgedBytes} '
+          'lastSentOffset=${queued.prepared.lastSentOffset} '
+          'totalBytes=${queued.prepared.totalBytes} error=$error',
+        );
         await _markPeerConnectionFailed(
           deviceId: queued.prepared.remoteDeviceId,
           addressId: addressId,
@@ -683,10 +692,15 @@ class FileTransferCoordinator {
     }
   }
 
-  Future<void> handleConnectionClosed(TransferConnection connection) async {
+  Future<void> handleConnectionClosed(
+    TransferConnection connection, {
+    String reason = 'connection_closed',
+    bool notifyPeer = false,
+  }) async {
     talker.warning(
       '[$_transferDiagTag] active incoming connection closed '
-      'remote=${connection.remoteAddress}:${connection.remotePort}',
+      'remote=${connection.remoteAddress}:${connection.remotePort} '
+      'reason=$reason notifyPeer=$notifyPeer',
     );
     final affected = _incomingTransfers.entries
         .where((entry) => identical(entry.value.connection, connection))
@@ -697,18 +711,23 @@ class FileTransferCoordinator {
       if (transfer == null) {
         continue;
       }
+      final failureMessage = _incomingConnectionClosedFailureMessage(reason);
+      talker.warning(
+        '[$_transferDiagTag] closing active incoming transfer '
+        'attachmentId=$attachmentId reason=$reason notifyPeer=$notifyPeer '
+        'transferredBytes=${transfer.transferredBytes} '
+        'totalBytes=${transfer.totalBytes}',
+      );
       transfer.chunkIdleTimer?.cancel();
       await transfer.randomAccessFile.close();
       await _drainIncomingPostChunkTasks(attachmentId);
       await transfer.postProcessor.dispose();
-      await _sendError(
-        transfer.connection,
-        null,
-        'Connection closed before file completed.',
-      );
+      if (notifyPeer) {
+        await _sendError(transfer.connection, null, failureMessage);
+      }
       await _markIncomingFileFailed(
         transfer,
-        const FileTransferException('Connection closed before file completed.'),
+        FileTransferException(failureMessage),
       );
     }
   }
@@ -2041,6 +2060,21 @@ class FileTransferCoordinator {
     return ((transferredBytes / totalBytes) * 100).round().clamp(0, 100);
   }
 
+  String _incomingConnectionClosedFailureMessage(String reason) {
+    switch (reason) {
+      case 'heartbeat_timeout':
+        return 'Connection lost: heartbeat timed out before file completed.';
+      case 'incoming_stream_error':
+      case 'socket_error':
+        return 'Connection lost: socket error before file completed.';
+      case 'incoming_stream_done':
+      case 'socket_done':
+        return 'Connection closed before file completed.';
+      default:
+        return 'Connection closed before file completed. reason=$reason';
+    }
+  }
+
   Future<void> _markFilePaused(
     String attachmentId, {
     TransferProgressDirection? fallbackDirection,
@@ -2089,6 +2123,13 @@ class FileTransferCoordinator {
     talker.warning(
       '[$_transferDiagTag] incoming transfer failed '
       'attachmentId=${transfer.attachmentId} '
+      'transferredBytes=${transfer.transferredBytes} '
+      'totalBytes=${transfer.totalBytes} error=$error',
+    );
+    talker.warning(
+      '[DCHLL_TRANSFER_ALERT] incoming transfer failed '
+      'attachmentId=${transfer.attachmentId} '
+      'remoteDeviceId=${transfer.remoteDeviceId} '
       'transferredBytes=${transfer.transferredBytes} '
       'totalBytes=${transfer.totalBytes} error=$error',
     );
@@ -2493,6 +2534,13 @@ class FileTransferCoordinator {
       talker.warning(
         '[$_transferDiagTag] incoming chunk idle timeout '
         'attachmentId=$attachmentId transferredBytes=${current.transferredBytes} '
+        'totalBytes=${current.totalBytes} '
+        'timeoutMs=${transferIncomingChunkIdleTimeout.inMilliseconds}',
+      );
+      talker.warning(
+        '[DCHLL_TRANSFER_ALERT] incoming chunk idle timeout '
+        'attachmentId=$attachmentId remoteDeviceId=${current.remoteDeviceId} '
+        'transferredBytes=${current.transferredBytes} '
         'totalBytes=${current.totalBytes} '
         'timeoutMs=${transferIncomingChunkIdleTimeout.inMilliseconds}',
       );
@@ -2995,6 +3043,11 @@ class _OutgoingChunkAckTracker {
     talker.warning(
       '[$_transferDiagTag] outgoing ack tracker failed '
       'attachmentId=$attachmentId error=$error',
+    );
+    talker.warning(
+      '[DCHLL_TRANSFER_ALERT] outgoing ack tracker failed '
+      'attachmentId=$attachmentId ackedBytes=$_acknowledgedBytes '
+      'sentBytes=$_lastSentBytes error=$error',
     );
     for (final waiter in _waiters) {
       if (!waiter.completer.isCompleted) {
