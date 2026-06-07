@@ -318,11 +318,16 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         onEmpty();
         return;
       }
+      var hasQueuedTransfer = false;
       for (final result in results) {
         if (result.errorMessage != null) {
           _showSnackBar(l10n.fileSavedLocally(result.errorMessage ?? ''));
           return;
         }
+        hasQueuedTransfer = true;
+      }
+      if (hasQueuedTransfer) {
+        _showSnackBar(l10n.fileSendingStarted);
       }
     } catch (error) {
       _showSnackBar(l10n.unableToSendMessage('$error'));
