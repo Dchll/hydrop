@@ -1569,9 +1569,22 @@ Widget? _attachmentInlineActions(
     return null;
   }
   final l10n = AppLocalizations.of(context);
+  final theme = Theme.of(context);
+  final colorScheme = theme.colorScheme;
   final status = _effectiveTransferStatus(attachment, live);
   final isPaused = _isPausedTransfer(live);
   final isSent = direction == MessageDirection.sent;
+  final foreground = ChatMessageBubble._bubbleForeground(colorScheme, isSent);
+  final buttonBorderColor = foreground.withValues(alpha: 0.38);
+  final buttonBackgroundColor = foreground.withValues(alpha: 0.08);
+  final actionButtonStyle = OutlinedButton.styleFrom(
+    foregroundColor: foreground,
+    side: BorderSide(color: buttonBorderColor, width: 1.5),
+    backgroundColor: buttonBackgroundColor,
+    textStyle: theme.textTheme.labelMedium?.copyWith(
+      fontWeight: FontWeight.w700,
+    ),
+  );
   final canPause =
       !isPaused &&
       (status == MessageAttachmentTransferStatus.pending ||
@@ -1591,18 +1604,21 @@ Widget? _attachmentInlineActions(
     children: [
       if (canPause)
         OutlinedButton.icon(
+          style: actionButtonStyle,
           onPressed: onPause,
           icon: const Icon(Icons.pause_rounded, size: 16),
           label: Text(l10n.pause),
         ),
       if (canResume)
         OutlinedButton.icon(
+          style: actionButtonStyle,
           onPressed: onResume,
           icon: const Icon(Icons.play_arrow_rounded, size: 16),
           label: Text(l10n.resumeTransfer),
         ),
       if (canCancel)
         OutlinedButton.icon(
+          style: actionButtonStyle,
           onPressed: onCancel,
           icon: const Icon(Icons.close_rounded, size: 16),
           label: Text(l10n.cancelTransfer),

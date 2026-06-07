@@ -491,6 +491,14 @@ class _TransferDetail extends ConsumerWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final l10n = AppLocalizations.of(context);
+    final actionButtonStyle = OutlinedButton.styleFrom(
+      foregroundColor: colorScheme.onSurface,
+      side: BorderSide(color: colorScheme.outline, width: 1.5),
+      backgroundColor: colorScheme.surface,
+      textStyle: theme.textTheme.labelMedium?.copyWith(
+        fontWeight: FontWeight.w700,
+      ),
+    );
 
     return SafeArea(
       top: false,
@@ -536,6 +544,7 @@ class _TransferDetail extends ConsumerWidget {
               const SizedBox(width: 6),
               if (displayItem.canPause) ...[
                 OutlinedButton.icon(
+                  style: actionButtonStyle,
                   onPressed: () => _pauseTransfer(context, ref),
                   icon: const Icon(Icons.pause_rounded),
                   label: Text(l10n.pause),
@@ -544,6 +553,7 @@ class _TransferDetail extends ConsumerWidget {
               ],
               if (displayItem.canResume) ...[
                 OutlinedButton.icon(
+                  style: actionButtonStyle,
                   onPressed: () => _resumeTransfer(context, ref),
                   icon: const Icon(Icons.play_arrow_rounded),
                   label: Text(l10n.resumeTransfer),
@@ -552,6 +562,7 @@ class _TransferDetail extends ConsumerWidget {
               ],
               if (displayItem.canCancel) ...[
                 OutlinedButton.icon(
+                  style: actionButtonStyle,
                   onPressed: () => _cancelTransfer(context, ref),
                   icon: const Icon(Icons.close_rounded),
                   label: Text(l10n.cancelTransfer),
@@ -559,6 +570,7 @@ class _TransferDetail extends ConsumerWidget {
                 const SizedBox(width: 6),
               ],
               OutlinedButton.icon(
+                style: actionButtonStyle,
                 onPressed: displayItem.attachment.filePath == null
                     ? null
                     : () => _saveAttachment(context, ref),
