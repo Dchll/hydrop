@@ -152,9 +152,11 @@ class MessageDao extends DatabaseAccessor<AppDataBase> with _$MessageDaoMixin {
                 messageItems.sendStatus
                     .equalsValue(MessageSendStatus.sent)
                     .not() &
-                messageAttachmentItems.transferStatus.equalsValue(
+                messageAttachmentItems.transferStatus.isInValues([
                   MessageAttachmentTransferStatus.transferring,
-                ) &
+                  MessageAttachmentTransferStatus.failed,
+                  MessageAttachmentTransferStatus.paused,
+                ]) &
                 messageAttachmentItems.attachmentId.isNotNull() &
                 messageAttachmentItems.filePath.isNotNull(),
           )
