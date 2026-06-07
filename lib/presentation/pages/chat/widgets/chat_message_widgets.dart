@@ -1577,9 +1577,10 @@ Widget? _attachmentInlineActions(
       status == MessageAttachmentTransferStatus.transferring;
   final canResume = _canResumeTransfer(attachment, live);
   final canCancel =
-      isSent && status == MessageAttachmentTransferStatus.pending ||
       isSent &&
-          (status == MessageAttachmentTransferStatus.transferring || isPaused);
+      (status == MessageAttachmentTransferStatus.pending ||
+          status == MessageAttachmentTransferStatus.transferring ||
+          isPaused);
   if (!canPause && !canResume && !canCancel) {
     return null;
   }

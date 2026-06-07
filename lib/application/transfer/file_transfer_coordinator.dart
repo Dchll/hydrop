@@ -253,11 +253,15 @@ class FileTransferCoordinator {
         localDisplayName: localDisplayName,
       );
     } catch (error) {
-      if (_isTransferPaused(prepared.attachmentId)) {
+      if (_isTransferPaused(prepared.attachmentId) ||
+          error is RemoteTransferPausedException) {
         await _markFilePaused(
           prepared.attachmentId,
           fallbackDirection: TransferProgressDirection.outgoing,
         );
+        if (error is RemoteTransferPausedException) {
+          rethrow;
+        }
         throw const FileTransferPausedException();
       }
       await _markOutgoingFileFailed(prepared, error);
@@ -349,11 +353,15 @@ class FileTransferCoordinator {
         return connection;
       } catch (error) {
         lastError = error;
-        if (_isTransferPaused(queued.prepared.attachmentId)) {
+        if (_isTransferPaused(queued.prepared.attachmentId) ||
+            error is RemoteTransferPausedException) {
           await _markFilePaused(
             queued.prepared.attachmentId,
             fallbackDirection: TransferProgressDirection.outgoing,
           );
+          if (error is RemoteTransferPausedException) {
+            rethrow;
+          }
           throw const FileTransferPausedException();
         }
         _reportOutgoingAttemptFailed(queued.prepared, error);
