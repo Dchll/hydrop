@@ -859,8 +859,7 @@ class _TransferItem {
 
   bool get isActive {
     return transferStatus == MessageAttachmentTransferStatus.pending ||
-        transferStatus == MessageAttachmentTransferStatus.transferring ||
-        transferStatus == MessageAttachmentTransferStatus.paused;
+        transferStatus == MessageAttachmentTransferStatus.transferring;
   }
 
   bool get canPause =>
