@@ -851,15 +851,17 @@ class _TransferItem {
   }
 
   bool get canPause =>
-      message.direction == MessageDirection.sent &&
-      transferStatus == MessageAttachmentTransferStatus.transferring &&
-      attachment.attachmentId != null;
-
-  bool get canResume =>
-      message.direction == MessageDirection.sent &&
-      isPaused &&
+      (transferStatus == MessageAttachmentTransferStatus.pending ||
+          transferStatus == MessageAttachmentTransferStatus.transferring) &&
       attachment.attachmentId != null &&
       attachment.attachmentId!.isNotEmpty;
+
+  bool get canResume =>
+      (isPaused || transferStatus == MessageAttachmentTransferStatus.failed) &&
+      attachment.attachmentId != null &&
+      attachment.attachmentId!.isNotEmpty &&
+      attachment.filePath != null &&
+      attachment.filePath!.isNotEmpty;
 
   bool get canCancel =>
       message.direction == MessageDirection.sent &&

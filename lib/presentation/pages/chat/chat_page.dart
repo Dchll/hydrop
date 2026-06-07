@@ -501,8 +501,13 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   }
 
   bool _canPauseAttachment(MessageAttachmentSnapshot attachment) {
-    return _attachmentTransferStatus(attachment) ==
-        MessageAttachmentTransferStatus.transferring;
+    final attachmentId = attachment.attachmentId;
+    if (attachmentId == null || attachmentId.isEmpty) {
+      return false;
+    }
+    final transferStatus = _attachmentTransferStatus(attachment);
+    return transferStatus == MessageAttachmentTransferStatus.pending ||
+        transferStatus == MessageAttachmentTransferStatus.transferring;
   }
 
   bool _canCancelAttachment(MessageAttachmentSnapshot attachment) {
@@ -519,8 +524,14 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     if (attachmentId == null || attachmentId.isEmpty) {
       return false;
     }
+    final filePath = attachment.filePath;
+    if (filePath == null || filePath.isEmpty) {
+      return false;
+    }
     final live = ref.read(transferProgressProvider(attachmentId));
-    return live?.phase == TransferProgressPhase.paused;
+    return live?.phase == TransferProgressPhase.paused ||
+        _attachmentTransferStatus(attachment) ==
+            MessageAttachmentTransferStatus.failed;
   }
 
   Future<void> _copyMessage(ConversationMessage message) async {

@@ -41,6 +41,9 @@ const transferFrameTypeFileChunk = 'fileChunk';
 const transferFrameTypeFileChunkAck = 'fileChunkAck';
 const transferFrameTypeFileComplete = 'fileComplete';
 const transferFrameTypeFileCompleteAck = 'fileCompleteAck';
+const transferFrameTypeFilePause = 'filePause';
+const transferFrameTypeFileResumeRequest = 'fileResumeRequest';
+const transferFrameTypeFileResumeAck = 'fileResumeAck';
 const transferFrameTypeError = 'error';
 
 const transferFileChunkBytes = transferFrameMaxBodyBytes;

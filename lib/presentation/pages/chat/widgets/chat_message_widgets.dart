@@ -1564,9 +1564,6 @@ Widget? _attachmentInlineActions(
   required VoidCallback onResume,
   required VoidCallback onCancel,
 }) {
-  if (direction != MessageDirection.sent) {
-    return null;
-  }
   final attachmentId = attachment.attachmentId;
   if (attachmentId == null || attachmentId.isEmpty) {
     return null;
@@ -1574,12 +1571,15 @@ Widget? _attachmentInlineActions(
   final l10n = AppLocalizations.of(context);
   final status = _effectiveTransferStatus(attachment, live);
   final isPaused = _isPausedTransfer(live);
-  final canPause = status == MessageAttachmentTransferStatus.transferring;
-  final canResume = isPaused;
-  final canCancel =
+  final isSent = direction == MessageDirection.sent;
+  final canPause =
       status == MessageAttachmentTransferStatus.pending ||
-      status == MessageAttachmentTransferStatus.transferring ||
-      isPaused;
+      status == MessageAttachmentTransferStatus.transferring;
+  final canResume = _canResumeTransfer(attachment, live);
+  final canCancel =
+      isSent && status == MessageAttachmentTransferStatus.pending ||
+      isSent &&
+          (status == MessageAttachmentTransferStatus.transferring || isPaused);
   if (!canPause && !canResume && !canCancel) {
     return null;
   }
@@ -1671,6 +1671,25 @@ MessageAttachmentTransferStatus _effectiveTransferStatus(
 
 bool _isPausedTransfer(TransferProgressSnapshot? live) {
   return live?.phase == TransferProgressPhase.paused;
+}
+
+bool _canResumeTransfer(
+  MessageAttachmentSnapshot attachment,
+  TransferProgressSnapshot? live,
+) {
+  final attachmentId = attachment.attachmentId;
+  final filePath = attachment.filePath;
+  if (attachmentId == null ||
+      attachmentId.isEmpty ||
+      filePath == null ||
+      filePath.isEmpty) {
+    return false;
+  }
+  if (_isPausedTransfer(live)) {
+    return true;
+  }
+  return _effectiveTransferStatus(attachment, live) ==
+      MessageAttachmentTransferStatus.failed;
 }
 
 int _completedTotalBytes(

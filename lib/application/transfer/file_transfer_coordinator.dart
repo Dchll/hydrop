@@ -89,6 +89,7 @@ class FileTransferCoordinator {
   final _outgoingQueueWorkers = <String, Future<void>>{};
   final _queueLimiter = _TransferQueueLimiter(transferMaxConcurrentTransfers);
   final _pausedAttachmentIds = <String>{};
+  final _remotePausedAttachmentIds = <String>{};
   final _lastProgressPersistedAt = <String, DateTime>{};
   final _lastProgressPersistedBytes = <String, int>{};
   final _incomingPostChunkTasks = <String, Future<void>>{};
@@ -383,10 +384,14 @@ class FileTransferCoordinator {
 
     final incoming = _incomingTransfers.remove(normalized);
     if (incoming != null) {
+      await _sendFilePause(
+        incoming.connection,
+        normalized,
+        incoming.transferredBytes,
+      );
       await incoming.randomAccessFile.close();
+      await _drainIncomingPostChunkTasks(normalized);
       await incoming.connection.close();
-      await _resumeMetadataStore.clear(normalized);
-      _incomingPostChunkTasks.remove(normalized);
     }
 
     final outgoing = _outgoingConnections.remove(normalized);
@@ -407,9 +412,6 @@ class FileTransferCoordinator {
     if (normalized.isEmpty) {
       return;
     }
-    if (_isOutgoingAttachmentActiveOrQueued(normalized)) {
-      return;
-    }
 
     final attachment = await _messageRepository.getAttachmentByAttachmentId(
       normalized,
@@ -419,17 +421,52 @@ class FileTransferCoordinator {
     if (attachment == null || localMessageId == null) {
       throw const FileTransferException('Transfer record not found.');
     }
+    final message = await _messageRepository.getMessageByAttachmentId(
+      normalized,
+    );
+    if (message == null) {
+      throw const FileTransferException('Outgoing message record not found.');
+    }
+    _pausedAttachmentIds.remove(normalized);
+    if (message.direction == MessageDirection.received) {
+      final address = await _resolveRecoveryAddress(message.remoteDeviceId);
+      if (address == null) {
+        throw const FileTransferException(
+          'No reachable address is available for this device.',
+        );
+      }
+      await _requestRemoteResume(
+        attachmentId: normalized,
+        remoteDeviceId: message.remoteDeviceId,
+        host: address.ipAddress,
+        port: address.port,
+      );
+      await _messageRepository.updateAttachmentTransfer(
+        attachmentId: normalized,
+        transferStatus: MessageAttachmentTransferStatus.pending,
+        saveStatus: MessageAttachmentSaveStatus.pending,
+        downloadProgress: _progress(
+          attachment.transferredBytes,
+          attachment.totalBytes,
+        ),
+      );
+      _progressStore.reportPending(
+        attachmentId: normalized,
+        direction: TransferProgressDirection.incoming,
+        transferredBytes: attachment.transferredBytes,
+        totalBytes: attachment.totalBytes,
+        startedAt: attachment.transferStartedAt,
+      );
+      return;
+    }
     final profile = await _mineRepository.getMineProfile();
     if (profile == null) {
       throw const FileTransferException(
         'Local device profile is not initialized.',
       );
     }
-    final message = await _messageRepository.getMessageByAttachmentId(
-      normalized,
-    );
-    if (message == null) {
-      throw const FileTransferException('Outgoing message record not found.');
+    if (_isOutgoingAttachmentActiveOrQueued(normalized)) {
+      return;
     }
     final filePath = attachment.filePath;
     if (filePath == null || filePath.trim().isEmpty) {
@@ -446,7 +483,6 @@ class FileTransferCoordinator {
       );
     }
 
-    _pausedAttachmentIds.remove(normalized);
     await _messageRepository.markMessageSending(localMessageId: localMessageId);
     await _messageRepository.updateAttachmentTransfer(
       attachmentId: normalized,
@@ -925,6 +961,14 @@ class FileTransferCoordinator {
       case transferFrameTypeFileComplete:
         await _handleFileComplete(connection, frame);
         return true;
+      case transferFrameTypeFilePause:
+        await _handleRemoteFilePause(frame);
+        return true;
+      case transferFrameTypeFileResumeRequest:
+        await _handleRemoteFileResumeRequest(connection, frame);
+        return true;
+      case transferFrameTypeFileResumeAck:
+        return true;
       default:
         return false;
     }
@@ -1298,7 +1342,6 @@ class FileTransferCoordinator {
     }
 
     await transfer.randomAccessFile.writeFrom(frame.body);
-    transfer.checksumAccumulator.addBytes(frame.body);
     final transferredBytes = max(
       transfer.transferredBytes,
       offset + frame.body.length,
@@ -1326,6 +1369,7 @@ class FileTransferCoordinator {
       );
     }
     _enqueueIncomingPostChunkTask(attachmentId, () async {
+      transfer.checksumAccumulator.addBytes(frame.body);
       final checkpoints = transfer.checkpointBuilder.addChunk(
         frame.body,
         endOffset: transferredBytes,
@@ -1465,6 +1509,159 @@ class FileTransferCoordinator {
           'requestId': requestId,
           'attachmentId': attachmentId,
           'accepted': true,
+          'sentAt': _now().millisecondsSinceEpoch,
+        },
+      ),
+    );
+  }
+
+  Future<void> _handleRemoteFilePause(TransferFrame frame) async {
+    final attachmentId = _readString(frame.header['attachmentId']);
+    if (attachmentId == null) {
+      return;
+    }
+    _remotePausedAttachmentIds.add(attachmentId);
+    final attachment = await _messageRepository.getAttachmentByAttachmentId(
+      attachmentId,
+    );
+    if (attachment == null) {
+      return;
+    }
+    _progressStore.reportPaused(
+      attachmentId: attachmentId,
+      direction: TransferProgressDirection.outgoing,
+      transferredBytes: attachment.transferredBytes,
+      totalBytes: attachment.totalBytes,
+      startedAt: attachment.transferStartedAt,
+    );
+    await _messageRepository.updateAttachmentTransfer(
+      attachmentId: attachmentId,
+      transferredBytes: attachment.transferredBytes,
+      transferStatus: MessageAttachmentTransferStatus.pending,
+      saveStatus: MessageAttachmentSaveStatus.pending,
+      downloadProgress: _progress(
+        attachment.transferredBytes,
+        attachment.totalBytes,
+      ),
+    );
+  }
+
+  Future<void> _handleRemoteFileResumeRequest(
+    TransferConnection connection,
+    TransferFrame frame,
+  ) async {
+    final attachmentId = _readString(frame.header['attachmentId']);
+    if (attachmentId == null) {
+      return;
+    }
+    final attachment = await _messageRepository.getAttachmentByAttachmentId(
+      attachmentId,
+    );
+    final message = await _messageRepository.getMessageByAttachmentId(
+      attachmentId,
+    );
+    if (attachment == null ||
+        message == null ||
+        message.direction != MessageDirection.sent) {
+      await connection.sendFrame(
+        TransferFrame(
+          header: {
+            'type': transferFrameTypeFileResumeAck,
+            'protocolVersion': transferProtocolVersion,
+            'attachmentId': attachmentId,
+            'accepted': false,
+            'reason': 'Incoming transfer not found.',
+            'sentAt': _now().millisecondsSinceEpoch,
+          },
+        ),
+      );
+      return;
+    }
+    try {
+      await resumeTransfer(attachmentId);
+      await connection.sendFrame(
+        TransferFrame(
+          header: {
+            'type': transferFrameTypeFileResumeAck,
+            'protocolVersion': transferProtocolVersion,
+            'attachmentId': attachmentId,
+            'accepted': true,
+            'resumeFromByte': _encodeInt(attachment.transferredBytes),
+            'sentAt': _now().millisecondsSinceEpoch,
+          },
+        ),
+      );
+    } catch (error) {
+      await connection.sendFrame(
+        TransferFrame(
+          header: {
+            'type': transferFrameTypeFileResumeAck,
+            'protocolVersion': transferProtocolVersion,
+            'attachmentId': attachmentId,
+            'accepted': false,
+            'reason': '$error',
+            'sentAt': _now().millisecondsSinceEpoch,
+          },
+        ),
+      );
+    }
+  }
+
+  Future<void> _requestRemoteResume({
+    required String attachmentId,
+    required String remoteDeviceId,
+    required String host,
+    required int port,
+  }) async {
+    final connection = await _transferSocketService.connect(
+      host,
+      port,
+      timeout: transferConnectTimeout,
+    );
+    try {
+      final requestId = _idGenerator('file_resume');
+      final ackFuture = _waitForFrame(
+        connection,
+        transferFrameTypeFileResumeAck,
+        requestId,
+      );
+      await connection.sendFrame(
+        TransferFrame(
+          header: {
+            'type': transferFrameTypeFileResumeRequest,
+            'protocolVersion': transferProtocolVersion,
+            'requestId': requestId,
+            'attachmentId': attachmentId,
+            'remoteDeviceId': remoteDeviceId,
+            'sentAt': _now().millisecondsSinceEpoch,
+          },
+        ),
+      );
+      final ack = await ackFuture;
+      if (ack.header['accepted'] == false) {
+        throw FileTransferException(
+          _readString(ack.header['reason']) ??
+              'Remote side rejected transfer resume.',
+        );
+      }
+    } finally {
+      await connection.close();
+    }
+  }
+
+  Future<void> _sendFilePause(
+    TransferConnection connection,
+    String attachmentId,
+    int transferredBytes,
+  ) {
+    _remotePausedAttachmentIds.add(attachmentId);
+    return connection.sendFrame(
+      TransferFrame(
+        header: {
+          'type': transferFrameTypeFilePause,
+          'protocolVersion': transferProtocolVersion,
+          'attachmentId': attachmentId,
+          'acknowledgedBytes': _encodeInt(transferredBytes),
           'sentAt': _now().millisecondsSinceEpoch,
         },
       ),
@@ -1760,6 +1957,9 @@ class FileTransferCoordinator {
     if (_isTransferPaused(attachmentId)) {
       throw const FileTransferPausedException();
     }
+    if (_remotePausedAttachmentIds.contains(attachmentId)) {
+      throw const FileTransferPausedException();
+    }
   }
 
   Future<int> _resolveIncomingResumeOffset({
@@ -2045,6 +2245,14 @@ class FileTransferPausedException implements Exception {
   String toString() => 'FileTransferPausedException: File transfer paused.';
 }
 
+class RemoteTransferPausedException implements Exception {
+  const RemoteTransferPausedException();
+
+  @override
+  String toString() =>
+      'RemoteTransferPausedException: Remote side paused transfer.';
+}
+
 String _defaultId(String prefix) {
   final micros = DateTime.now().microsecondsSinceEpoch.toRadixString(16);
   final random = Random.secure().nextInt(1 << 32).toRadixString(16);
@@ -2169,10 +2377,23 @@ class _OutgoingChunkAckTracker {
   }
 
   void _handleFrame(TransferFrame frame) {
-    if (frame.header['type'] != transferFrameTypeFileChunkAck) {
+    if (frame.header['attachmentId'] != attachmentId) {
       return;
     }
-    if (frame.header['attachmentId'] != attachmentId) {
+    if (frame.header['type'] == transferFrameTypeFilePause) {
+      _fail(const RemoteTransferPausedException());
+      return;
+    }
+    if (frame.header['type'] == transferFrameTypeError) {
+      _fail(
+        FileTransferException(
+          _readTransferFrameString(frame.header['message']) ??
+              'Remote side rejected the transfer.',
+        ),
+      );
+      return;
+    }
+    if (frame.header['type'] != transferFrameTypeFileChunkAck) {
       return;
     }
     final acknowledgedBytes = _readTransferFrameInt(
@@ -2270,6 +2491,14 @@ class _OutgoingChunkAckTracker {
       return truncated == value ? truncated : null;
     }
     return null;
+  }
+
+  String? _readTransferFrameString(Object? value) {
+    if (value is! String) {
+      return null;
+    }
+    final trimmed = value.trim();
+    return trimmed.isEmpty ? null : trimmed;
   }
 }
 
