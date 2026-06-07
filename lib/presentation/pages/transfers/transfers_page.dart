@@ -859,7 +859,8 @@ class _TransferItem {
 
   bool get isActive {
     return transferStatus == MessageAttachmentTransferStatus.pending ||
-        transferStatus == MessageAttachmentTransferStatus.transferring;
+        transferStatus == MessageAttachmentTransferStatus.transferring ||
+        transferStatus == MessageAttachmentTransferStatus.paused;
   }
 
   bool get canPause =>
@@ -880,7 +881,9 @@ class _TransferItem {
 
   bool get canCancel =>
       message.direction == MessageDirection.sent &&
-      (isActive || isPaused) &&
+      (isActive ||
+          isPaused ||
+          transferStatus == MessageAttachmentTransferStatus.paused) &&
       attachment.attachmentId != null &&
       attachment.attachmentId!.isNotEmpty;
 
