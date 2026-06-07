@@ -17,6 +17,7 @@ import 'package:hydrop/presentation/pages/chat/widgets/chat_image_viewer.dart';
 import 'package:hydrop/presentation/pages/chat/widgets/chat_message_widgets.dart';
 import 'package:hydrop/presentation/widgets/hd_floating_components.dart';
 import 'package:hydrop/presentation/widgets/hd_components.dart';
+import 'package:pasteboard/pasteboard.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 const _chatPageSize = 80;
@@ -42,6 +43,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   final _messageController = TextEditingController();
   final _searchController = TextEditingController();
   bool _isPickingFile = false;
+  bool _isDropTargetHighlighted = false;
   int _visibleMessageLimit = _chatPageSize;
   List<ConversationMessage> _lastRenderedMessages = const [];
   List<ConversationMessage> _lastFilteredMessages = const [];
@@ -183,8 +185,12 @@ class _ChatPageState extends ConsumerState<ChatPage> {
             child: ChatComposer(
               controller: _messageController,
               isPickingFile: _isPickingFile,
+              isDropTargetHighlighted: _isDropTargetHighlighted,
               onSend: _sendText,
               onAttachFile: _pickFile,
+              onFilesDropped: _sendDroppedFiles,
+              onPasteFiles: _pasteFiles,
+              onDropHighlightChanged: _setDropTargetHighlighted,
               onPickEmoji: _insertEmoji,
             ),
           ),
@@ -246,6 +252,80 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       if (mounted) {
         setState(() => _isPickingFile = false);
       }
+    }
+  }
+
+  void _setDropTargetHighlighted(bool highlighted) {
+    if (_isDropTargetHighlighted == highlighted || !mounted) {
+      return;
+    }
+    setState(() => _isDropTargetHighlighted = highlighted);
+  }
+
+  Future<void> _sendDroppedFiles(List<String> paths) async {
+    final l10n = AppLocalizations.of(context);
+    await _sendFilesFromPaths(
+      paths,
+      onEmpty: () => _showSnackBar(l10n.unableToSendMessage('No files found.')),
+    );
+  }
+
+  Future<bool> _pasteFiles() async {
+    final files = await Pasteboard.files();
+    if (files.isNotEmpty) {
+      await _sendFilesFromPaths(files, onEmpty: () {});
+      return true;
+    }
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    final text = data?.text;
+    if (text == null || text.isEmpty) {
+      return false;
+    }
+    final current = _messageController.value;
+    final selection = current.selection;
+    final start = selection.isValid ? selection.start : current.text.length;
+    final end = selection.isValid ? selection.end : current.text.length;
+    final safeStart = start.clamp(0, current.text.length);
+    final safeEnd = end.clamp(0, current.text.length);
+    final newText = current.text.replaceRange(safeStart, safeEnd, text);
+    _messageController.value = current.copyWith(
+      text: newText,
+      selection: TextSelection.collapsed(offset: safeStart + text.length),
+      composing: TextRange.empty,
+    );
+    return true;
+  }
+
+  Future<void> _sendFilesFromPaths(
+    Iterable<String> rawPaths, {
+    required VoidCallback onEmpty,
+  }) async {
+    final paths = rawPaths
+        .map((path) => path.trim())
+        .where((path) => path.isNotEmpty)
+        .toList(growable: false);
+    if (paths.isEmpty) {
+      onEmpty();
+      return;
+    }
+    final controller = ref.read(
+      chatPageControllerProvider(widget.remoteDeviceId),
+    );
+    final l10n = AppLocalizations.of(context);
+    try {
+      final results = await controller.createFileMessagesFromPaths(paths);
+      if (results.isEmpty) {
+        onEmpty();
+        return;
+      }
+      for (final result in results) {
+        if (result.errorMessage != null) {
+          _showSnackBar(l10n.fileSavedLocally(result.errorMessage ?? ''));
+          return;
+        }
+      }
+    } catch (error) {
+      _showSnackBar(l10n.unableToSendMessage('$error'));
     }
   }
 

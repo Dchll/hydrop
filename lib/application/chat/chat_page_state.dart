@@ -239,18 +239,68 @@ class ChatPageController {
       throw StateError('The selected file does not expose a local path.');
     }
 
-    final file = File(path);
-    final totalBytes = pickedFile.size > 0
-        ? pickedFile.size
-        : await file.length();
-    final mimeType = _guessMimeType(pickedFile.name);
+    return createFileMessageFromPath(path);
+  }
+
+  Future<ChatSendResult?> createFileMessageFromPath(String path) async {
+    final normalizedPath = path.trim();
+    if (normalizedPath.isEmpty) {
+      return null;
+    }
+    final file = File(normalizedPath);
+    if (!await file.exists()) {
+      throw StateError('The selected file no longer exists.');
+    }
+    final stat = await file.stat();
+    if (stat.type != FileSystemEntityType.file) {
+      throw StateError('Only regular files can be sent.');
+    }
+    final fileName = file.uri.pathSegments.isEmpty
+        ? normalizedPath
+        : file.uri.pathSegments.last;
+    talker.debug(
+      'DchllTest 文件消息按路径发送：远端设备ID=$_remoteDeviceId '
+      '文件名=$fileName 路径=$normalizedPath 大小=${stat.size}',
+    );
+
+    final totalBytes = stat.size;
+    final mimeType = _guessMimeType(fileName);
+    return _enqueueFileTransfer(
+      file: file,
+      fileName: fileName,
+      mimeType: mimeType,
+      totalBytes: totalBytes,
+    );
+  }
+
+  Future<List<ChatSendResult>> createFileMessagesFromPaths(
+    Iterable<String> paths,
+  ) async {
+    final results = <ChatSendResult>[];
+    for (final path in paths) {
+      final result = await createFileMessageFromPath(path);
+      if (result != null) {
+        results.add(result);
+      }
+    }
+    return results;
+  }
+
+  Future<ChatSendResult> _enqueueFileTransfer({
+    required File file,
+    required String fileName,
+    required String? mimeType,
+    required int totalBytes,
+  }) async {
+    final path = file.path;
+
     final profile = await _resolveMineProfileOrNull();
     final address = await _resolveBestAddressOrNull();
     if (profile == null || address == null) {
       final record = await _messageRepository.createLocalFileMessage(
         remoteDeviceId: _remoteDeviceId,
         filePath: path,
-        fileName: pickedFile.name,
+        fileName: fileName,
         mimeType: mimeType,
         totalBytes: totalBytes,
       );
@@ -277,13 +327,13 @@ class ChatPageController {
     talker.debug(
       'DchllTest 文件消息发送已加入后台任务：远端设备ID=$_remoteDeviceId '
       '目标IP=${address.ipAddress} 目标端口=${address.port} '
-      '文件名=${pickedFile.name} 大小=$totalBytes MIME=$mimeType',
+      '文件名=$fileName 大小=$totalBytes MIME=$mimeType',
     );
     unawaited(
       _sendFileInBackground(
         address: address,
         file: file,
-        fileName: pickedFile.name,
+        fileName: fileName,
         mimeType: mimeType,
         totalBytes: totalBytes,
         localDeviceId: profile.deviceId,

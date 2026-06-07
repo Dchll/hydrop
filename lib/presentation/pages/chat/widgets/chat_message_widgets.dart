@@ -1,7 +1,10 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
 
+import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hydrop/application/transfer/transfer_progress_state.dart';
 import 'package:hydrop/core/localization/localized_formatters.dart';
@@ -1204,67 +1207,121 @@ class ChatComposer extends StatelessWidget {
     super.key,
     required this.controller,
     required this.isPickingFile,
+    required this.isDropTargetHighlighted,
     required this.onSend,
     required this.onAttachFile,
+    required this.onFilesDropped,
+    required this.onPasteFiles,
+    required this.onDropHighlightChanged,
     required this.onPickEmoji,
   });
 
   final TextEditingController controller;
   final bool isPickingFile;
+  final bool isDropTargetHighlighted;
   final VoidCallback onSend;
   final VoidCallback onAttachFile;
+  final ValueChanged<List<String>> onFilesDropped;
+  final Future<bool> Function() onPasteFiles;
+  final ValueChanged<bool> onDropHighlightChanged;
   final ValueChanged<String> onPickEmoji;
 
   @override
   Widget build(BuildContext context) {
-    return HdDock(
-      maxWidth: 960,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          HdFloatingIconButton(
-            icon: isPickingFile
-                ? Icons.hourglass_top_rounded
-                : Icons.add_rounded,
-            tooltip: AppLocalizations.of(context).attachFile,
-            onPressed: isPickingFile ? null : onAttachFile,
-          ),
-          const SizedBox(width: 10),
-          HdFloatingIconButton(
-            icon: Icons.mood_rounded,
-            tooltip: AppLocalizations.of(context).insertEmoji,
-            onPressed: () => _showEmojiPicker(context),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: TextField(
-              controller: controller,
-              minLines: 1,
-              maxLines: 4,
-              textInputAction: TextInputAction.send,
-              onSubmitted: (_) => onSend(),
-              decoration: InputDecoration(
-                hintText: AppLocalizations.of(context).messageOrAttachFile,
+    final l10n = AppLocalizations.of(context);
+    return DropTarget(
+      onDragEntered: (_) => onDropHighlightChanged(true),
+      onDragExited: (_) => onDropHighlightChanged(false),
+      onDragDone: (detail) {
+        onDropHighlightChanged(false);
+        final paths = detail.files
+            .map((file) => file.path.trim())
+            .where((path) => path.isNotEmpty)
+            .toList(growable: false);
+        if (paths.isNotEmpty) {
+          onFilesDropped(paths);
+        }
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        curve: Curves.easeOutCubic,
+        decoration: BoxDecoration(
+          border: isDropTargetHighlighted
+              ? Border.all(
+                  color: Theme.of(context).colorScheme.primary,
+                  width: 2,
+                )
+              : null,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: HdDock(
+          maxWidth: 960,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              HdFloatingIconButton(
+                icon: isPickingFile
+                    ? Icons.hourglass_top_rounded
+                    : Icons.add_rounded,
+                tooltip: l10n.attachFile,
+                onPressed: isPickingFile ? null : onAttachFile,
               ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          ValueListenableBuilder<TextEditingValue>(
-            valueListenable: controller,
-            builder: (context, value, child) {
-              final hasText = value.text.trim().isNotEmpty;
-              return FilledButton(
-                onPressed: hasText ? onSend : null,
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size(52, 46),
-                  padding: EdgeInsets.zero,
+              const SizedBox(width: 10),
+              HdFloatingIconButton(
+                icon: Icons.mood_rounded,
+                tooltip: l10n.insertEmoji,
+                onPressed: () => _showEmojiPicker(context),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: CallbackShortcuts(
+                  bindings: <ShortcutActivator, VoidCallback>{
+                    const SingleActivator(
+                      LogicalKeyboardKey.keyV,
+                      control: true,
+                    ): () {
+                      unawaited(onPasteFiles());
+                    },
+                    const SingleActivator(
+                      LogicalKeyboardKey.keyV,
+                      meta: true,
+                    ): () {
+                      unawaited(onPasteFiles());
+                    },
+                  },
+                  child: TextField(
+                    controller: controller,
+                    minLines: 1,
+                    maxLines: 4,
+                    textInputAction: TextInputAction.send,
+                    onSubmitted: (_) => onSend(),
+                    decoration: InputDecoration(
+                      hintText: isDropTargetHighlighted
+                          ? l10n.chooseFileToSend
+                          : l10n.messageOrAttachFile,
+                    ),
+                  ),
                 ),
-                child: const Icon(Icons.arrow_upward_rounded),
-              );
-            },
+              ),
+              const SizedBox(width: 10),
+              ValueListenableBuilder<TextEditingValue>(
+                valueListenable: controller,
+                builder: (context, value, child) {
+                  final hasText = value.text.trim().isNotEmpty;
+                  return FilledButton(
+                    onPressed: hasText ? onSend : null,
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(52, 46),
+                      padding: EdgeInsets.zero,
+                    ),
+                    child: const Icon(Icons.arrow_upward_rounded),
+                  );
+                },
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
