@@ -828,7 +828,7 @@ class _TransferItem {
         MessageAttachmentTransferStatus.transferring,
       TransferProgressPhase.completed => MessageAttachmentTransferStatus.saved,
       TransferProgressPhase.failed => MessageAttachmentTransferStatus.failed,
-      TransferProgressPhase.paused => MessageAttachmentTransferStatus.pending,
+      TransferProgressPhase.paused => MessageAttachmentTransferStatus.paused,
       TransferProgressPhase.pending => MessageAttachmentTransferStatus.pending,
       null => attachment.transferStatus,
     };
@@ -870,7 +870,9 @@ class _TransferItem {
       attachment.attachmentId!.isNotEmpty;
 
   bool get canResume =>
-      (isPaused || transferStatus == MessageAttachmentTransferStatus.failed) &&
+      (isPaused ||
+          transferStatus == MessageAttachmentTransferStatus.paused ||
+          transferStatus == MessageAttachmentTransferStatus.failed) &&
       attachment.attachmentId != null &&
       attachment.attachmentId!.isNotEmpty &&
       attachment.filePath != null &&
@@ -914,7 +916,8 @@ class _TransferItem {
       }
       return statusLabel(l10n);
     }
-    if (transferStatus == MessageAttachmentTransferStatus.pending) {
+    if (transferStatus == MessageAttachmentTransferStatus.pending ||
+        transferStatus == MessageAttachmentTransferStatus.paused) {
       return statusLabel(l10n);
     }
     if (transferStatus == MessageAttachmentTransferStatus.saved &&

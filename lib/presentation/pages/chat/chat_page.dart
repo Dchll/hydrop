@@ -494,7 +494,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         MessageAttachmentTransferStatus.transferring,
       TransferProgressPhase.completed => MessageAttachmentTransferStatus.saved,
       TransferProgressPhase.failed => MessageAttachmentTransferStatus.failed,
-      TransferProgressPhase.paused => MessageAttachmentTransferStatus.pending,
+      TransferProgressPhase.paused => MessageAttachmentTransferStatus.paused,
       TransferProgressPhase.pending => MessageAttachmentTransferStatus.pending,
       null => attachment.transferStatus,
     };
@@ -520,7 +520,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     }
     final transferStatus = _attachmentTransferStatus(attachment);
     return transferStatus == MessageAttachmentTransferStatus.pending ||
-        transferStatus == MessageAttachmentTransferStatus.transferring;
+        transferStatus == MessageAttachmentTransferStatus.transferring ||
+        transferStatus == MessageAttachmentTransferStatus.paused;
   }
 
   bool _canResumeAttachment(MessageAttachmentSnapshot attachment) {
@@ -534,6 +535,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     }
     final live = ref.read(transferProgressProvider(attachmentId));
     return live?.phase == TransferProgressPhase.paused ||
+        _attachmentTransferStatus(attachment) ==
+            MessageAttachmentTransferStatus.paused ||
         _attachmentTransferStatus(attachment) ==
             MessageAttachmentTransferStatus.failed;
   }

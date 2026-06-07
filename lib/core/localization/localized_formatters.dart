@@ -121,6 +121,7 @@ String localizedAttachmentTransferStatus(
       direction == MessageDirection.sent
           ? l10n.statusWaitingForReceiver
           : l10n.statusPending,
+    MessageAttachmentTransferStatus.paused => l10n.transferPaused,
     MessageAttachmentTransferStatus.transferring => l10n.statusTransferring,
     MessageAttachmentTransferStatus.saved => l10n.statusDone,
     MessageAttachmentTransferStatus.failed => l10n.statusFailed,

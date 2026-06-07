@@ -1594,6 +1594,7 @@ Widget? _attachmentInlineActions(
       isSent &&
       (status == MessageAttachmentTransferStatus.pending ||
           status == MessageAttachmentTransferStatus.transferring ||
+          status == MessageAttachmentTransferStatus.paused ||
           isPaused);
   if (!canPause && !canResume && !canCancel) {
     return null;
@@ -1681,7 +1682,7 @@ MessageAttachmentTransferStatus _effectiveTransferStatus(
       MessageAttachmentTransferStatus.transferring,
     TransferProgressPhase.completed => MessageAttachmentTransferStatus.saved,
     TransferProgressPhase.failed => MessageAttachmentTransferStatus.failed,
-    TransferProgressPhase.paused => MessageAttachmentTransferStatus.pending,
+    TransferProgressPhase.paused => MessageAttachmentTransferStatus.paused,
     TransferProgressPhase.pending => MessageAttachmentTransferStatus.pending,
     null => attachment.transferStatus,
   };
@@ -1704,6 +1705,10 @@ bool _canResumeTransfer(
     return false;
   }
   if (_isPausedTransfer(live)) {
+    return true;
+  }
+  if (_effectiveTransferStatus(attachment, live) ==
+      MessageAttachmentTransferStatus.paused) {
     return true;
   }
   return _effectiveTransferStatus(attachment, live) ==
@@ -1826,7 +1831,8 @@ String? _activeTransferMetaLine(
   if (_isPausedTransfer(live)) {
     return l10n.transferPaused;
   }
-  if (status == MessageAttachmentTransferStatus.pending) {
+  if (status == MessageAttachmentTransferStatus.pending ||
+      status == MessageAttachmentTransferStatus.paused) {
     return localizedAttachmentTransferStatus(
       l10n,
       status,

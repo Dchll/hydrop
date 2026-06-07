@@ -9,7 +9,13 @@ enum MessageSendStatus { pending, sending, sent, failed, received }
 
 enum MessageAttachmentSaveStatus { pending, saving, saved, failed }
 
-enum MessageAttachmentTransferStatus { pending, transferring, saved, failed }
+enum MessageAttachmentTransferStatus {
+  pending,
+  paused,
+  transferring,
+  saved,
+  failed,
+}
 
 /// 设备间消息表
 /// - 对方唯一设备号

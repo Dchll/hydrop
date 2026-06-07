@@ -49,7 +49,7 @@ class AppDataBase extends _$AppDataBase {
   AppDataBase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration {
@@ -86,6 +86,16 @@ class AppDataBase extends _$AppDataBase {
             messageAttachmentItems,
             messageAttachmentItems.transferDurationMs,
           );
+        }
+        if (from < 4) {
+          await customStatement('''
+            UPDATE message_attachment_items
+            SET transfer_status = 'paused'
+            WHERE transfer_status = 'pending'
+              AND transferred_bytes > 0
+              AND transferred_bytes < total_bytes
+              AND save_status = 'pending'
+          ''');
         }
         await _createCustomIndexes();
       },

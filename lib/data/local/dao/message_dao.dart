@@ -225,6 +225,8 @@ class MessageDao extends DatabaseAccessor<AppDataBase> with _$MessageDaoMixin {
         final legacySaveStatus = switch (attachment.transferStatus) {
           MessageAttachmentTransferStatus.pending =>
             MessageAttachmentSaveStatus.pending,
+          MessageAttachmentTransferStatus.paused =>
+            MessageAttachmentSaveStatus.pending,
           MessageAttachmentTransferStatus.transferring =>
             MessageAttachmentSaveStatus.saving,
           MessageAttachmentTransferStatus.saved =>

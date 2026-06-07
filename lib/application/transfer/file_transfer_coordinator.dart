@@ -469,7 +469,7 @@ class FileTransferCoordinator {
       );
       await _messageRepository.updateAttachmentTransfer(
         attachmentId: normalized,
-        transferStatus: MessageAttachmentTransferStatus.pending,
+        transferStatus: MessageAttachmentTransferStatus.paused,
         saveStatus: MessageAttachmentSaveStatus.pending,
         downloadProgress: _progress(
           attachment.transferredBytes,
@@ -1594,7 +1594,7 @@ class FileTransferCoordinator {
     await _messageRepository.updateAttachmentTransfer(
       attachmentId: attachmentId,
       transferredBytes: attachment.transferredBytes,
-      transferStatus: MessageAttachmentTransferStatus.pending,
+      transferStatus: MessageAttachmentTransferStatus.paused,
       saveStatus: MessageAttachmentSaveStatus.pending,
       downloadProgress: _progress(
         attachment.transferredBytes,
@@ -1813,7 +1813,7 @@ class FileTransferCoordinator {
     await _messageRepository.updateAttachmentTransfer(
       attachmentId: attachmentId,
       transferredBytes: transferredBytes,
-      transferStatus: MessageAttachmentTransferStatus.pending,
+      transferStatus: MessageAttachmentTransferStatus.paused,
       saveStatus: MessageAttachmentSaveStatus.pending,
       downloadProgress: _progress(transferredBytes, totalBytes),
     );
