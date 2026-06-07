@@ -577,6 +577,10 @@ class FileTransferCoordinator {
         totalBytes: prepared.totalBytes,
         direction: TransferNotificationDirection.outgoing,
       );
+      final checksumAccumulator = await _createChecksumAccumulator(
+        file: prepared.file,
+        endOffset: resumeFromByte,
+      );
       final ackTracker = _OutgoingChunkAckTracker(
         connection: connection,
         attachmentId: prepared.attachmentId,
@@ -615,6 +619,7 @@ class FileTransferCoordinator {
           totalBytes: prepared.totalBytes,
           startOffset: resumeFromByte,
           ackTracker: ackTracker,
+          checksumAccumulator: checksumAccumulator,
         );
         await ackTracker.waitUntilAcknowledged(
           prepared.totalBytes,
@@ -625,10 +630,7 @@ class FileTransferCoordinator {
       }
 
       _throwIfPaused(prepared.attachmentId);
-      final checksumSha256 = await _computeFileSha256(
-        prepared.file,
-        endOffset: prepared.totalBytes,
-      );
+      final checksumSha256 = checksumAccumulator.closeAndDigest();
       prepared.checksumSha256 = checksumSha256;
       final completeRequestId = _idGenerator('file_done');
       final completeAckFuture = _waitForFrame(
@@ -819,6 +821,7 @@ class FileTransferCoordinator {
     required int totalBytes,
     required int startOffset,
     required _OutgoingChunkAckTracker ackTracker,
+    required _StreamingSha256Accumulator checksumAccumulator,
   }) async {
     final raf = await file.open();
     final maxInflightBytes = _maxInflightBytesForBytes(totalBytes);
@@ -844,6 +847,7 @@ class FileTransferCoordinator {
           totalBytes: totalBytes,
           chunk: chunk,
         );
+        checksumAccumulator.addBytes(chunk);
         offset += chunk.length;
         chunkIndex += 1;
         prepared.lastSentOffset = offset;
@@ -1008,6 +1012,10 @@ class FileTransferCoordinator {
     final raf = await targetFile.open(mode: FileMode.append);
     final activeTransfer = _incomingTransfers.remove(attachmentId);
     await activeTransfer?.randomAccessFile.close();
+    final checksumAccumulator = await _createChecksumAccumulator(
+      file: targetFile,
+      endOffset: resumeFromByte,
+    );
     _incomingTransfers[attachmentId] = _IncomingFileTransfer(
       attachmentId: attachmentId,
       remoteDeviceId: senderDeviceId,
@@ -1018,6 +1026,7 @@ class FileTransferCoordinator {
       totalBytes: totalBytes,
       transferredBytes: resumeFromByte,
       chunkAckIntervalBytes: _chunkAckIntervalBytesForBytes(totalBytes),
+      checksumAccumulator: checksumAccumulator,
       checkpointBuilder: TransferSegmentCheckpointBuilder(
         _resumeMetadataStore.segmentBytes,
       )..seedFromOffset(resumeFromByte),
@@ -1170,6 +1179,7 @@ class FileTransferCoordinator {
     }
 
     await transfer.randomAccessFile.writeFrom(frame.body);
+    transfer.checksumAccumulator.addBytes(frame.body);
     final transferredBytes = max(
       transfer.transferredBytes,
       offset + frame.body.length,
@@ -1265,11 +1275,9 @@ class FileTransferCoordinator {
       return;
     }
 
+    final actualChecksum = transfer.checksumAccumulator.closeAndDigest();
+    transfer.checksumSha256 = actualChecksum;
     if (expectedChecksum != null) {
-      final actualChecksum = await _computeFileSha256(
-        transfer.file,
-        endOffset: transfer.totalBytes,
-      );
       if (actualChecksum != expectedChecksum) {
         await _markIncomingFileFailed(
           transfer,
@@ -1290,7 +1298,6 @@ class FileTransferCoordinator {
         );
         return;
       }
-      transfer.checksumSha256 = actualChecksum;
     }
 
     final completedSnapshot = _progressStore.snapshotFor(attachmentId);
@@ -1621,9 +1628,15 @@ class FileTransferCoordinator {
     );
   }
 
-  Future<String> _computeFileSha256(File file, {required int endOffset}) async {
-    final digest = await sha256.bind(file.openRead(0, endOffset)).first;
-    return digest.toString();
+  Future<_StreamingSha256Accumulator> _createChecksumAccumulator({
+    required File file,
+    required int endOffset,
+  }) async {
+    final accumulator = _StreamingSha256Accumulator();
+    if (endOffset > 0) {
+      await accumulator.addFileRange(file, endOffset: endOffset);
+    }
+    return accumulator;
   }
 
   int _chunkAckIntervalBytesForBytes(int totalBytes) {
@@ -1815,6 +1828,7 @@ class _IncomingFileTransfer {
     required this.randomAccessFile,
     required this.totalBytes,
     required this.chunkAckIntervalBytes,
+    required this.checksumAccumulator,
     required this.checkpointBuilder,
     this.transferredBytes = 0,
   });
@@ -1827,6 +1841,7 @@ class _IncomingFileTransfer {
   final RandomAccessFile randomAccessFile;
   final int totalBytes;
   final int chunkAckIntervalBytes;
+  final _StreamingSha256Accumulator checksumAccumulator;
   final TransferSegmentCheckpointBuilder checkpointBuilder;
   int transferredBytes;
   int lastAcknowledgedBytes = 0;
@@ -2108,4 +2123,56 @@ class _AckWindowWaiter {
 
   final bool Function(int acknowledgedBytes) predicate;
   final Completer<void> completer;
+}
+
+class _StreamingSha256Accumulator {
+  _StreamingSha256Accumulator() {
+    _sink = sha256.startChunkedConversion(_digestSink);
+  }
+
+  final _DigestCaptureSink _digestSink = _DigestCaptureSink();
+  late final ByteConversionSink _sink;
+  bool _closed = false;
+
+  Future<void> addFileRange(File file, {required int endOffset}) async {
+    if (_closed || endOffset <= 0) {
+      return;
+    }
+    await for (final chunk in file.openRead(0, endOffset)) {
+      addBytes(chunk);
+    }
+  }
+
+  void addBytes(List<int> chunk) {
+    if (_closed || chunk.isEmpty) {
+      return;
+    }
+    _sink.add(chunk);
+  }
+
+  String closeAndDigest() {
+    if (!_closed) {
+      _sink.close();
+      _closed = true;
+    }
+    final digest = _digestSink.digest;
+    if (digest == null) {
+      throw const FileTransferException(
+        'Failed to finalize transfer checksum.',
+      );
+    }
+    return digest.toString();
+  }
+}
+
+class _DigestCaptureSink implements Sink<Digest> {
+  Digest? digest;
+
+  @override
+  void add(Digest data) {
+    digest = data;
+  }
+
+  @override
+  void close() {}
 }
