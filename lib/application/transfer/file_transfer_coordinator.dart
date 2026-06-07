@@ -453,6 +453,7 @@ class FileTransferCoordinator {
       throw const FileTransferException('Outgoing message record not found.');
     }
     _pausedAttachmentIds.remove(normalized);
+    _remotePausedAttachmentIds.remove(normalized);
     if (message.direction == MessageDirection.received) {
       final address = await _resolveRecoveryAddress(message.remoteDeviceId);
       if (address == null) {
@@ -848,6 +849,7 @@ class FileTransferCoordinator {
       );
       _clearProgressCache(prepared.attachmentId);
       _pausedAttachmentIds.remove(prepared.attachmentId);
+      _remotePausedAttachmentIds.remove(prepared.attachmentId);
       await _transferNotificationService.showCompleted(
         attachmentId: prepared.attachmentId,
         fileName: prepared.fileName,
@@ -878,6 +880,7 @@ class FileTransferCoordinator {
       startedAt: attachment?.transferStartedAt,
       error: error,
     );
+    _remotePausedAttachmentIds.remove(prepared.attachmentId);
     await _messageRepository.updateAttachmentTransfer(
       attachmentId: prepared.attachmentId,
       transferStatus: MessageAttachmentTransferStatus.failed,
@@ -922,6 +925,7 @@ class FileTransferCoordinator {
       startedAt: attachment?.transferStartedAt,
       error: transferFileCancelledFailureReason,
     );
+    _remotePausedAttachmentIds.remove(prepared.attachmentId);
     await _messageRepository.updateAttachmentTransfer(
       attachmentId: prepared.attachmentId,
       transferredBytes: transferredBytes,
@@ -1545,6 +1549,8 @@ class FileTransferCoordinator {
       totalBytes: transfer.totalBytes,
       startedAt: startedAt,
     );
+    _pausedAttachmentIds.remove(attachmentId);
+    _remotePausedAttachmentIds.remove(attachmentId);
     await _resumeMetadataStore.clear(attachmentId);
     _clearProgressCache(attachmentId);
     await _transferNotificationService.showCompleted(
@@ -1830,6 +1836,8 @@ class FileTransferCoordinator {
       startedAt: _currentTransferStartedAt(transfer.attachmentId),
       error: error,
     );
+    _pausedAttachmentIds.remove(transfer.attachmentId);
+    _remotePausedAttachmentIds.remove(transfer.attachmentId);
     await _messageRepository.updateAttachmentTransfer(
       attachmentId: transfer.attachmentId,
       filePath: shouldRemoveCorruptedFile ? null : transfer.file.path,
@@ -1861,6 +1869,8 @@ class FileTransferCoordinator {
       startedAt: _currentTransferStartedAt(transfer.attachmentId),
       error: transferFileCancelledFailureReason,
     );
+    _pausedAttachmentIds.remove(transfer.attachmentId);
+    _remotePausedAttachmentIds.remove(transfer.attachmentId);
     await _messageRepository.updateAttachmentTransfer(
       attachmentId: transfer.attachmentId,
       filePath: null,
@@ -1892,6 +1902,8 @@ class FileTransferCoordinator {
       startedAt: attachment.transferStartedAt,
       error: transferFileCancelledFailureReason,
     );
+    _pausedAttachmentIds.remove(attachmentId);
+    _remotePausedAttachmentIds.remove(attachmentId);
     await _messageRepository.updateAttachmentTransfer(
       attachmentId: attachmentId,
       transferredBytes: attachment.transferredBytes,
