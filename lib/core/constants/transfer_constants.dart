@@ -11,6 +11,7 @@ const transferChunkAckTimeout = Duration(seconds: 30);
 const transferCompletionAckTimeout = Duration(minutes: 2);
 const transferPauseAckTimeout = Duration(seconds: 15);
 const transferResumeAckTimeout = Duration(seconds: 30);
+const transferIncomingChunkIdleTimeout = Duration(seconds: 45);
 const transferHeartbeatInterval = Duration(seconds: 20);
 const transferHeartbeatTimeout = Duration(seconds: 75);
 const transferAutoResumeMaxAttempts = 3;

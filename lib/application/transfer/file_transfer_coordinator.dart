@@ -484,6 +484,7 @@ class FileTransferCoordinator {
 
     final incoming = _incomingTransfers.remove(normalized);
     if (incoming != null) {
+      incoming.chunkIdleTimer?.cancel();
       await _sendFilePauseAndAwaitAck(
         incoming.connection,
         normalized,
@@ -645,6 +646,7 @@ class FileTransferCoordinator {
     _stopOutgoingHeartbeat(normalized);
 
     if (incoming != null) {
+      incoming.chunkIdleTimer?.cancel();
       await incoming.randomAccessFile.close();
       await incoming.postProcessor.dispose();
       await incoming.connection.close();
@@ -695,6 +697,7 @@ class FileTransferCoordinator {
       if (transfer == null) {
         continue;
       }
+      transfer.chunkIdleTimer?.cancel();
       await transfer.randomAccessFile.close();
       await _drainIncomingPostChunkTasks(attachmentId);
       await transfer.postProcessor.dispose();
@@ -1388,6 +1391,7 @@ class FileTransferCoordinator {
       chunkAckIntervalBytes: _chunkAckIntervalBytesForBytes(totalBytes),
       postProcessor: postProcessor,
     );
+    _scheduleIncomingChunkIdleTimeout(attachmentId);
 
     if (existingAttachment == null) {
       await _messageRepository.saveIncomingFileOffer(
@@ -1513,6 +1517,7 @@ class FileTransferCoordinator {
       return;
     }
     if (offset < transfer.transferredBytes) {
+      _scheduleIncomingChunkIdleTimeout(attachmentId);
       talker.debug(
         '[$_transferDiagTag] incoming chunk duplicate '
         'attachmentId=$attachmentId offset=$offset '
@@ -1532,6 +1537,7 @@ class FileTransferCoordinator {
       return;
     }
     if (offset > transfer.transferredBytes) {
+      _scheduleIncomingChunkIdleTimeout(attachmentId);
       talker.warning(
         '[$_transferDiagTag] incoming chunk gap detected '
         'attachmentId=$attachmentId offset=$offset '
@@ -1557,6 +1563,7 @@ class FileTransferCoordinator {
       offset + frame.body.length,
     );
     transfer.transferredBytes = transferredBytes;
+    _scheduleIncomingChunkIdleTimeout(attachmentId);
     _progressStore.reportProgress(
       attachmentId: attachmentId,
       direction: TransferProgressDirection.incoming,
@@ -1630,6 +1637,7 @@ class FileTransferCoordinator {
       await _sendError(connection, requestId, 'Unknown file transfer.');
       return;
     }
+    transfer.chunkIdleTimer?.cancel();
 
     await _drainIncomingPostChunkTasks(attachmentId);
     await transfer.randomAccessFile.close();
@@ -1761,6 +1769,7 @@ class FileTransferCoordinator {
     if (direction == TransferProgressDirection.incoming) {
       final activeIncoming = _incomingTransfers.remove(attachmentId);
       if (activeIncoming != null) {
+        activeIncoming.chunkIdleTimer?.cancel();
         await _drainIncomingPostChunkTasks(attachmentId);
         await activeIncoming.randomAccessFile.close();
         await activeIncoming.postProcessor.dispose();
@@ -2075,6 +2084,7 @@ class FileTransferCoordinator {
     _IncomingFileTransfer transfer,
     Object error,
   ) async {
+    transfer.chunkIdleTimer?.cancel();
     await transfer.postProcessor.dispose();
     talker.warning(
       '[$_transferDiagTag] incoming transfer failed '
@@ -2131,6 +2141,7 @@ class FileTransferCoordinator {
   Future<void> _markIncomingFileCancelled(
     _IncomingFileTransfer transfer,
   ) async {
+    transfer.chunkIdleTimer?.cancel();
     await transfer.postProcessor.dispose();
     await _deleteLocalFileIfExists(transfer.file.path);
     await _resumeMetadataStore.clear(transfer.attachmentId);
@@ -2461,10 +2472,47 @@ class FileTransferCoordinator {
     String message,
   ) async {
     _incomingTransfers.remove(transfer.attachmentId);
+    transfer.chunkIdleTimer?.cancel();
     await transfer.randomAccessFile.close();
     await _markIncomingFileFailed(transfer, FileTransferException(message));
     await _sendError(transfer.connection, null, message);
     await transfer.connection.close();
+  }
+
+  void _scheduleIncomingChunkIdleTimeout(String attachmentId) {
+    final transfer = _incomingTransfers[attachmentId];
+    if (transfer == null) {
+      return;
+    }
+    transfer.chunkIdleTimer?.cancel();
+    transfer.chunkIdleTimer = Timer(transferIncomingChunkIdleTimeout, () {
+      final current = _incomingTransfers.remove(attachmentId);
+      if (current == null) {
+        return;
+      }
+      talker.warning(
+        '[$_transferDiagTag] incoming chunk idle timeout '
+        'attachmentId=$attachmentId transferredBytes=${current.transferredBytes} '
+        'totalBytes=${current.totalBytes} '
+        'timeoutMs=${transferIncomingChunkIdleTimeout.inMilliseconds}',
+      );
+      unawaited(() async {
+        await _drainIncomingPostChunkTasks(attachmentId);
+        await current.randomAccessFile.close();
+        await _markIncomingFileFailed(
+          current,
+          const FileTransferException(
+            'Incoming file transfer stalled and timed out.',
+          ),
+        );
+        await _sendError(
+          current.connection,
+          null,
+          'Incoming file transfer stalled and timed out.',
+        );
+        await current.connection.close();
+      }());
+    });
   }
 
   bool _isOutgoingAttachmentActiveOrQueued(String attachmentId) {
@@ -2638,6 +2686,7 @@ class _IncomingFileTransfer {
   int transferredBytes;
   int lastAcknowledgedBytes = 0;
   String? checksumSha256;
+  Timer? chunkIdleTimer;
 
   bool shouldSendChunkAck() {
     if (transferredBytes >= totalBytes) {
