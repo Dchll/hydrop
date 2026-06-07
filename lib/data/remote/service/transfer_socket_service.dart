@@ -141,17 +141,21 @@ class _SocketTransferConnection implements TransferConnection {
 }
 
 class _IoTransferDuplexSocket implements TransferDuplexSocket {
-  _IoTransferDuplexSocket(this._socket);
+  _IoTransferDuplexSocket(this._socket)
+    : _remoteAddress = _socket.remoteAddress.address,
+      _remotePort = _socket.remotePort;
 
   final Socket _socket;
+  final String _remoteAddress;
+  final int _remotePort;
   Future<void> _writeQueue = Future<void>.value();
   bool _isClosing = false;
 
   @override
-  String get remoteAddress => _socket.remoteAddress.address;
+  String get remoteAddress => _remoteAddress;
 
   @override
-  int get remotePort => _socket.remotePort;
+  int get remotePort => _remotePort;
 
   @override
   Stream<List<int>> get bytes => _socket;

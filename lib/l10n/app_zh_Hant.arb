@@ -71,6 +71,8 @@
   "refreshDevicesTooltip": "重新整理裝置",
   "scanQr": "掃描 QR 碼",
   "searchDevices": "搜尋裝置",
+  "notConnected": "未連接",
+  "selectSettingSectionHint": "請選擇左側設定項",
   "noDevices": "沒有裝置",
   "refreshDiscoveryOrScanQr": "重新整理探索或掃描 QR 碼。",
   "tryDifferentDeviceSearch": "嘗試其他名稱、ID、狀態或速度。",

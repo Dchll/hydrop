@@ -1347,14 +1347,26 @@ class FileTransferCoordinator {
     String type,
     String requestId, {
     Duration timeout = transferControlFrameTimeout,
-  }) {
-    return connection.frames
-        .timeout(timeout)
-        .firstWhere(
-          (frame) =>
-              frame.header['type'] == type &&
-              frame.header['requestId'] == requestId,
+  }) async {
+    await for (final frame in connection.frames.timeout(timeout)) {
+      final frameRequestId = _readString(frame.header['requestId']);
+      if (frameRequestId != requestId) {
+        continue;
+      }
+      final frameType = _readString(frame.header['type']);
+      if (frameType == type) {
+        return frame;
+      }
+      if (frameType == transferFrameTypeError) {
+        throw FileTransferException(
+          _readTransferErrorMessage(frame) ??
+              'Remote side rejected the transfer.',
         );
+      }
+    }
+    throw FileTransferException(
+      'Connection closed before receiving $type for request $requestId.',
+    );
   }
 
   Future<void> _sendError(
@@ -1740,6 +1752,21 @@ class FileTransferCoordinator {
     }
     final trimmed = value.trim();
     return trimmed.isEmpty ? null : trimmed;
+  }
+
+  String? _readTransferErrorMessage(TransferFrame frame) {
+    final headerMessage = _readString(frame.header['message']);
+    if (headerMessage != null) {
+      return headerMessage;
+    }
+    if (frame.body.isEmpty) {
+      return null;
+    }
+    final bodyMessage = utf8.decode(frame.body, allowMalformed: true).trim();
+    if (bodyMessage.isEmpty) {
+      return null;
+    }
+    return bodyMessage;
   }
 
   int? _readInt(Object? value) {

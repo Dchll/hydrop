@@ -132,14 +132,28 @@ class SpeedTestRunner {
   Future<TransferFrame> _waitForProbeAck(
     TransferConnection connection,
     String requestId,
-  ) {
-    return connection.frames
-        .timeout(transferConnectTimeout)
-        .firstWhere(
-          (frame) =>
-              frame.header['type'] == transferFrameTypeSpeedProbeAck &&
-              frame.header['requestId'] == requestId,
+  ) async {
+    await for (final frame in connection.frames.timeout(
+      transferConnectTimeout,
+    )) {
+      final frameRequestId = frame.header['requestId'];
+      if (frameRequestId != requestId) {
+        continue;
+      }
+      final frameType = frame.header['type'];
+      if (frameType == transferFrameTypeSpeedProbeAck) {
+        return frame;
+      }
+      if (frameType == transferFrameTypeError) {
+        throw TransferSocketException(
+          _readTransferErrorMessage(frame) ??
+              'Remote side rejected the speed probe.',
         );
+      }
+    }
+    throw const TransferSocketException(
+      'Connection closed before speed probe acknowledgement.',
+    );
   }
 }
 
@@ -147,4 +161,19 @@ String _defaultRequestId() {
   final now = DateTime.now().microsecondsSinceEpoch;
   final random = Random.secure().nextInt(1 << 32);
   return 'speed-$now-$random';
+}
+
+String? _readTransferErrorMessage(TransferFrame frame) {
+  final headerMessage = frame.header['message'];
+  if (headerMessage is String && headerMessage.trim().isNotEmpty) {
+    return headerMessage.trim();
+  }
+  if (frame.body.isEmpty) {
+    return null;
+  }
+  final bodyMessage = String.fromCharCodes(frame.body).trim();
+  if (bodyMessage.isEmpty) {
+    return null;
+  }
+  return bodyMessage;
 }

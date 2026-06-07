@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hydrop/application/home/home_page_state.dart';
 import 'package:hydrop/application/settings/database_reset_controller.dart';
 import 'package:hydrop/core/feedback/transient_feedback.dart';
+import 'package:hydrop/core/localization/localized_formatters.dart';
 import 'package:hydrop/gen/l10n/app_localizations.dart';
 import 'package:hydrop/presentation/pages/chat/chat_page.dart';
 import 'package:hydrop/presentation/pages/chat/widgets/chat_message_widgets.dart';
@@ -525,9 +526,16 @@ class _DeviceRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final l10n = AppLocalizations.of(context);
     final foreground = device.isConnected
         ? colorScheme.onSurface
         : colorScheme.onSurface.withValues(alpha: 0.42);
+    final trailingLabel = device.isConnected
+        ? formatLocalizedByteRate(
+            l10n,
+            device.averageTransferSpeedBytesPerSecond,
+          )
+        : l10n.notConnected;
 
     return Material(
       color: selected
@@ -607,7 +615,7 @@ class _DeviceRow extends StatelessWidget {
               SizedBox(
                 width: 72,
                 child: Text(
-                  device.speedLabel,
+                  trailingLabel,
                   textAlign: TextAlign.right,
                   style: theme.textTheme.labelMedium?.copyWith(
                     fontWeight: FontWeight.w700,

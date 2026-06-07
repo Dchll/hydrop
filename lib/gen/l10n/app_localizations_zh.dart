@@ -231,6 +231,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get searchDevices => '搜索设备';
 
   @override
+  String get notConnected => '未连接';
+
+  @override
+  String get selectSettingSectionHint => '请选择左侧设置项';
+
+  @override
   String get noDevices => '没有设备';
 
   @override
@@ -1091,6 +1097,12 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get searchDevices => '搜尋裝置';
+
+  @override
+  String get notConnected => '未連接';
+
+  @override
+  String get selectSettingSectionHint => '請選擇左側設定項';
 
   @override
   String get noDevices => '沒有裝置';

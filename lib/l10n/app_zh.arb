@@ -71,6 +71,8 @@
   "refreshDevicesTooltip": "刷新设备",
   "scanQr": "扫描二维码",
   "searchDevices": "搜索设备",
+  "notConnected": "未连接",
+  "selectSettingSectionHint": "请选择左侧设置项",
   "noDevices": "没有设备",
   "refreshDiscoveryOrScanQr": "刷新发现或扫描二维码。",
   "tryDifferentDeviceSearch": "尝试其他名称、ID、状态或速度。",

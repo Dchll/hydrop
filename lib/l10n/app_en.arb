@@ -98,6 +98,8 @@
   "refreshDevicesTooltip": "Refresh devices",
   "scanQr": "Scan QR",
   "searchDevices": "Search devices",
+  "notConnected": "Not connected",
+  "selectSettingSectionHint": "Select a settings section",
   "noDevices": "No devices",
   "refreshDiscoveryOrScanQr": "Refresh discovery or scan a QR code.",
   "tryDifferentDeviceSearch": "Try a different name, ID, status, or speed.",

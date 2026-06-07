@@ -240,6 +240,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get searchDevices => 'Search devices';
 
   @override
+  String get notConnected => 'Not connected';
+
+  @override
+  String get selectSettingSectionHint => 'Select a settings section';
+
+  @override
   String get noDevices => 'No devices';
 
   @override

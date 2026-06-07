@@ -752,6 +752,8 @@ class _TransferItem {
 
   String? get errorMessage => live?.errorMessage ?? message.errorMessage;
 
+  bool get isPaused => live?.phase == TransferProgressPhase.paused;
+
   MessageAttachmentTransferStatus get transferStatus {
     return switch (live?.phase) {
       TransferProgressPhase.transferring =>
@@ -769,6 +771,9 @@ class _TransferItem {
   }
 
   String statusLabel(AppLocalizations l10n) {
+    if (isPaused) {
+      return l10n.transferPaused;
+    }
     return localizedAttachmentTransferStatus(
       l10n,
       transferStatus,

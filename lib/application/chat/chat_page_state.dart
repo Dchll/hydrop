@@ -391,14 +391,28 @@ class ChatPageController {
   Future<TransferFrame> _waitForTextAck(
     TransferConnection connection,
     String requestId,
-  ) {
-    return connection.frames
-        .timeout(transferTextAckTimeout)
-        .firstWhere(
-          (frame) =>
-              frame.header['type'] == transferFrameTypeTextMessageAck &&
-              frame.header['requestId'] == requestId,
+  ) async {
+    await for (final frame in connection.frames.timeout(
+      transferTextAckTimeout,
+    )) {
+      final frameRequestId = _readString(frame.header['requestId']);
+      if (frameRequestId != requestId) {
+        continue;
+      }
+      final type = _readString(frame.header['type']);
+      if (type == transferFrameTypeTextMessageAck) {
+        return frame;
+      }
+      if (type == transferFrameTypeError) {
+        throw ChatDeliveryException(
+          _readTransferErrorMessage(frame) ??
+              'Remote side rejected the message.',
         );
+      }
+    }
+    throw const ChatDeliveryException(
+      'Connection closed before message acknowledgement.',
+    );
   }
 }
 
@@ -423,6 +437,21 @@ String _deliveryErrorMessage(Object error) {
 
 String? _readString(Object? value) {
   return value is String && value.trim().isNotEmpty ? value : null;
+}
+
+String? _readTransferErrorMessage(TransferFrame frame) {
+  final headerMessage = _readString(frame.header['message']);
+  if (headerMessage != null) {
+    return headerMessage;
+  }
+  if (frame.body.isEmpty) {
+    return null;
+  }
+  final bodyMessage = utf8.decode(frame.body, allowMalformed: true).trim();
+  if (bodyMessage.isEmpty) {
+    return null;
+  }
+  return bodyMessage;
 }
 
 String _defaultRequestId() {

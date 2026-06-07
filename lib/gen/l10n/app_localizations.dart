@@ -525,6 +525,18 @@ abstract class AppLocalizations {
   /// **'Search devices'**
   String get searchDevices;
 
+  /// No description provided for @notConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Not connected'**
+  String get notConnected;
+
+  /// No description provided for @selectSettingSectionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a settings section'**
+  String get selectSettingSectionHint;
+
   /// No description provided for @noDevices.
   ///
   /// In en, this message translates to:

@@ -233,12 +233,24 @@ class _GroupedChatMessage extends StatelessWidget {
   Widget build(BuildContext context) {
     final isSent = entry.message.direction == MessageDirection.sent;
     if (isSent) {
-      return ChatMessageBubble(
-        message: entry.message,
-        searchQuery: searchQuery,
-        isHighlighted: isHighlighted,
-        onOpenAttachment: onOpenAttachment,
-        onShowMessageActions: onShowMessageActions,
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (_shouldShowInlineSendStatus(entry.message)) ...[
+            Flexible(child: _InlineSendStatus(message: entry.message)),
+            const SizedBox(width: 8),
+          ],
+          Flexible(
+            child: ChatMessageBubble(
+              message: entry.message,
+              searchQuery: searchQuery,
+              isHighlighted: isHighlighted,
+              onOpenAttachment: onOpenAttachment,
+              onShowMessageActions: onShowMessageActions,
+            ),
+          ),
+        ],
       );
     }
 
@@ -342,80 +354,48 @@ class ChatMessageBubble extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final isSent = message.direction == MessageDirection.sent;
-    final alignment = isSent ? Alignment.centerRight : Alignment.centerLeft;
     final bubbleColor = _bubbleColor(colorScheme, isSent);
     final foreground = _bubbleForeground(colorScheme, isSent);
 
-    return Align(
-      alignment: alignment,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.sizeOf(context).width * 0.78,
-        ),
-        child: InkWell(
-          onLongPress: () => onShowMessageActions(message),
-          onSecondaryTap: () => onShowMessageActions(message),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            decoration: BoxDecoration(
-              color: bubbleColor,
-              border: Border.all(
-                color: isHighlighted
-                    ? colorScheme.onSurface
-                    : isSent
-                    ? colorScheme.outline
-                    : colorScheme.outlineVariant,
-                width: 2,
-              ),
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.sizeOf(context).width * 0.78,
+      ),
+      child: InkWell(
+        onLongPress: () => onShowMessageActions(message),
+        onSecondaryTap: () => onShowMessageActions(message),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: bubbleColor,
+            border: Border.all(
+              color: isHighlighted
+                  ? colorScheme.onSurface
+                  : isSent
+                  ? colorScheme.outline
+                  : colorScheme.outlineVariant,
+              width: 2,
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (message.textContent != null &&
+                  message.textContent!.trim().isNotEmpty)
+                _MessageText(
+                  text: message.textContent!,
+                  highlightQuery: searchQuery,
+                  style: theme.textTheme.bodyLarge?.copyWith(color: foreground),
+                ),
+              if (message.attachments.isNotEmpty) ...[
                 if (message.textContent != null &&
                     message.textContent!.trim().isNotEmpty)
-                  _MessageText(
-                    text: message.textContent!,
-                    highlightQuery: searchQuery,
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      color: foreground,
-                    ),
-                  ),
-                if (message.attachments.isNotEmpty) ...[
-                  if (message.textContent != null &&
-                      message.textContent!.trim().isNotEmpty)
-                    const SizedBox(height: 10),
-                  ...message.attachments.map((attachment) {
-                    final fileName = attachment.fileName ?? '';
-                    if (_isImageAttachment(attachment, fileName)) {
-                      return ChatImageAttachment(
-                        attachment: attachment,
-                        direction: message.direction,
-                        messageError: message.errorMessage,
-                        foreground: foreground,
-                        onOpen: () => onOpenAttachment(
-                          attachment,
-                          message.direction,
-                          message.errorMessage,
-                        ),
-                        onShowActions: () => onShowMessageActions(message),
-                      );
-                    }
-                    if (_isVideoAttachment(attachment, fileName)) {
-                      return ChatVideoAttachment(
-                        attachment: attachment,
-                        direction: message.direction,
-                        messageError: message.errorMessage,
-                        foreground: foreground,
-                        onOpen: () => onOpenAttachment(
-                          attachment,
-                          message.direction,
-                          message.errorMessage,
-                        ),
-                        onShowActions: () => onShowMessageActions(message),
-                      );
-                    }
-                    return ChatAttachmentCard(
+                  const SizedBox(height: 10),
+                ...message.attachments.map((attachment) {
+                  final fileName = attachment.fileName ?? '';
+                  if (_isImageAttachment(attachment, fileName)) {
+                    return ChatImageAttachment(
                       attachment: attachment,
                       direction: message.direction,
                       messageError: message.errorMessage,
@@ -427,10 +407,36 @@ class ChatMessageBubble extends StatelessWidget {
                       ),
                       onShowActions: () => onShowMessageActions(message),
                     );
-                  }),
-                ],
+                  }
+                  if (_isVideoAttachment(attachment, fileName)) {
+                    return ChatVideoAttachment(
+                      attachment: attachment,
+                      direction: message.direction,
+                      messageError: message.errorMessage,
+                      foreground: foreground,
+                      onOpen: () => onOpenAttachment(
+                        attachment,
+                        message.direction,
+                        message.errorMessage,
+                      ),
+                      onShowActions: () => onShowMessageActions(message),
+                    );
+                  }
+                  return ChatAttachmentCard(
+                    attachment: attachment,
+                    direction: message.direction,
+                    messageError: message.errorMessage,
+                    foreground: foreground,
+                    onOpen: () => onOpenAttachment(
+                      attachment,
+                      message.direction,
+                      message.errorMessage,
+                    ),
+                    onShowActions: () => onShowMessageActions(message),
+                  );
+                }),
               ],
-            ),
+            ],
           ),
         ),
       ),
@@ -759,6 +765,7 @@ class ChatAttachmentDetail extends ConsumerWidget {
     final transferred = _clampedTransferredBytes(attachment, live);
     final progress = _attachmentProgress(attachment, live);
     final transferStatus = _effectiveTransferStatus(attachment, live);
+    final isPaused = _isPausedTransfer(live);
 
     return SafeArea(
       top: false,
@@ -810,11 +817,13 @@ class ChatAttachmentDetail extends ConsumerWidget {
           const SizedBox(height: 18),
           _DetailRow(
             label: l10n.status,
-            value: localizedAttachmentTransferStatus(
-              l10n,
-              transferStatus,
-              direction: direction,
-            ),
+            value: isPaused
+                ? l10n.transferPaused
+                : localizedAttachmentTransferStatus(
+                    l10n,
+                    transferStatus,
+                    direction: direction,
+                  ),
           ),
           _DetailRow(
             label: l10n.progress,
@@ -1290,6 +1299,43 @@ class _MessageAvatar extends StatelessWidget {
   }
 }
 
+class _InlineSendStatus extends StatelessWidget {
+  const _InlineSendStatus({required this.message});
+
+  final ConversationMessage message;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    final failed = message.sendStatus == MessageSendStatus.failed;
+
+    return Text(
+      localizedMessageSendStatus(l10n, message.sendStatus),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      textAlign: TextAlign.right,
+      style: theme.textTheme.labelSmall?.copyWith(
+        color: failed
+            ? theme.colorScheme.error
+            : theme.colorScheme.onSurface.withValues(alpha: 0.62),
+        fontWeight: FontWeight.w700,
+      ),
+    );
+  }
+}
+
+bool _shouldShowInlineSendStatus(ConversationMessage message) {
+  if (message.direction != MessageDirection.sent) {
+    return false;
+  }
+  if (message.attachments.isNotEmpty) {
+    return false;
+  }
+  return message.sendStatus == MessageSendStatus.sending ||
+      message.sendStatus == MessageSendStatus.failed;
+}
+
 bool _isImageAttachment(MessageAttachmentSnapshot attachment, String fileName) {
   final mimeType = attachment.mimeType ?? '';
   final lowerName = fileName.toLowerCase();
@@ -1348,6 +1394,10 @@ MessageAttachmentTransferStatus _effectiveTransferStatus(
     TransferProgressPhase.pending => MessageAttachmentTransferStatus.pending,
     null => attachment.transferStatus,
   };
+}
+
+bool _isPausedTransfer(TransferProgressSnapshot? live) {
+  return live?.phase == TransferProgressPhase.paused;
 }
 
 TransferProgressSnapshot? _watchTransferProgress(
@@ -1430,6 +1480,9 @@ String? _activeTransferMetaLine(
       status,
       direction: direction,
     );
+  }
+  if (_isPausedTransfer(live)) {
+    return l10n.transferPaused;
   }
   if (status == MessageAttachmentTransferStatus.pending) {
     return localizedAttachmentTransferStatus(

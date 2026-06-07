@@ -23,7 +23,7 @@ class SettingsPage extends ConsumerStatefulWidget {
 }
 
 class _SettingsPageState extends ConsumerState<SettingsPage> {
-  _SettingsSectionId _selectedSection = _SettingsSectionId.mine;
+  _SettingsSectionId? _selectedSection;
 
   @override
   Widget build(BuildContext context) {
@@ -243,7 +243,7 @@ class _SettingsContent extends StatelessWidget {
 
   final AppSettings settings;
   final HydropWindowClass windowClass;
-  final _SettingsSectionId selectedSection;
+  final _SettingsSectionId? selectedSection;
   final ValueChanged<_SettingsSectionId> onSectionSelected;
   final ValueChanged<AppThemeMode> onThemeModeChanged;
   final ValueChanged<AppLanguage> onLanguageChanged;
@@ -254,6 +254,7 @@ class _SettingsContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final list = HdPanel(
       padding: EdgeInsets.zero,
       child: ListView.separated(
@@ -285,16 +286,22 @@ class _SettingsContent extends StatelessWidget {
         Expanded(
           child: HdPanel(
             padding: EdgeInsets.zero,
-            child: _SettingsDetail(
-              section: selectedSection,
-              settings: settings,
-              onThemeModeChanged: onThemeModeChanged,
-              onLanguageChanged: onLanguageChanged,
-              onTransferEncryptionChanged: onTransferEncryptionChanged,
-              onAutoResumeChanged: onAutoResumeChanged,
-              onAutoReceiveByDefaultChanged: onAutoReceiveByDefaultChanged,
-              onResetDatabase: onResetDatabase,
-            ),
+            child: selectedSection == null
+                ? _CenteredState(
+                    title: l10n.settingsTitle,
+                    message: l10n.selectSettingSectionHint,
+                  )
+                : _SettingsDetail(
+                    section: selectedSection!,
+                    settings: settings,
+                    onThemeModeChanged: onThemeModeChanged,
+                    onLanguageChanged: onLanguageChanged,
+                    onTransferEncryptionChanged: onTransferEncryptionChanged,
+                    onAutoResumeChanged: onAutoResumeChanged,
+                    onAutoReceiveByDefaultChanged:
+                        onAutoReceiveByDefaultChanged,
+                    onResetDatabase: onResetDatabase,
+                  ),
           ),
         ),
       ],

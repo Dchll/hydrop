@@ -113,7 +113,7 @@ class HomeDeviceListItem {
   String get speedLabel {
     final bytes = averageTransferSpeedBytesPerSecond;
     if (bytes <= 0) {
-      return 'No route';
+      return '';
     }
     if (bytes >= 1024 * 1024) {
       return '${(bytes / 1024 / 1024).toStringAsFixed(1)} MB/s';
