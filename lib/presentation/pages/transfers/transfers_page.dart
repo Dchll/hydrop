@@ -874,9 +874,7 @@ class _TransferItem {
           transferStatus == MessageAttachmentTransferStatus.paused ||
           transferStatus == MessageAttachmentTransferStatus.failed) &&
       attachment.attachmentId != null &&
-      attachment.attachmentId!.isNotEmpty &&
-      attachment.filePath != null &&
-      attachment.filePath!.isNotEmpty;
+      attachment.attachmentId!.isNotEmpty;
 
   bool get canCancel =>
       message.direction == MessageDirection.sent &&

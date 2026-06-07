@@ -173,6 +173,21 @@ class ChatPageController {
       return const ChatSendResult.delivered();
     } catch (error, stackTrace) {
       final message = _deliveryErrorMessage(error);
+      final address = await _resolveBestAddressOrNull();
+      if (address != null) {
+        await _addressRepository.updateAddressHealth(
+          id: address.id,
+          isReachable: false,
+          lastFailureAt: DateTime.now(),
+          failureReason: message,
+        );
+        await _deviceRepository.updateConnectionStatus(
+          deviceId: _remoteDeviceId,
+          connectionStatus: DeviceConnectionStatus.disconnected,
+          lastDisconnectedAt: DateTime.now(),
+          lastError: message,
+        );
+      }
       talker.error(
         'DchllTest 消息发送失败：远端设备ID=$_remoteDeviceId '
         '本地消息ID=${record.localMessageId} 错误=$message',

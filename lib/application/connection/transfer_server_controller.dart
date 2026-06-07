@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hydrop/application/transfer/file_transfer_coordinator.dart';
@@ -12,6 +13,9 @@ import 'package:hydrop/data/local/repository/connection_session_repository.dart'
 import 'package:hydrop/data/local/repository/message_repository.dart';
 import 'package:hydrop/data/remote/service/frame_codec.dart';
 import 'package:hydrop/data/remote/service/transfer_socket_service.dart';
+
+const _transferDiagTag = 'DCHLL_TRANSFER';
+const _transferServerRetryDelay = Duration(seconds: 2);
 
 final transferServerControllerProvider = Provider<TransferServerController>((
   ref,
@@ -56,6 +60,7 @@ class TransferServerController {
   final DateTime Function() _now;
 
   TransferServer? _server;
+  Future<void>? _serverDoneFuture;
   Future<void> _lifecycleFuture = Future<void>.value();
   final _connections = <TransferConnection>{};
   final _subscriptions =
@@ -64,9 +69,58 @@ class TransferServerController {
   final _connectionDeviceIds = <TransferConnection, String>{};
   final _connectionSessionIds = <TransferConnection, String>{};
   final _frameQueues = <TransferConnection, Future<void>>{};
+  Timer? _restartTimer;
 
   Future<void> start() {
     return _enqueueLifecycle(_startInternal);
+  }
+
+  Future<bool> verifyListening() async {
+    final server = _server;
+    if (server == null) {
+      return false;
+    }
+    final doneFuture = _serverDoneFuture;
+    if (doneFuture != null) {
+      final alreadyDone = await Future.any<bool>([
+        doneFuture.then((_) => true).catchError((Object _) => true),
+        Future<bool>.delayed(const Duration(milliseconds: 1), () => false),
+      ]);
+      if (alreadyDone) {
+        talker.warning(
+          '[$_transferDiagTag] transfer server verify failed '
+          'reason=listener_done port=${server.port}',
+        );
+        return false;
+      }
+    }
+    try {
+      final socket = await Socket.connect(
+        InternetAddress.loopbackIPv4,
+        server.port,
+        timeout: const Duration(seconds: 1),
+      );
+      await socket.close();
+      return true;
+    } catch (error) {
+      talker.warning(
+        '[$_transferDiagTag] transfer server probe failed '
+        'port=${server.port} error=$error',
+      );
+      return false;
+    }
+  }
+
+  Future<void> restartIfUnhealthy() async {
+    final healthy = await verifyListening();
+    if (healthy) {
+      return;
+    }
+    talker.warning(
+      '[$_transferDiagTag] transfer server unhealthy, restarting listener '
+      'activeTransfers=${_fileTransferCoordinator?.hasActiveTransfers() == true}',
+    );
+    await _enqueueLifecycle(_restartListenerInternal);
   }
 
   Future<void> stop() async {
@@ -86,6 +140,9 @@ class TransferServerController {
   }
 
   Future<void> _stopInternal() async {
+    talker.debug('[$_transferDiagTag] transfer server stopping');
+    _restartTimer?.cancel();
+    _restartTimer = null;
     for (final subscription in _subscriptions.values) {
       await subscription.cancel();
     }
@@ -104,8 +161,11 @@ class TransferServerController {
     }
     _connections.clear();
 
-    await _server?.close();
+    final server = _server;
     _server = null;
+    _serverDoneFuture = null;
+    await server?.close();
+    talker.debug('[$_transferDiagTag] transfer server stopped');
   }
 
   Future<void> _startInternal() async {
@@ -117,12 +177,19 @@ class TransferServerController {
         port: transferDefaultPort,
         onConnection: _handleConnection,
       );
+      _watchServerLifecycle(_server!);
+      _restartTimer?.cancel();
+      _restartTimer = null;
+      talker.debug(
+        '[$_transferDiagTag] transfer server listening port=${_server?.port}',
+      );
       talker.debug('DchllTest 消息接收服务已启动：监听端口=${_server?.port}');
     } on TransferSocketException catch (error, stackTrace) {
       if (_isAddressInUse(error)) {
         talker.warning(
           'DchllTest 消息接收服务端口被占用，已跳过启动：端口=$transferDefaultPort 错误=$error',
         );
+        _scheduleRestart();
         return;
       }
       talker.error(
@@ -130,13 +197,31 @@ class TransferServerController {
         error,
         stackTrace,
       );
+      _scheduleRestart();
     } catch (error, stackTrace) {
       talker.error(
         'DchllTest 消息接收服务启动失败：端口=$transferDefaultPort 错误=$error',
         error,
         stackTrace,
       );
+      _scheduleRestart();
     }
+  }
+
+  Future<void> _restartListenerInternal() async {
+    _restartTimer?.cancel();
+    _restartTimer = null;
+    final server = _server;
+    if (server != null) {
+      talker.warning(
+        '[$_transferDiagTag] transfer server listener restart begin '
+        'port=${server.port} activeConnections=${_connections.length}',
+      );
+      _server = null;
+      _serverDoneFuture = null;
+      await server.close();
+    }
+    await _startInternal();
   }
 
   bool _isAddressInUse(TransferSocketException error) {
@@ -146,6 +231,11 @@ class TransferServerController {
 
   void _handleConnection(TransferConnection connection) {
     _connections.add(connection);
+    unawaited(_watchConnectionLifecycle(connection));
+    talker.debug(
+      '[$_transferDiagTag] incoming connection opened '
+      'remote=${connection.remoteAddress}:${connection.remotePort}',
+    );
     talker.debug(
       'DchllTest 消息接收 TCP 已连接：来源IP=${connection.remoteAddress} '
       '来源端口=${connection.remotePort}',
@@ -161,16 +251,23 @@ class TransferServerController {
         _enqueueFrame(connection, frame);
       },
       onDone: () {
-        _removeConnection(connection);
+        _removeConnection(connection, reason: 'incoming_stream_done');
       },
       onError: (error, stackTrace) {
+        talker.error(
+          '[$_transferDiagTag] incoming connection stream error '
+          'remote=${connection.remoteAddress}:${connection.remotePort} '
+          'error=$error',
+          error,
+          stackTrace,
+        );
         talker.error(
           'DchllTest 消息接收连接流错误：来源IP=${connection.remoteAddress} '
           '来源端口=${connection.remotePort} 错误=$error',
           error,
           stackTrace,
         );
-        _removeConnection(connection);
+        _removeConnection(connection, reason: 'incoming_stream_error');
       },
       cancelOnError: true,
     );
@@ -355,7 +452,15 @@ class TransferServerController {
     );
   }
 
-  void _removeConnection(TransferConnection connection) {
+  void _removeConnection(
+    TransferConnection connection, {
+    required String reason,
+  }) {
+    talker.debug(
+      '[$_transferDiagTag] incoming connection closing '
+      'remote=${connection.remoteAddress}:${connection.remotePort} '
+      'reason=$reason',
+    );
     final now = _now();
     final subscription = _subscriptions.remove(connection);
     if (subscription != null) {
@@ -391,17 +496,101 @@ class TransferServerController {
   void _startHeartbeatTimeout(TransferConnection connection) {
     _heartbeats.remove(connection)?.cancel();
     _heartbeats[connection] = Timer(transferHeartbeatTimeout, () {
-      if (_fileTransferCoordinator?.hasActiveTransferOnConnection(connection) ??
-          false) {
-        talker.debug(
-          'DchllTest 消息接收连接保活延长：来源IP=${connection.remoteAddress} '
-          '来源端口=${connection.remotePort} 原因=仍有活动传输',
-        );
-        _startHeartbeatTimeout(connection);
+      final hasActiveTransfer =
+          _fileTransferCoordinator?.hasActiveTransferOnConnection(connection) ??
+          false;
+      talker.warning(
+        '[$_transferDiagTag] heartbeat timeout closing '
+        'remote=${connection.remoteAddress}:${connection.remotePort} '
+        'timeout=${transferHeartbeatTimeout.inSeconds}s '
+        'activeTransfer=$hasActiveTransfer',
+      );
+      _removeConnection(connection, reason: 'heartbeat_timeout');
+    });
+  }
+
+  void _scheduleRestart() {
+    if (_server != null || _restartTimer != null) {
+      return;
+    }
+    talker.warning(
+      '[$_transferDiagTag] scheduling transfer server restart '
+      'delayMs=${_transferServerRetryDelay.inMilliseconds}',
+    );
+    _restartTimer = Timer(_transferServerRetryDelay, () {
+      _restartTimer = null;
+      unawaited(start());
+    });
+  }
+
+  void _watchServerLifecycle(TransferServer server) {
+    final doneFuture = server.done;
+    _serverDoneFuture = doneFuture;
+    unawaited(
+      doneFuture
+          .then((_) {
+            if (!identical(_server, server)) {
+              return Future<void>.value();
+            }
+            talker.warning(
+              '[$_transferDiagTag] transfer server listener exited '
+              'port=${server.port}',
+            );
+            return _enqueueLifecycle(() async {
+              if (!identical(_server, server)) {
+                return;
+              }
+              _server = null;
+              _serverDoneFuture = null;
+              _scheduleRestart();
+            });
+          })
+          .catchError((Object error, StackTrace stackTrace) {
+            if (!identical(_server, server)) {
+              return Future<void>.value();
+            }
+            talker.error(
+              '[$_transferDiagTag] transfer server listener failed '
+              'port=${server.port} error=$error',
+              error,
+              stackTrace,
+            );
+            return _enqueueLifecycle(() async {
+              if (!identical(_server, server)) {
+                return;
+              }
+              _server = null;
+              _serverDoneFuture = null;
+              _scheduleRestart();
+            });
+          }),
+    );
+  }
+
+  Future<void> _watchConnectionLifecycle(TransferConnection connection) async {
+    try {
+      await connection.done;
+      if (!_connections.contains(connection)) {
         return;
       }
-      _removeConnection(connection);
-    });
+      talker.warning(
+        '[$_transferDiagTag] incoming connection socket done '
+        'remote=${connection.remoteAddress}:${connection.remotePort}',
+      );
+      _removeConnection(connection, reason: 'socket_done');
+    } catch (error, stackTrace) {
+      if (!_connections.contains(connection)) {
+        return;
+      }
+      talker.error(
+        '[$_transferDiagTag] incoming connection socket failed '
+        'remote=${connection.remoteAddress}:${connection.remotePort} '
+        'error=$error',
+        error,
+        stackTrace,
+      );
+      _removeConnection(connection, reason: 'socket_error');
+    }
   }
 
   Future<void> _trackConnectionPeer(

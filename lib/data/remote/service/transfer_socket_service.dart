@@ -3,7 +3,10 @@ import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hydrop/core/constants/transfer_constants.dart';
+import 'package:hydrop/core/utils/talker/talker.dart';
 import 'package:hydrop/data/remote/service/frame_codec.dart';
+
+const _transferDiagTag = 'DCHLL_TRANSFER';
 
 final transferSocketServiceProvider = Provider<TransferSocketService>((ref) {
   return const TransferSocketService();
@@ -45,6 +48,8 @@ abstract class TransferConnection {
 
   Stream<TransferFrame> get frames;
 
+  Future<void> get done;
+
   Future<void> sendFrame(TransferFrame frame, {bool flush = true});
 
   Future<void> close();
@@ -57,6 +62,8 @@ abstract class TransferDuplexSocket {
 
   Stream<List<int>> get bytes;
 
+  Future<void> get done;
+
   Future<void> add(List<int> data, {bool flush = true});
 
   Future<void> addAll(Iterable<List<int>> chunks, {bool flush = true});
@@ -67,6 +74,8 @@ abstract class TransferDuplexSocket {
 abstract class TransferServerSocket {
   int get port;
 
+  Future<void> get done;
+
   Future<void> close();
 }
 
@@ -76,6 +85,8 @@ class TransferServer {
   final TransferServerSocket _socket;
 
   int get port => _socket.port;
+
+  Future<void> get done => _socket.done;
 
   Future<void> close() => _socket.close();
 }
@@ -139,6 +150,9 @@ class _SocketTransferConnection implements TransferConnection {
   Stream<TransferFrame> get frames => _frames;
 
   @override
+  Future<void> get done => _socket.done;
+
+  @override
   Future<void> sendFrame(TransferFrame frame, {bool flush = true}) async {
     final encoded = _codec.encodeParts(frame);
     await _socket.addAll([
@@ -162,6 +176,7 @@ class _IoTransferDuplexSocket implements TransferDuplexSocket {
   final Socket _socket;
   final String _remoteAddress;
   final int _remotePort;
+  late final Future<void> _done = _observeDone();
   Future<void> _writeQueue = Future<void>.value();
   bool _isClosing = false;
 
@@ -173,6 +188,9 @@ class _IoTransferDuplexSocket implements TransferDuplexSocket {
 
   @override
   Stream<List<int>> get bytes => _socket;
+
+  @override
+  Future<void> get done => _done;
 
   @override
   Future<void> add(List<int> data, {bool flush = true}) async {
@@ -224,21 +242,47 @@ class _IoTransferDuplexSocket implements TransferDuplexSocket {
     _writeQueue = operation.catchError((_) {});
     await operation;
   }
+
+  Future<void> _observeDone() async {
+    try {
+      await _socket.done;
+      talker.debug(
+        '[$_transferDiagTag] tcp socket done remote=$_remoteAddress:$_remotePort',
+      );
+    } catch (error, stackTrace) {
+      talker.warning(
+        '[$_transferDiagTag] tcp socket done with error '
+        'remote=$_remoteAddress:$_remotePort error=$error',
+      );
+      Error.throwWithStackTrace(error, stackTrace);
+    }
+  }
 }
 
 class _IoTransferServerSocket implements TransferServerSocket {
-  _IoTransferServerSocket(this._server, this._subscription);
+  _IoTransferServerSocket(
+    this._server,
+    this._subscription,
+    this._doneCompleter,
+  );
 
   final ServerSocket _server;
   final StreamSubscription<Socket> _subscription;
+  final Completer<void> _doneCompleter;
 
   @override
   int get port => _server.port;
 
   @override
+  Future<void> get done => _doneCompleter.future;
+
+  @override
   Future<void> close() async {
     await _subscription.cancel();
     await _server.close();
+    if (!_doneCompleter.isCompleted) {
+      _doneCompleter.complete();
+    }
   }
 }
 
@@ -248,10 +292,17 @@ Future<TransferDuplexSocket> _defaultClientSocketFactory(
   Duration timeout,
 ) async {
   try {
+    talker.debug(
+      '[$_transferDiagTag] tcp connect start target=$host:$port timeoutMs=${timeout.inMilliseconds}',
+    );
     final socket = await Socket.connect(host, port, timeout: timeout);
     _configureSocket(socket);
+    talker.debug('[$_transferDiagTag] tcp connect success target=$host:$port');
     return _IoTransferDuplexSocket(socket);
   } catch (error) {
+    talker.warning(
+      '[$_transferDiagTag] tcp connect failed target=$host:$port error=$error',
+    );
     throw TransferSocketException('Failed to connect to $host:$port: $error');
   }
 }
@@ -264,13 +315,41 @@ Future<TransferServerSocket> _defaultServerSocketFactory(
     final server = await ServerSocket.bind(
       InternetAddress.anyIPv4,
       port,
-      shared: true,
+      shared: false,
     );
-    final subscription = server.listen((socket) {
-      _configureSocket(socket);
-      onClient(_IoTransferDuplexSocket(socket));
-    });
-    return _IoTransferServerSocket(server, subscription);
+    final doneCompleter = Completer<void>();
+    talker.debug('[$_transferDiagTag] tcp server bound port=${server.port}');
+    final subscription = server.listen(
+      (socket) {
+        _configureSocket(socket);
+        talker.debug(
+          '[$_transferDiagTag] tcp server accepted remote='
+          '${socket.remoteAddress.address}:${socket.remotePort}',
+        );
+        onClient(_IoTransferDuplexSocket(socket));
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        talker.error(
+          '[$_transferDiagTag] tcp server stream error '
+          'port=${server.port} error=$error',
+          error,
+          stackTrace,
+        );
+        if (!doneCompleter.isCompleted) {
+          doneCompleter.completeError(error, stackTrace);
+        }
+      },
+      onDone: () {
+        talker.warning(
+          '[$_transferDiagTag] tcp server stream done port=${server.port}',
+        );
+        if (!doneCompleter.isCompleted) {
+          doneCompleter.complete();
+        }
+      },
+      cancelOnError: false,
+    );
+    return _IoTransferServerSocket(server, subscription, doneCompleter);
   } catch (error) {
     throw TransferSocketException(
       'Failed to start TCP server on $port: $error',

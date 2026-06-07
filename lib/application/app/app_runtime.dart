@@ -12,6 +12,9 @@ import 'package:hydrop/core/theme/app_theme.dart';
 import 'package:hydrop/core/utils/talker/talker.dart';
 import 'package:hydrop/data/local/repository/setting_repository.dart';
 
+const _transferRuntimeDiagTag = 'DCHLL_TRANSFER';
+const _foregroundSelfHealInterval = Duration(seconds: 20);
+
 final appRuntimeProvider = Provider<AppRuntime>((ref) {
   final runtime = AppRuntime(
     discoveryController: ref.watch(discoveryControllerProvider),
@@ -49,7 +52,12 @@ class AppRuntime {
     required this.transferServerController,
     required this.fileTransferCoordinator,
     required this.transferNotificationService,
-  });
+  }) {
+    _foregroundSelfHealTimer = Timer.periodic(
+      _foregroundSelfHealInterval,
+      (_) => unawaited(_runForegroundSelfHeal()),
+    );
+  }
 
   final DiscoveryController discoveryController;
   final TransferServerController transferServerController;
@@ -57,6 +65,7 @@ class AppRuntime {
   final TransferNotificationService transferNotificationService;
   Timer? _backgroundMaintenanceTimer;
   Timer? _backgroundMaintenanceStopTimer;
+  Timer? _foregroundSelfHealTimer;
   Future<void>? _backgroundMaintenanceFuture;
   bool _isForeground = true;
 
@@ -68,7 +77,9 @@ class AppRuntime {
     _isForeground = false;
     _startBackgroundMaintenanceTimer();
     await discoveryController.stop();
-    await transferServerController.stop();
+    talker.debug(
+      '[$_transferRuntimeDiagTag] pauseNetwork keeps transfer server alive',
+    );
   }
 
   Future<void> resumeNetwork() async {
@@ -88,7 +99,21 @@ class AppRuntime {
   }
 
   void dispose() {
+    _foregroundSelfHealTimer?.cancel();
+    _foregroundSelfHealTimer = null;
     _stopBackgroundMaintenanceTimer();
+  }
+
+  Future<void> _runForegroundSelfHeal() async {
+    if (!_isForeground) {
+      return;
+    }
+    talker.debug(
+      '[$_transferRuntimeDiagTag] foreground self-heal tick '
+      'intervalMs=${_foregroundSelfHealInterval.inMilliseconds}',
+    );
+    await discoveryController.start();
+    await transferServerController.restartIfUnhealthy();
   }
 
   void _startBackgroundMaintenanceTimer() {
@@ -118,7 +143,7 @@ class AppRuntime {
     }
 
     await discoveryController.start();
-    await transferServerController.start();
+    await transferServerController.restartIfUnhealthy();
     _backgroundMaintenanceStopTimer?.cancel();
     _backgroundMaintenanceStopTimer = Timer(
       discoveryBackgroundMaintenanceWindow,
@@ -127,7 +152,6 @@ class AppRuntime {
           return;
         }
         unawaited(discoveryController.stop());
-        unawaited(transferServerController.stop());
       },
     );
   }

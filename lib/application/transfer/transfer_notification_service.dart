@@ -39,6 +39,7 @@ class TransferNotificationService {
   final FlutterLocalNotificationsPlugin _plugin;
   final DateTime Function() _now;
   final _lastProgressShownAt = <String, DateTime>{};
+  final _queues = <String, Future<void>>{};
   Future<void>? _initialization;
   bool _permissionRequested = false;
   bool _notificationsUnavailable = false;
@@ -61,32 +62,34 @@ class TransferNotificationService {
     }
     _lastProgressShownAt[attachmentId] = now;
 
-    if (!await _ensureInitialized()) {
-      return;
-    }
-    try {
-      final l10n = await _localizations();
-      final percent = _progressPercent(transferredBytes, totalBytes);
-      await _plugin.show(
-        id: _notificationId(attachmentId),
-        title: direction.progressTitle(l10n),
-        body: l10n.transferNotificationProgress(
-          fileName,
-          formatLocalizedByteProgress(l10n, transferredBytes, totalBytes),
-        ),
-        notificationDetails: _notificationDetails(
-          attachmentId: attachmentId,
-          progress: percent,
-          ongoing: true,
-          darwinSubtitle: '$percent%',
-        ),
-        payload: attachmentId,
-      );
-    } on MissingPluginException catch (error, stackTrace) {
-      _disableNotifications('传输通知插件未注册，已跳过进度通知', error, stackTrace);
-    } on PlatformException catch (error, stackTrace) {
-      _disableNotifications('传输通知平台通道异常，已跳过进度通知', error, stackTrace);
-    }
+    return _enqueue(attachmentId, () async {
+      if (!await _ensureInitialized()) {
+        return;
+      }
+      try {
+        final l10n = await _localizations();
+        final percent = _progressPercent(transferredBytes, totalBytes);
+        await _plugin.show(
+          id: _notificationId(attachmentId),
+          title: direction.progressTitle(l10n),
+          body: l10n.transferNotificationProgress(
+            fileName,
+            formatLocalizedByteProgress(l10n, transferredBytes, totalBytes),
+          ),
+          notificationDetails: _notificationDetails(
+            attachmentId: attachmentId,
+            progress: percent,
+            ongoing: true,
+            darwinSubtitle: '$percent%',
+          ),
+          payload: attachmentId,
+        );
+      } on MissingPluginException catch (error, stackTrace) {
+        _disableNotifications('传输通知插件未注册，已跳过进度通知', error, stackTrace);
+      } on PlatformException catch (error, stackTrace) {
+        _disableNotifications('传输通知平台通道异常，已跳过进度通知', error, stackTrace);
+      }
+    });
   }
 
   Future<void> showCompleted({
@@ -98,28 +101,30 @@ class TransferNotificationService {
       return;
     }
     _lastProgressShownAt.remove(attachmentId);
-    if (!await _ensureInitialized()) {
-      return;
-    }
-    try {
-      final l10n = await _localizations();
-      await _plugin.show(
-        id: _notificationId(attachmentId),
-        title: direction.completedTitle(l10n),
-        body: fileName,
-        notificationDetails: _notificationDetails(
-          attachmentId: attachmentId,
-          progress: _progressMax,
-          ongoing: false,
-        ),
-        payload: attachmentId,
-      );
-      unawaited(_cancelLater(attachmentId));
-    } on MissingPluginException catch (error, stackTrace) {
-      _disableNotifications('传输通知插件未注册，已跳过完成通知', error, stackTrace);
-    } on PlatformException catch (error, stackTrace) {
-      _disableNotifications('传输通知平台通道异常，已跳过完成通知', error, stackTrace);
-    }
+    return _enqueue(attachmentId, () async {
+      if (!await _ensureInitialized()) {
+        return;
+      }
+      try {
+        final l10n = await _localizations();
+        await _plugin.show(
+          id: _notificationId(attachmentId),
+          title: direction.completedTitle(l10n),
+          body: fileName,
+          notificationDetails: _notificationDetails(
+            attachmentId: attachmentId,
+            progress: _progressMax,
+            ongoing: false,
+          ),
+          payload: attachmentId,
+        );
+        unawaited(_cancelLater(attachmentId));
+      } on MissingPluginException catch (error, stackTrace) {
+        _disableNotifications('传输通知插件未注册，已跳过完成通知', error, stackTrace);
+      } on PlatformException catch (error, stackTrace) {
+        _disableNotifications('传输通知平台通道异常，已跳过完成通知', error, stackTrace);
+      }
+    });
   }
 
   Future<void> showFailed({
@@ -131,27 +136,29 @@ class TransferNotificationService {
       return;
     }
     _lastProgressShownAt.remove(attachmentId);
-    if (!await _ensureInitialized()) {
-      return;
-    }
-    try {
-      final l10n = await _localizations();
-      await _plugin.show(
-        id: _notificationId(attachmentId),
-        title: l10n.transferNotificationFailedTitle,
-        body: l10n.transferNotificationFailed(fileName),
-        notificationDetails: _notificationDetails(
-          attachmentId: attachmentId,
-          ongoing: false,
-        ),
-        payload: attachmentId,
-      );
-      unawaited(_cancelLater(attachmentId));
-    } on MissingPluginException catch (error, stackTrace) {
-      _disableNotifications('传输通知插件未注册，已跳过失败通知', error, stackTrace);
-    } on PlatformException catch (error, stackTrace) {
-      _disableNotifications('传输通知平台通道异常，已跳过失败通知', error, stackTrace);
-    }
+    return _enqueue(attachmentId, () async {
+      if (!await _ensureInitialized()) {
+        return;
+      }
+      try {
+        final l10n = await _localizations();
+        await _plugin.show(
+          id: _notificationId(attachmentId),
+          title: l10n.transferNotificationFailedTitle,
+          body: l10n.transferNotificationFailed(fileName),
+          notificationDetails: _notificationDetails(
+            attachmentId: attachmentId,
+            ongoing: false,
+          ),
+          payload: attachmentId,
+        );
+        unawaited(_cancelLater(attachmentId));
+      } on MissingPluginException catch (error, stackTrace) {
+        _disableNotifications('传输通知插件未注册，已跳过失败通知', error, stackTrace);
+      } on PlatformException catch (error, stackTrace) {
+        _disableNotifications('传输通知平台通道异常，已跳过失败通知', error, stackTrace);
+      }
+    });
   }
 
   Future<void> cancel(String attachmentId) async {
@@ -159,16 +166,36 @@ class TransferNotificationService {
       return;
     }
     _lastProgressShownAt.remove(attachmentId);
-    if (!await _ensureInitialized()) {
-      return;
-    }
-    try {
-      await _plugin.cancel(id: _notificationId(attachmentId));
-    } on MissingPluginException catch (error, stackTrace) {
-      _disableNotifications('传输通知插件未注册，已跳过取消通知', error, stackTrace);
-    } on PlatformException catch (error, stackTrace) {
-      _disableNotifications('传输通知平台通道异常，已跳过取消通知', error, stackTrace);
-    }
+    return _enqueue(attachmentId, () async {
+      if (!await _ensureInitialized()) {
+        return;
+      }
+      try {
+        await _plugin.cancel(id: _notificationId(attachmentId));
+      } on MissingPluginException catch (error, stackTrace) {
+        _disableNotifications('传输通知插件未注册，已跳过取消通知', error, stackTrace);
+      } on PlatformException catch (error, stackTrace) {
+        _disableNotifications('传输通知平台通道异常，已跳过取消通知', error, stackTrace);
+      }
+    });
+  }
+
+  Future<void> _enqueue(
+    String attachmentId,
+    Future<void> Function() operation,
+  ) {
+    final previous = _queues[attachmentId] ?? Future<void>.value();
+    late final Future<void> next;
+    next = previous
+        .catchError((Object _) {})
+        .then((_) => operation())
+        .whenComplete(() {
+          if (identical(_queues[attachmentId], next)) {
+            _queues.remove(attachmentId);
+          }
+        });
+    _queues[attachmentId] = next;
+    return next;
   }
 
   Future<void> requestPermissions() async {

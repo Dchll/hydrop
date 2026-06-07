@@ -1,12 +1,16 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hydrop/application/app/app_runtime.dart';
 import 'package:hydrop/core/theme/app_theme.dart';
+import 'package:hydrop/core/utils/talker/talker.dart' as app_talker;
 import 'package:hydrop/gen/l10n/app_localizations.dart';
 import 'package:hydrop/routes/app_router.dart';
 import 'package:talker_flutter/talker_flutter.dart';
+
+const _transferLifecycleDiagTag = 'DCHLL_TRANSFER_LIFECYCLE';
 
 class MainApp extends ConsumerStatefulWidget {
   const MainApp({super.key});
@@ -34,13 +38,29 @@ class _MainAppState extends ConsumerState<MainApp> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final runtime = ref.read(appRuntimeProvider);
+    app_talker.talker.debug(
+      '[$_transferLifecycleDiagTag] app lifecycle -> $state',
+    );
+    final shouldPauseNetwork = switch (defaultTargetPlatform) {
+      TargetPlatform.android || TargetPlatform.iOS => true,
+      TargetPlatform.macOS ||
+      TargetPlatform.windows ||
+      TargetPlatform.linux ||
+      TargetPlatform.fuchsia => false,
+    };
     switch (state) {
       case AppLifecycleState.resumed:
         unawaited(runtime.resumeNetwork());
         break;
       case AppLifecycleState.inactive:
       case AppLifecycleState.hidden:
+        break;
       case AppLifecycleState.paused:
+        if (!shouldPauseNetwork) {
+          break;
+        }
+        unawaited(runtime.pauseNetwork());
+        break;
       case AppLifecycleState.detached:
         unawaited(runtime.pauseNetwork());
         break;

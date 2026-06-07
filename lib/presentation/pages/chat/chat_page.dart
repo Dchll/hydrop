@@ -529,10 +529,6 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     if (attachmentId == null || attachmentId.isEmpty) {
       return false;
     }
-    final filePath = attachment.filePath;
-    if (filePath == null || filePath.isEmpty) {
-      return false;
-    }
     final live = ref.read(transferProgressProvider(attachmentId));
     return live?.phase == TransferProgressPhase.paused ||
         _attachmentTransferStatus(attachment) ==

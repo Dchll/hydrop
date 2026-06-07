@@ -1697,11 +1697,7 @@ bool _canResumeTransfer(
   TransferProgressSnapshot? live,
 ) {
   final attachmentId = attachment.attachmentId;
-  final filePath = attachment.filePath;
-  if (attachmentId == null ||
-      attachmentId.isEmpty ||
-      filePath == null ||
-      filePath.isEmpty) {
+  if (attachmentId == null || attachmentId.isEmpty) {
     return false;
   }
   if (_isPausedTransfer(live)) {
