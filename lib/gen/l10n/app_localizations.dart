@@ -1173,6 +1173,24 @@ abstract class AppLocalizations {
   /// **'Retry message'**
   String get retryMessage;
 
+  /// No description provided for @lastMessageYou.
+  ///
+  /// In en, this message translates to:
+  /// **'You'**
+  String get lastMessageYou;
+
+  /// No description provided for @lastMessagePeer.
+  ///
+  /// In en, this message translates to:
+  /// **'Peer'**
+  String get lastMessagePeer;
+
+  /// No description provided for @lastMessageSentFile.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor} sent {fileName}'**
+  String lastMessageSentFile(String actor, String fileName);
+
   /// No description provided for @fileAttachment.
   ///
   /// In en, this message translates to:
@@ -1256,6 +1274,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Transfer paused.'**
   String get transferPaused;
+
+  /// No description provided for @resumeTransfer.
+  ///
+  /// In en, this message translates to:
+  /// **'Resume transfer'**
+  String get resumeTransfer;
+
+  /// No description provided for @transferResumed.
+  ///
+  /// In en, this message translates to:
+  /// **'Transfer resumed.'**
+  String get transferResumed;
 
   /// No description provided for @cancelTransfer.
   ///

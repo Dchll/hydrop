@@ -294,6 +294,15 @@
   "loadOlderMessages": "Load older messages",
   "copyMessage": "Copy message",
   "retryMessage": "Retry message",
+  "lastMessageYou": "You",
+  "lastMessagePeer": "Peer",
+  "lastMessageSentFile": "{actor} sent {fileName}",
+  "@lastMessageSentFile": {
+    "placeholders": {
+      "actor": { "type": "String" },
+      "fileName": { "type": "String" }
+    }
+  },
   "fileAttachment": "File attachment",
   "saveAttachmentDialogTitle": "Save attachment",
   "save": "Save",
@@ -313,6 +322,8 @@
   },
   "pause": "Pause",
   "transferPaused": "Transfer paused.",
+  "resumeTransfer": "Resume transfer",
+  "transferResumed": "Transfer resumed.",
   "cancelTransfer": "Cancel transfer",
   "cancelTransferDescription": "Stop transferring {fileName} and mark it as cancelled.",
   "@cancelTransferDescription": {

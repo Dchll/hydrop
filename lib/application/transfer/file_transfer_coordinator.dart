@@ -393,6 +393,89 @@ class FileTransferCoordinator {
     talker.debug('DchllTest 传输已暂停：附件ID=$normalized');
   }
 
+  Future<void> resumeTransfer(String attachmentId) async {
+    final normalized = attachmentId.trim();
+    if (normalized.isEmpty) {
+      return;
+    }
+    if (_isOutgoingAttachmentActiveOrQueued(normalized)) {
+      return;
+    }
+
+    final attachment = await _messageRepository.getAttachmentByAttachmentId(
+      normalized,
+    );
+    final localMessageId = await _messageRepository
+        .getLocalMessageIdByAttachmentId(normalized);
+    if (attachment == null || localMessageId == null) {
+      throw const FileTransferException('Transfer record not found.');
+    }
+    final profile = await _mineRepository.getMineProfile();
+    if (profile == null) {
+      throw const FileTransferException(
+        'Local device profile is not initialized.',
+      );
+    }
+    final message = await _messageRepository.getMessageByAttachmentId(
+      normalized,
+    );
+    if (message == null) {
+      throw const FileTransferException('Outgoing message record not found.');
+    }
+    final filePath = attachment.filePath;
+    if (filePath == null || filePath.trim().isEmpty) {
+      throw const FileTransferException('Source file no longer exists.');
+    }
+    final file = File(filePath);
+    if (!await file.exists()) {
+      throw const FileTransferException('Source file no longer exists.');
+    }
+    final address = await _resolveRecoveryAddress(message.remoteDeviceId);
+    if (address == null) {
+      throw const FileTransferException(
+        'No reachable address is available for this device.',
+      );
+    }
+
+    _pausedAttachmentIds.remove(normalized);
+    await _messageRepository.markMessageSending(localMessageId: localMessageId);
+    await _messageRepository.updateAttachmentTransfer(
+      attachmentId: normalized,
+      transferStatus: MessageAttachmentTransferStatus.transferring,
+      saveStatus: MessageAttachmentSaveStatus.saving,
+      downloadProgress: _progress(
+        attachment.transferredBytes,
+        attachment.totalBytes,
+      ),
+      transferStartedAt: attachment.transferStartedAt ?? _now(),
+    );
+    _progressStore.reportProgress(
+      attachmentId: normalized,
+      direction: TransferProgressDirection.outgoing,
+      transferredBytes: attachment.transferredBytes,
+      totalBytes: attachment.totalBytes,
+      startedAt: attachment.transferStartedAt,
+    );
+
+    _enqueueOutgoingTransfer(
+      _QueuedOutgoingTransfer(
+        prepared: _OutgoingFileTransfer(
+          attachmentId: normalized,
+          localMessageId: localMessageId,
+          file: file,
+          fileName: attachment.fileName ?? file.uri.pathSegments.last,
+          totalBytes: attachment.totalBytes,
+          mimeType: attachment.mimeType,
+        )..acknowledgedBytes = attachment.transferredBytes,
+        endpointKey: _endpointKey(address.ipAddress, address.port),
+        host: address.ipAddress,
+        port: address.port,
+        localDeviceId: profile.deviceId,
+        localDisplayName: profile.displayName,
+      ),
+    );
+  }
+
   Future<void> cancelTransfer(String attachmentId) async {
     final normalized = attachmentId.trim();
     if (normalized.isEmpty) {

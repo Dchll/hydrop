@@ -380,6 +380,14 @@ class _TransferRow extends ConsumerWidget {
                       icon: const Icon(Icons.pause_rounded, size: 18),
                     ),
                   ],
+                  if (displayItem.canResume) ...[
+                    const SizedBox(width: 6),
+                    IconButton(
+                      tooltip: l10n.resumeTransfer,
+                      onPressed: () => _resumeTransfer(context, ref),
+                      icon: const Icon(Icons.play_arrow_rounded, size: 18),
+                    ),
+                  ],
                   if (displayItem.canCancel) ...[
                     const SizedBox(width: 4),
                     IconButton(
@@ -450,6 +458,26 @@ class _TransferRow extends ConsumerWidget {
       }
     }
   }
+
+  Future<void> _resumeTransfer(BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context);
+    final attachmentId = item.attachment.attachmentId;
+    if (attachmentId == null || attachmentId.trim().isEmpty) {
+      return;
+    }
+    try {
+      await ref
+          .read(transferActionControllerProvider)
+          .resumeTransfer(attachmentId);
+      if (context.mounted) {
+        await TransientFeedback.show(context, l10n.transferResumed);
+      }
+    } catch (error) {
+      if (context.mounted) {
+        await TransientFeedback.show(context, l10n.actionFailed('$error'));
+      }
+    }
+  }
 }
 
 class _TransferDetail extends ConsumerWidget {
@@ -511,6 +539,14 @@ class _TransferDetail extends ConsumerWidget {
                   onPressed: () => _pauseTransfer(context, ref),
                   icon: const Icon(Icons.pause_rounded),
                   label: Text(l10n.pause),
+                ),
+                const SizedBox(width: 6),
+              ],
+              if (displayItem.canResume) ...[
+                OutlinedButton.icon(
+                  onPressed: () => _resumeTransfer(context, ref),
+                  icon: const Icon(Icons.play_arrow_rounded),
+                  label: Text(l10n.resumeTransfer),
                 ),
                 const SizedBox(width: 6),
               ],
@@ -649,6 +685,26 @@ class _TransferDetail extends ConsumerWidget {
           .cancelTransfer(attachmentId);
       if (context.mounted) {
         await TransientFeedback.show(context, l10n.transferCancelled);
+      }
+    } catch (error) {
+      if (context.mounted) {
+        await TransientFeedback.show(context, l10n.actionFailed('$error'));
+      }
+    }
+  }
+
+  Future<void> _resumeTransfer(BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context);
+    final attachmentId = item.attachment.attachmentId;
+    if (attachmentId == null || attachmentId.trim().isEmpty) {
+      return;
+    }
+    try {
+      await ref
+          .read(transferActionControllerProvider)
+          .resumeTransfer(attachmentId);
+      if (context.mounted) {
+        await TransientFeedback.show(context, l10n.transferResumed);
       }
     } catch (error) {
       if (context.mounted) {
@@ -795,11 +851,19 @@ class _TransferItem {
   }
 
   bool get canPause =>
+      message.direction == MessageDirection.sent &&
       transferStatus == MessageAttachmentTransferStatus.transferring &&
       attachment.attachmentId != null;
 
+  bool get canResume =>
+      message.direction == MessageDirection.sent &&
+      isPaused &&
+      attachment.attachmentId != null &&
+      attachment.attachmentId!.isNotEmpty;
+
   bool get canCancel =>
-      isActive &&
+      message.direction == MessageDirection.sent &&
+      (isActive || isPaused) &&
       attachment.attachmentId != null &&
       attachment.attachmentId!.isNotEmpty;
 

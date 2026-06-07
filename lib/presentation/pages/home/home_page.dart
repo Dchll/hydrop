@@ -6,6 +6,7 @@ import 'package:hydrop/application/settings/database_reset_controller.dart';
 import 'package:hydrop/core/feedback/transient_feedback.dart';
 import 'package:hydrop/core/localization/localized_formatters.dart';
 import 'package:hydrop/gen/l10n/app_localizations.dart';
+import 'package:hydrop/data/local/repository/message_repository.dart';
 import 'package:hydrop/presentation/pages/chat/chat_page.dart';
 import 'package:hydrop/presentation/pages/chat/widgets/chat_message_widgets.dart';
 import 'package:hydrop/presentation/widgets/connection_qr_actions.dart';
@@ -145,11 +146,26 @@ class _HomeContent extends ConsumerWidget {
   Widget _buildDeviceContent(
     BuildContext context, {
     required List<HomeDeviceListItem> items,
-    required AsyncValue<Map<String, String>> lastMessages,
+    required AsyncValue<Map<String, ConversationMessage>> lastMessages,
     required AsyncValue<Map<String, int>> unreadCounts,
   }) {
+    final l10n = AppLocalizations.of(context);
     final messageLabels = lastMessages.maybeWhen(
-      data: (labels) => labels,
+      data: (messages) => messages.map(
+        (deviceId, message) => MapEntry(
+          deviceId,
+          homeLastMessageLabel(
+            message,
+            youLabel: l10n.lastMessageYou,
+            peerLabel: l10n.lastMessagePeer,
+            sentFileLabel: (actor, fileName) => l10n.lastMessageSentFile(
+              actor,
+              fileName.isEmpty ? l10n.fileAttachment : fileName,
+            ),
+            noMessagesYetLabel: l10n.noMessagesYet,
+          ),
+        ),
+      ),
       orElse: () => const <String, String>{},
     );
     final unreadLabels = unreadCounts.maybeWhen(
@@ -215,7 +231,6 @@ class _HomeContent extends ConsumerWidget {
         .where((device) {
           return device.displayName.toLowerCase().contains(normalized) ||
               device.deviceId.toLowerCase().contains(normalized) ||
-              device.connectionLabel.toLowerCase().contains(normalized) ||
               device.speedLabel.toLowerCase().contains(normalized);
         })
         .toList(growable: false);

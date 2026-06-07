@@ -41,7 +41,6 @@ class ChatPage extends ConsumerStatefulWidget {
 class _ChatPageState extends ConsumerState<ChatPage> {
   final _messageController = TextEditingController();
   final _searchController = TextEditingController();
-  bool _isSending = false;
   bool _isPickingFile = false;
   int _visibleMessageLimit = _chatPageSize;
   List<ConversationMessage> _lastRenderedMessages = const [];
@@ -154,6 +153,9 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                   peerDisplayName: widget.displayName,
                   onOpenAttachment: _showAttachmentDetail,
                   onShowMessageActions: _showMessageActions,
+                  onPauseAttachment: _pauseAttachment,
+                  onResumeAttachment: _resumeAttachment,
+                  onCancelAttachment: _confirmCancelAttachment,
                   emptyTitle: l10n.noMessagesYet,
                   emptyMessage: l10n.emptyConversationMessage,
                 );
@@ -180,7 +182,6 @@ class _ChatPageState extends ConsumerState<ChatPage> {
             ),
             child: ChatComposer(
               controller: _messageController,
-              isSending: _isSending,
               isPickingFile: _isPickingFile,
               onSend: _sendText,
               onAttachFile: _pickFile,
@@ -194,26 +195,21 @@ class _ChatPageState extends ConsumerState<ChatPage> {
 
   Future<void> _sendText() async {
     final text = _messageController.text;
-    if (text.trim().isEmpty || _isSending) {
+    if (text.trim().isEmpty) {
       return;
     }
     final l10n = AppLocalizations.of(context);
+    _messageController.clear();
 
-    setState(() => _isSending = true);
     try {
       final result = await ref
           .read(chatPageControllerProvider(widget.remoteDeviceId))
           .sendText(text);
-      _messageController.clear();
       if (result?.delivered == false) {
         _showSnackBar(l10n.messageSavedLocally(result!.errorMessage ?? ''));
       }
     } catch (error) {
       _showSnackBar(l10n.unableToSendMessage('$error'));
-    } finally {
-      if (mounted) {
-        setState(() => _isSending = false);
-      }
     }
   }
 
@@ -349,6 +345,18 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     }
   }
 
+  Future<void> _resumeAttachment(MessageAttachmentSnapshot attachment) async {
+    final l10n = AppLocalizations.of(context);
+    try {
+      await ref
+          .read(chatPageControllerProvider(widget.remoteDeviceId))
+          .resumeTransfer(attachment);
+      _showSnackBar(l10n.transferResumed);
+    } catch (error) {
+      _showSnackBar(l10n.actionFailed('$error'));
+    }
+  }
+
   Future<void> _confirmCancelAttachment(MessageAttachmentSnapshot attachment) {
     final l10n = AppLocalizations.of(context);
     final fileName = attachment.fileName ?? l10n.fileAttachment;
@@ -437,6 +445,16 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                         await _pauseAttachment(attachment);
                       },
                     ),
+                  if (_canResumeAttachment(attachment))
+                    _ActionSheetTile(
+                      icon: Icons.play_arrow_rounded,
+                      title:
+                          '${l10n.resumeTransfer} - ${attachment.fileName ?? l10n.fileAttachment}',
+                      onTap: () async {
+                        Navigator.of(sheetContext).pop();
+                        await _resumeAttachment(attachment);
+                      },
+                    ),
                   if (_canCancelAttachment(attachment))
                     _ActionSheetTile(
                       icon: Icons.close_rounded,
@@ -496,6 +514,15 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         transferStatus == MessageAttachmentTransferStatus.transferring;
   }
 
+  bool _canResumeAttachment(MessageAttachmentSnapshot attachment) {
+    final attachmentId = attachment.attachmentId;
+    if (attachmentId == null || attachmentId.isEmpty) {
+      return false;
+    }
+    final live = ref.read(transferProgressProvider(attachmentId));
+    return live?.phase == TransferProgressPhase.paused;
+  }
+
   Future<void> _copyMessage(ConversationMessage message) async {
     final text = message.textContent?.trim();
     if (text == null || text.isEmpty) {
@@ -508,11 +535,10 @@ class _ChatPageState extends ConsumerState<ChatPage> {
 
   Future<void> _retryMessage(ConversationMessage message) async {
     final text = message.textContent?.trim();
-    if (text == null || text.isEmpty || _isSending) {
+    if (text == null || text.isEmpty) {
       return;
     }
     final l10n = AppLocalizations.of(context);
-    setState(() => _isSending = true);
     try {
       final result = await ref
           .read(chatPageControllerProvider(widget.remoteDeviceId))
@@ -524,10 +550,6 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       }
     } catch (error) {
       _showSnackBar(l10n.unableToRetryMessage('$error'));
-    } finally {
-      if (mounted) {
-        setState(() => _isSending = false);
-      }
     }
   }
 

@@ -179,6 +179,15 @@
   "loadOlderMessages": "載入更早訊息",
   "copyMessage": "複製訊息",
   "retryMessage": "重試訊息",
+  "lastMessageYou": "你",
+  "lastMessagePeer": "對方",
+  "lastMessageSentFile": "{actor} 傳送了 {fileName}",
+  "@lastMessageSentFile": {
+    "placeholders": {
+      "actor": { "type": "String" },
+      "fileName": { "type": "String" }
+    }
+  },
   "fileAttachment": "檔案附件",
   "saveAttachmentDialogTitle": "保存附件",
   "save": "保存",
@@ -193,6 +202,8 @@
   "unableToPreviewVideo": "無法預覽影片：{error}",
   "pause": "暫停",
   "transferPaused": "傳輸已暫停。",
+  "resumeTransfer": "繼續傳輸",
+  "transferResumed": "傳輸已繼續。",
   "cancelTransfer": "取消傳輸",
   "cancelTransferDescription": "停止傳輸 {fileName}，並將其標記為已取消。",
   "transferCancelled": "傳輸已取消。",

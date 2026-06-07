@@ -611,6 +611,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get retryMessage => 'Retry message';
 
   @override
+  String get lastMessageYou => 'You';
+
+  @override
+  String get lastMessagePeer => 'Peer';
+
+  @override
+  String lastMessageSentFile(String actor, String fileName) {
+    return '$actor sent $fileName';
+  }
+
+  @override
   String get fileAttachment => 'File attachment';
 
   @override
@@ -653,6 +664,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get transferPaused => 'Transfer paused.';
+
+  @override
+  String get resumeTransfer => 'Resume transfer';
+
+  @override
+  String get transferResumed => 'Transfer resumed.';
 
   @override
   String get cancelTransfer => 'Cancel transfer';

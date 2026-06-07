@@ -53,6 +53,10 @@ class DeviceAddressDao extends DatabaseAccessor<AppDataBase>
     with _$DeviceAddressDaoMixin {
   DeviceAddressDao(super.db);
 
+  Stream<List<DeviceAddressItem>> watchAddresses() {
+    return select(deviceAddressItems).watch();
+  }
+
   Stream<List<DeviceAddressItem>> watchAddressesForDevice(String deviceId) {
     return (select(
       deviceAddressItems,

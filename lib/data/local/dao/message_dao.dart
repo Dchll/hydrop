@@ -185,6 +185,13 @@ class MessageDao extends DatabaseAccessor<AppDataBase> with _$MessageDaoMixin {
     return row?.readTable(messageItems);
   }
 
+  Future<List<MessageAttachmentItem>> listAttachmentsForMessage(int messageId) {
+    return (select(messageAttachmentItems)
+          ..where((table) => table.messageId.equals(messageId))
+          ..orderBy([(table) => OrderingTerm.asc(table.id)]))
+        .get();
+  }
+
   Future<int> insertMessageWithAttachments({
     required String remoteDeviceId,
     required MessageDirection direction,

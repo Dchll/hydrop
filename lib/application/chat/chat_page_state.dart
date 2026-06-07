@@ -334,6 +334,14 @@ class ChatPageController {
     await _transferActionController.pauseTransfer(attachmentId);
   }
 
+  Future<void> resumeTransfer(MessageAttachmentSnapshot attachment) async {
+    final attachmentId = attachment.attachmentId;
+    if (attachmentId == null || attachmentId.trim().isEmpty) {
+      return;
+    }
+    await _transferActionController.resumeTransfer(attachmentId);
+  }
+
   Future<void> cancelTransfer(MessageAttachmentSnapshot attachment) async {
     final attachmentId = attachment.attachmentId;
     if (attachmentId == null || attachmentId.trim().isEmpty) {

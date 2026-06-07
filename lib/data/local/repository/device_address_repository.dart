@@ -83,6 +83,12 @@ class DeviceAddressRepository {
 
   final DeviceAddressDao _deviceAddressDao;
 
+  Stream<List<DeviceAddressSnapshot>> watchAddresses() {
+    return _deviceAddressDao.watchAddresses().map(
+      (rows) => _sortRows(rows).map(DeviceAddressSnapshot.fromRow).toList(),
+    );
+  }
+
   Stream<List<DeviceAddressSnapshot>> watchAddressesForDevice(String deviceId) {
     return _deviceAddressDao
         .watchAddressesForDevice(deviceId)

@@ -20,6 +20,10 @@ class TransferActionController {
     return _fileTransferCoordinator.pauseTransfer(attachmentId);
   }
 
+  Future<void> resumeTransfer(String attachmentId) {
+    return _fileTransferCoordinator.resumeTransfer(attachmentId);
+  }
+
   Future<void> cancelTransfer(String attachmentId) {
     return _fileTransferCoordinator.cancelTransfer(attachmentId);
   }

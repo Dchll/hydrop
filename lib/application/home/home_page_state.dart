@@ -1,36 +1,89 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hydrop/application/discovery/discovery_controller.dart';
 import 'package:hydrop/data/local/model/message/message.dart';
+import 'package:hydrop/data/local/repository/device_address_repository.dart';
 import 'package:hydrop/data/local/repository/device_repository.dart';
 import 'package:hydrop/data/local/repository/message_repository.dart';
 
 final homeDeviceListProvider = StreamProvider<List<HomeDeviceListItem>>((ref) {
-  return ref
-      .watch(deviceRepositoryProvider)
-      .watchDevices()
-      .map((devices) => devices.map(HomeDeviceListItem.fromSnapshot).toList());
+  final devicesStream = ref.watch(deviceRepositoryProvider).watchDevices();
+  final addressesStream = ref
+      .watch(deviceAddressRepositoryProvider)
+      .watchAddresses();
+  return Stream.multi((controller) {
+    List<DeviceSnapshot> latestDevices = const [];
+    List<DeviceAddressSnapshot> latestAddresses = const [];
+
+    void emit() {
+      final reachableDeviceIds = latestAddresses
+          .where((address) => address.isReachable)
+          .map((address) => address.deviceId)
+          .toSet();
+      final items = latestDevices
+          .map(
+            (device) => HomeDeviceListItem.fromSnapshot(
+              device,
+              isReachable: reachableDeviceIds.contains(device.deviceId),
+            ),
+          )
+          .toList(growable: true);
+      items.sort((left, right) {
+        final connectedCompare = (right.isConnected ? 1 : 0).compareTo(
+          left.isConnected ? 1 : 0,
+        );
+        if (connectedCompare != 0) {
+          return connectedCompare;
+        }
+        final speedCompare = right.averageTransferSpeedBytesPerSecond.compareTo(
+          left.averageTransferSpeedBytesPerSecond,
+        );
+        if (speedCompare != 0) {
+          return speedCompare;
+        }
+        return left.displayName.toLowerCase().compareTo(
+          right.displayName.toLowerCase(),
+        );
+      });
+      controller.add(items);
+    }
+
+    final devicesSubscription = devicesStream.listen((devices) {
+      latestDevices = devices;
+      emit();
+    }, onError: controller.addError);
+    final addressesSubscription = addressesStream.listen((addresses) {
+      latestAddresses = addresses;
+      emit();
+    }, onError: controller.addError);
+
+    controller.onCancel = () async {
+      await devicesSubscription.cancel();
+      await addressesSubscription.cancel();
+    };
+  });
 });
 
-final homeLastMessageByDeviceProvider = StreamProvider<Map<String, String>>((
-  ref,
-) {
-  return ref.watch(messageRepositoryProvider).watchLatestMessagesByDevice().map(
-    (messages) {
-      return messages.map((deviceId, message) {
-        return MapEntry(deviceId, _lastMessageLabel(message));
-      });
-    },
-  );
-});
+final homeLastMessageByDeviceProvider =
+    StreamProvider<Map<String, ConversationMessage>>((ref) {
+      return ref.watch(messageRepositoryProvider).watchLatestMessagesByDevice();
+    });
 
 final homeUnreadCountByDeviceProvider = StreamProvider<Map<String, int>>((ref) {
   return ref.watch(messageRepositoryProvider).watchUnreadCountsByDevice();
 });
 
-String _lastMessageLabel(ConversationMessage message) {
+String homeLastMessageLabel(
+  ConversationMessage message, {
+  required String youLabel,
+  required String peerLabel,
+  required String Function(String actorLabel, String fileName) sentFileLabel,
+  required String noMessagesYetLabel,
+}) {
   final prefix = switch (message.direction) {
-    MessageDirection.sent => 'You',
-    MessageDirection.received => 'Peer',
+    MessageDirection.sent => youLabel,
+    MessageDirection.received => peerLabel,
   };
   final text = message.textContent?.trim();
   if (text != null && text.isNotEmpty) {
@@ -38,9 +91,9 @@ String _lastMessageLabel(ConversationMessage message) {
   }
   final attachment = message.attachments.firstOrNull;
   if (attachment != null) {
-    return '$prefix sent ${attachment.fileName ?? 'a file'}';
+    return sentFileLabel(prefix, attachment.fileName ?? '');
   }
-  return 'No messages yet';
+  return noMessagesYetLabel;
 }
 
 final homePageControllerProvider = Provider<HomePageController>((ref) {
@@ -63,9 +116,13 @@ class HomeDeviceListItem {
     required this.lastDisconnectedAt,
     required this.lastTransferAt,
     required this.lastError,
+    required this.isReachable,
   });
 
-  factory HomeDeviceListItem.fromSnapshot(DeviceSnapshot snapshot) {
+  factory HomeDeviceListItem.fromSnapshot(
+    DeviceSnapshot snapshot, {
+    required bool isReachable,
+  }) {
     return HomeDeviceListItem(
       localId: snapshot.id,
       displayName: snapshot.displayName,
@@ -77,6 +134,7 @@ class HomeDeviceListItem {
       lastDisconnectedAt: snapshot.lastDisconnectedAt,
       lastTransferAt: snapshot.lastTransferAt,
       lastError: snapshot.lastError,
+      isReachable: isReachable,
     );
   }
 
@@ -89,9 +147,12 @@ class HomeDeviceListItem {
   final DateTime? lastDisconnectedAt;
   final DateTime? lastTransferAt;
   final String? lastError;
+  final bool isReachable;
 
   bool get isConnected =>
-      statusLabel == 'localNetwork' || statusLabel == 'bluetooth';
+      isReachable ||
+      statusLabel == 'localNetwork' ||
+      statusLabel == 'bluetooth';
 
   String get initials {
     final trimmed = displayName.trim();
@@ -99,15 +160,6 @@ class HomeDeviceListItem {
       return '?';
     }
     return String.fromCharCode(trimmed.runes.first).toUpperCase();
-  }
-
-  String get connectionLabel {
-    return switch (statusLabel) {
-      'localNetwork' => 'Online',
-      'bluetooth' => 'Bluetooth',
-      'disconnected' => 'Offline',
-      _ => statusLabel,
-    };
   }
 
   String get speedLabel {

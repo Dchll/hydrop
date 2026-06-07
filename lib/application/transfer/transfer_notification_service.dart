@@ -75,6 +75,7 @@ class TransferNotificationService {
           formatLocalizedByteProgress(l10n, transferredBytes, totalBytes),
         ),
         notificationDetails: _notificationDetails(
+          attachmentId: attachmentId,
           progress: percent,
           ongoing: true,
           darwinSubtitle: '$percent%',
@@ -107,6 +108,7 @@ class TransferNotificationService {
         title: direction.completedTitle(l10n),
         body: fileName,
         notificationDetails: _notificationDetails(
+          attachmentId: attachmentId,
           progress: _progressMax,
           ongoing: false,
         ),
@@ -138,7 +140,10 @@ class TransferNotificationService {
         id: _notificationId(attachmentId),
         title: l10n.transferNotificationFailedTitle,
         body: l10n.transferNotificationFailed(fileName),
-        notificationDetails: _notificationDetails(ongoing: false),
+        notificationDetails: _notificationDetails(
+          attachmentId: attachmentId,
+          ongoing: false,
+        ),
         payload: attachmentId,
       );
       unawaited(_cancelLater(attachmentId));
@@ -238,6 +243,7 @@ class TransferNotificationService {
   }
 
   NotificationDetails _notificationDetails({
+    required String attachmentId,
     int? progress,
     required bool ongoing,
     String? darwinSubtitle,
@@ -258,14 +264,20 @@ class TransferNotificationService {
         indeterminate: progress == null && ongoing,
       ),
       iOS: DarwinNotificationDetails(
-        presentAlert: true,
+        presentAlert: !ongoing,
+        presentBanner: !ongoing,
+        presentList: true,
         presentSound: false,
         subtitle: darwinSubtitle,
+        threadIdentifier: 'transfer_$attachmentId',
       ),
       macOS: DarwinNotificationDetails(
-        presentAlert: true,
+        presentAlert: !ongoing,
+        presentBanner: !ongoing,
+        presentList: true,
         presentSound: false,
         subtitle: darwinSubtitle,
+        threadIdentifier: 'transfer_$attachmentId',
       ),
     );
   }

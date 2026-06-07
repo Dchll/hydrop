@@ -590,6 +590,17 @@ class AppLocalizationsZh extends AppLocalizations {
   String get retryMessage => '重试消息';
 
   @override
+  String get lastMessageYou => '你';
+
+  @override
+  String get lastMessagePeer => '对方';
+
+  @override
+  String lastMessageSentFile(String actor, String fileName) {
+    return '$actor 发送了 $fileName';
+  }
+
+  @override
   String get fileAttachment => '文件附件';
 
   @override
@@ -632,6 +643,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get transferPaused => '传输已暂停。';
+
+  @override
+  String get resumeTransfer => '继续传输';
+
+  @override
+  String get transferResumed => '传输已继续。';
 
   @override
   String get cancelTransfer => '取消传输';
@@ -1458,6 +1475,17 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get retryMessage => '重試訊息';
 
   @override
+  String get lastMessageYou => '你';
+
+  @override
+  String get lastMessagePeer => '對方';
+
+  @override
+  String lastMessageSentFile(String actor, String fileName) {
+    return '$actor 傳送了 $fileName';
+  }
+
+  @override
   String get fileAttachment => '檔案附件';
 
   @override
@@ -1500,6 +1528,12 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get transferPaused => '傳輸已暫停。';
+
+  @override
+  String get resumeTransfer => '繼續傳輸';
+
+  @override
+  String get transferResumed => '傳輸已繼續。';
 
   @override
   String get cancelTransfer => '取消傳輸';

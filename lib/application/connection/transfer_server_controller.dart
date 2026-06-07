@@ -56,7 +56,7 @@ class TransferServerController {
   final DateTime Function() _now;
 
   TransferServer? _server;
-  Future<void>? _startFuture;
+  Future<void> _lifecycleFuture = Future<void>.value();
   final _connections = <TransferConnection>{};
   final _subscriptions =
       <TransferConnection, StreamSubscription<TransferFrame>>{};
@@ -66,11 +66,24 @@ class TransferServerController {
   final _frameQueues = <TransferConnection, Future<void>>{};
 
   Future<void> start() {
-    return _startFuture ??= _startInternal();
+    return _enqueueLifecycle(_startInternal);
   }
 
   Future<void> stop() async {
-    _startFuture = null;
+    await _enqueueLifecycle(_stopInternal);
+  }
+
+  Future<void> _enqueueLifecycle(Future<void> Function() action) {
+    final next = _lifecycleFuture
+        .catchError((Object _, StackTrace __) {
+          // Keep later lifecycle operations running after an earlier failure.
+        })
+        .then((_) => action());
+    _lifecycleFuture = next.catchError((Object _, StackTrace __) {});
+    return next;
+  }
+
+  Future<void> _stopInternal() async {
     for (final subscription in _subscriptions.values) {
       await subscription.cancel();
     }
@@ -94,11 +107,39 @@ class TransferServerController {
   }
 
   Future<void> _startInternal() async {
-    _server = await _transferSocketService.startServer(
-      port: transferDefaultPort,
-      onConnection: _handleConnection,
-    );
-    talker.debug('DchllTest 消息接收服务已启动：监听端口=${_server?.port}');
+    if (_server != null) {
+      return;
+    }
+    try {
+      _server = await _transferSocketService.startServer(
+        port: transferDefaultPort,
+        onConnection: _handleConnection,
+      );
+      talker.debug('DchllTest 消息接收服务已启动：监听端口=${_server?.port}');
+    } on TransferSocketException catch (error, stackTrace) {
+      if (_isAddressInUse(error)) {
+        talker.warning(
+          'DchllTest 消息接收服务端口被占用，已跳过启动：端口=$transferDefaultPort 错误=$error',
+        );
+        return;
+      }
+      talker.error(
+        'DchllTest 消息接收服务启动失败：端口=$transferDefaultPort 错误=$error',
+        error,
+        stackTrace,
+      );
+    } catch (error, stackTrace) {
+      talker.error(
+        'DchllTest 消息接收服务启动失败：端口=$transferDefaultPort 错误=$error',
+        error,
+        stackTrace,
+      );
+    }
+  }
+
+  bool _isAddressInUse(TransferSocketException error) {
+    return error.message.contains('Address already in use') ||
+        error.message.contains('errno = 48');
   }
 
   void _handleConnection(TransferConnection connection) {
@@ -329,18 +370,8 @@ class TransferServerController {
             Future<void>.value(),
       ),
     );
-    final deviceId = _connectionDeviceIds.remove(connection);
+    _connectionDeviceIds.remove(connection);
     final sessionId = _connectionSessionIds.remove(connection);
-    if (deviceId != null) {
-      unawaited(
-        _deviceRepository?.markDisconnected(
-              deviceId: deviceId,
-              at: now,
-              error: 'Connection closed.',
-            ) ??
-            Future<void>.value(),
-      );
-    }
     if (sessionId != null) {
       unawaited(
         _connectionSessionRepository?.updateSessionState(
@@ -366,17 +397,6 @@ class TransferServerController {
         );
         _startHeartbeatTimeout(connection);
         return;
-      }
-      final deviceId = _connectionDeviceIds[connection];
-      if (deviceId != null) {
-        unawaited(
-          _deviceRepository?.markDisconnected(
-                deviceId: deviceId,
-                at: _now(),
-                error: 'Heartbeat timed out.',
-              ) ??
-              Future<void>.value(),
-        );
       }
       _removeConnection(connection);
     });

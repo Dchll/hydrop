@@ -276,6 +276,19 @@ class MessageRepository {
     return row?.localMessageId;
   }
 
+  Future<ConversationMessage?> getMessageByAttachmentId(
+    String attachmentId,
+  ) async {
+    final row = await _messageDao.getMessageByAttachmentId(attachmentId);
+    if (row == null) {
+      return null;
+    }
+    final attachments = await _messageDao.listAttachmentsForMessage(row.id);
+    return ConversationMessage.fromRows(
+      MessageWithAttachmentRows(message: row, attachments: attachments),
+    );
+  }
+
   Future<List<RecoverableOutgoingTransferSnapshot>>
   listRecoverableOutgoingTransfers() async {
     final rows = await _messageDao.listRecoverableOutgoingTransfers();
