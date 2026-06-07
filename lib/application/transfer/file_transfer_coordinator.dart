@@ -118,7 +118,9 @@ class FileTransferCoordinator {
   final _lastProgressPersistedAt = <String, DateTime>{};
   final _lastProgressPersistedBytes = <String, int>{};
   final _incomingPostChunkTasks = <String, Future<void>>{};
+  final _incomingPostChunkDepths = <String, int>{};
   final _outgoingHeartbeatTimers = <String, Timer>{};
+  final _busyIncomingConnections = <TransferConnection, int>{};
 
   bool hasActiveTransfers() {
     if (_incomingTransfers.isNotEmpty ||
@@ -143,6 +145,10 @@ class FileTransferCoordinator {
         _outgoingConnections.values.any(
           (activeConnection) => identical(activeConnection, connection),
         );
+  }
+
+  bool hasBusyTransferWorkOnConnection(TransferConnection connection) {
+    return (_busyIncomingConnections[connection] ?? 0) > 0;
   }
 
   Future<int> resumeInterruptedTransfers() async {
@@ -1170,6 +1176,7 @@ class FileTransferCoordinator {
     final maxInflightBytes = _maxInflightBytesForBytes(totalBytes);
     final chunkAckTimeout = _chunkAckTimeoutForBytes(totalBytes);
     var bytesSinceYield = 0;
+    var bytesSinceFlush = 0;
     final readerSession = await _transferFileChunkReader.start(
       filePath: file.path,
       totalBytes: totalBytes,
@@ -1185,6 +1192,10 @@ class FileTransferCoordinator {
         );
         final chunk = await readerSession.readNextChunk();
         if (chunk == null) {
+          if (bytesSinceFlush > 0) {
+            await connection.flush();
+            bytesSinceFlush = 0;
+          }
           break;
         }
         await _sendChunkWithRetry(
@@ -1194,7 +1205,13 @@ class FileTransferCoordinator {
           offset: chunk.offset,
           totalBytes: totalBytes,
           chunk: chunk.bytes,
+          flush: bytesSinceFlush >= maxInflightBytes,
         );
+        bytesSinceFlush += chunk.bytes.length;
+        if (bytesSinceFlush >= maxInflightBytes) {
+          await connection.flush();
+          bytesSinceFlush = 0;
+        }
         final nextOffset = chunk.offset + chunk.bytes.length;
         prepared.lastSentOffset = nextOffset;
         _progressStore.reportProgress(
@@ -1234,6 +1251,7 @@ class FileTransferCoordinator {
     required int offset,
     required int totalBytes,
     required List<int> chunk,
+    bool flush = false,
   }) async {
     final frame = TransferFrame(
       header: {
@@ -1257,7 +1275,7 @@ class FileTransferCoordinator {
     ) {
       _throwIfPaused(attachmentId);
       try {
-        await connection.sendFrame(frame, flush: false);
+        await connection.sendFrame(frame, flush: flush);
         return;
       } catch (error, stackTrace) {
         lastError = error;
@@ -1656,42 +1674,26 @@ class FileTransferCoordinator {
       await _sendError(connection, requestId, 'Unknown file transfer.');
       return;
     }
-    transfer.chunkIdleTimer?.cancel();
-
-    await _drainIncomingPostChunkTasks(attachmentId);
-    await transfer.randomAccessFile.close();
-
-    if (transfer.transferredBytes < transfer.totalBytes) {
-      await _markIncomingFileFailed(
-        transfer,
-        const FileTransferException(
-          'File transfer incomplete before completion.',
-        ),
+    await _runWithBusyIncomingConnection(connection, () async {
+      transfer.chunkIdleTimer?.cancel();
+      final completionStartedAt = _now();
+      talker.debug(
+        '[$_transferDiagTag] incoming file completion start '
+        'attachmentId=$attachmentId transferredBytes=${transfer.transferredBytes} '
+        'totalBytes=${transfer.totalBytes} '
+        'postChunkDepth=${_incomingPostChunkDepths[attachmentId] ?? 0}',
       );
-      await connection.sendFrame(
-        TransferFrame(
-          header: {
-            'type': transferFrameTypeFileCompleteAck,
-            'protocolVersion': transferProtocolVersion,
-            'requestId': requestId,
-            'attachmentId': attachmentId,
-            'accepted': false,
-            'reason': 'Transferred bytes do not match expected size.',
-            'sentAt': _now().millisecondsSinceEpoch,
-          },
-        ),
-      );
-      return;
-    }
 
-    final actualChecksum = await transfer.postProcessor.finalize();
-    await transfer.postProcessor.dispose();
-    transfer.checksumSha256 = actualChecksum;
-    if (expectedChecksum != null) {
-      if (actualChecksum != expectedChecksum) {
+      await _drainIncomingPostChunkTasks(attachmentId);
+      await transfer.randomAccessFile.close();
+      final finalizeStartedAt = _now();
+
+      if (transfer.transferredBytes < transfer.totalBytes) {
         await _markIncomingFileFailed(
           transfer,
-          const FileTransferException(transferFileChecksumMismatchReason),
+          const FileTransferException(
+            'File transfer incomplete before completion.',
+          ),
         );
         await connection.sendFrame(
           TransferFrame(
@@ -1701,66 +1703,102 @@ class FileTransferCoordinator {
               'requestId': requestId,
               'attachmentId': attachmentId,
               'accepted': false,
-              'reason': transferFileChecksumMismatchReason,
+              'reason': 'Transferred bytes do not match expected size.',
               'sentAt': _now().millisecondsSinceEpoch,
             },
           ),
         );
         return;
       }
-    }
 
-    final completedSnapshot = _progressStore.snapshotFor(attachmentId);
-    final completedAt = _now();
-    final startedAt = completedSnapshot?.startedAt;
-    final durationMs = startedAt == null
-        ? 0
-        : max(0, completedAt.difference(startedAt).inMilliseconds);
-    final averageSpeed = durationMs <= 0
-        ? 0
-        : (transfer.totalBytes * 1000) ~/ durationMs;
-    await _messageRepository.updateAttachmentTransfer(
-      attachmentId: attachmentId,
-      filePath: transfer.file.path,
-      transferredBytes: transfer.totalBytes,
-      checksumSha256: transfer.checksumSha256 ?? expectedChecksum,
-      transferStatus: MessageAttachmentTransferStatus.saved,
-      saveStatus: MessageAttachmentSaveStatus.saved,
-      downloadProgress: 100,
-      transferStartedAt: startedAt,
-      transferCompletedAt: completedAt,
-      averageTransferSpeedBytesPerSecond: averageSpeed,
-      transferDurationMs: durationMs,
-    );
-    _progressStore.reportCompleted(
-      attachmentId: attachmentId,
-      direction: TransferProgressDirection.incoming,
-      totalBytes: transfer.totalBytes,
-      startedAt: startedAt,
-    );
-    _pausedAttachmentIds.remove(attachmentId);
-    _remotePausedAttachmentIds.remove(attachmentId);
-    await _resumeMetadataStore.clear(attachmentId);
-    _clearProgressCache(attachmentId);
-    unawaited(
-      _transferNotificationService.showCompleted(
+      final actualChecksum = await transfer.postProcessor.finalize();
+      await transfer.postProcessor.dispose();
+      transfer.checksumSha256 = actualChecksum;
+      final finalizeDurationMs = _now()
+          .difference(finalizeStartedAt)
+          .inMilliseconds;
+      if (expectedChecksum != null) {
+        if (actualChecksum != expectedChecksum) {
+          await _markIncomingFileFailed(
+            transfer,
+            const FileTransferException(transferFileChecksumMismatchReason),
+          );
+          await connection.sendFrame(
+            TransferFrame(
+              header: {
+                'type': transferFrameTypeFileCompleteAck,
+                'protocolVersion': transferProtocolVersion,
+                'requestId': requestId,
+                'attachmentId': attachmentId,
+                'accepted': false,
+                'reason': transferFileChecksumMismatchReason,
+                'sentAt': _now().millisecondsSinceEpoch,
+              },
+            ),
+          );
+          return;
+        }
+      }
+
+      final completedSnapshot = _progressStore.snapshotFor(attachmentId);
+      final completedAt = _now();
+      final startedAt = completedSnapshot?.startedAt;
+      final durationMs = startedAt == null
+          ? 0
+          : max(0, completedAt.difference(startedAt).inMilliseconds);
+      final averageSpeed = durationMs <= 0
+          ? 0
+          : (transfer.totalBytes * 1000) ~/ durationMs;
+      await _messageRepository.updateAttachmentTransfer(
         attachmentId: attachmentId,
-        fileName: transfer.fileName,
-        direction: TransferNotificationDirection.incoming,
-      ),
-    );
-    await connection.sendFrame(
-      TransferFrame(
-        header: {
-          'type': transferFrameTypeFileCompleteAck,
-          'protocolVersion': transferProtocolVersion,
-          'requestId': requestId,
-          'attachmentId': attachmentId,
-          'accepted': true,
-          'sentAt': _now().millisecondsSinceEpoch,
-        },
-      ),
-    );
+        filePath: transfer.file.path,
+        transferredBytes: transfer.totalBytes,
+        checksumSha256: transfer.checksumSha256 ?? expectedChecksum,
+        transferStatus: MessageAttachmentTransferStatus.saved,
+        saveStatus: MessageAttachmentSaveStatus.saved,
+        downloadProgress: 100,
+        transferStartedAt: startedAt,
+        transferCompletedAt: completedAt,
+        averageTransferSpeedBytesPerSecond: averageSpeed,
+        transferDurationMs: durationMs,
+      );
+      _progressStore.reportCompleted(
+        attachmentId: attachmentId,
+        direction: TransferProgressDirection.incoming,
+        totalBytes: transfer.totalBytes,
+        startedAt: startedAt,
+      );
+      _pausedAttachmentIds.remove(attachmentId);
+      _remotePausedAttachmentIds.remove(attachmentId);
+      await _resumeMetadataStore.clear(attachmentId);
+      _clearProgressCache(attachmentId);
+      unawaited(
+        _transferNotificationService.showCompleted(
+          attachmentId: attachmentId,
+          fileName: transfer.fileName,
+          direction: TransferNotificationDirection.incoming,
+        ),
+      );
+      await connection.sendFrame(
+        TransferFrame(
+          header: {
+            'type': transferFrameTypeFileCompleteAck,
+            'protocolVersion': transferProtocolVersion,
+            'requestId': requestId,
+            'attachmentId': attachmentId,
+            'accepted': true,
+            'sentAt': _now().millisecondsSinceEpoch,
+          },
+        ),
+      );
+      talker.debug(
+        '[$_transferDiagTag] incoming file completion ack sent '
+        'attachmentId=$attachmentId totalBytes=${transfer.totalBytes} '
+        'durationMs=$durationMs averageBytesPerSecond=$averageSpeed '
+        'completionStageMs=${_now().difference(completionStartedAt).inMilliseconds} '
+        'finalizeMs=$finalizeDurationMs',
+      );
+    });
   }
 
   Future<void> _handleRemoteFilePause(
@@ -2388,9 +2426,25 @@ class FileTransferCoordinator {
   ) {
     final previous =
         _incomingPostChunkTasks[attachmentId] ?? Future<void>.value();
+    final nextDepth = (_incomingPostChunkDepths[attachmentId] ?? 0) + 1;
+    _incomingPostChunkDepths[attachmentId] = nextDepth;
+    if (nextDepth >= 4 && nextDepth % 4 == 0) {
+      talker.warning(
+        '[DCHLL_TRANSFER_ALERT] incoming post-chunk backlog '
+        'attachmentId=$attachmentId depth=$nextDepth',
+      );
+    }
     _incomingPostChunkTasks[attachmentId] = previous
         .catchError((Object _) {})
         .then((_) => task())
+        .whenComplete(() {
+          final currentDepth = _incomingPostChunkDepths[attachmentId] ?? 1;
+          if (currentDepth <= 1) {
+            _incomingPostChunkDepths.remove(attachmentId);
+          } else {
+            _incomingPostChunkDepths[attachmentId] = currentDepth - 1;
+          }
+        })
         .catchError((Object error, StackTrace stackTrace) {
           talker.error(
             '[$_transferDiagTag] incoming post-chunk task failed '
@@ -2422,10 +2476,29 @@ class FileTransferCoordinator {
 
   Future<void> _drainIncomingPostChunkTasks(String attachmentId) async {
     final pending = _incomingPostChunkTasks.remove(attachmentId);
+    _incomingPostChunkDepths.remove(attachmentId);
     if (pending == null) {
       return;
     }
     await pending.catchError((Object _) {});
+  }
+
+  Future<T> _runWithBusyIncomingConnection<T>(
+    TransferConnection connection,
+    Future<T> Function() action,
+  ) async {
+    _busyIncomingConnections[connection] =
+        (_busyIncomingConnections[connection] ?? 0) + 1;
+    try {
+      return await action();
+    } finally {
+      final remaining = (_busyIncomingConnections[connection] ?? 1) - 1;
+      if (remaining <= 0) {
+        _busyIncomingConnections.remove(connection);
+      } else {
+        _busyIncomingConnections[connection] = remaining;
+      }
+    }
   }
 
   void _throwIfPaused(String attachmentId) {

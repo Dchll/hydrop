@@ -516,17 +516,31 @@ class TransferServerController {
       final hasActiveTransfer =
           _fileTransferCoordinator?.hasActiveTransferOnConnection(connection) ??
           false;
+      final hasBusyTransferWork =
+          _fileTransferCoordinator?.hasBusyTransferWorkOnConnection(
+            connection,
+          ) ??
+          false;
+      if (hasActiveTransfer || hasBusyTransferWork) {
+        talker.debug(
+          '[$_transferDiagTag] heartbeat timeout deferred '
+          'remote=${connection.remoteAddress}:${connection.remotePort} '
+          'activeTransfer=$hasActiveTransfer busyTransferWork=$hasBusyTransferWork',
+        );
+        _startHeartbeatTimeout(connection);
+        return;
+      }
       talker.warning(
         '[$_transferDiagTag] heartbeat timeout closing '
         'remote=${connection.remoteAddress}:${connection.remotePort} '
         'timeout=${transferHeartbeatTimeout.inSeconds}s '
-        'activeTransfer=$hasActiveTransfer',
+        'activeTransfer=$hasActiveTransfer busyTransferWork=$hasBusyTransferWork',
       );
       talker.warning(
         '[DCHLL_TRANSFER_ALERT] heartbeat timeout closing '
         'remote=${connection.remoteAddress}:${connection.remotePort} '
         'timeout=${transferHeartbeatTimeout.inSeconds}s '
-        'activeTransfer=$hasActiveTransfer',
+        'activeTransfer=$hasActiveTransfer busyTransferWork=$hasBusyTransferWork',
       );
       _removeConnection(connection, reason: 'heartbeat_timeout');
     });

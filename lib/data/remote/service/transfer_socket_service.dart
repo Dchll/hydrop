@@ -52,6 +52,8 @@ abstract class TransferConnection {
 
   Future<void> sendFrame(TransferFrame frame, {bool flush = true});
 
+  Future<void> flush();
+
   Future<void> close();
 }
 
@@ -67,6 +69,8 @@ abstract class TransferDuplexSocket {
   Future<void> add(List<int> data, {bool flush = true});
 
   Future<void> addAll(Iterable<List<int>> chunks, {bool flush = true});
+
+  Future<void> flush();
 
   Future<void> close();
 }
@@ -166,6 +170,11 @@ class _SocketTransferConnection implements TransferConnection {
   Future<void> close() {
     return _socket.close();
   }
+
+  @override
+  Future<void> flush() {
+    return _socket.flush();
+  }
 }
 
 class _IoTransferDuplexSocket implements TransferDuplexSocket {
@@ -239,6 +248,16 @@ class _IoTransferDuplexSocket implements TransferDuplexSocket {
       await _socket.flush();
       await _socket.close();
     });
+    _writeQueue = operation.catchError((_) {});
+    await operation;
+  }
+
+  @override
+  Future<void> flush() async {
+    if (_isClosing) {
+      throw const TransferSocketException('Socket is closed.');
+    }
+    final operation = _writeQueue.then((_) => _socket.flush());
     _writeQueue = operation.catchError((_) {});
     await operation;
   }
