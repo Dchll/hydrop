@@ -1752,9 +1752,15 @@ class FileTransferCoordinator {
     if (attachment == null) {
       return;
     }
+    final message = await _messageRepository.getMessageByAttachmentId(
+      attachmentId,
+    );
+    final direction = message?.direction == MessageDirection.received
+        ? TransferProgressDirection.incoming
+        : TransferProgressDirection.outgoing;
     _progressStore.reportPaused(
       attachmentId: attachmentId,
-      direction: TransferProgressDirection.outgoing,
+      direction: direction,
       transferredBytes: attachment.transferredBytes,
       totalBytes: attachment.totalBytes,
       startedAt: attachment.transferStartedAt,
