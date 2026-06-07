@@ -766,6 +766,11 @@ class ChatAttachmentDetail extends ConsumerWidget {
     final progress = _attachmentProgress(attachment, live);
     final transferStatus = _effectiveTransferStatus(attachment, live);
     final isPaused = _isPausedTransfer(live);
+    final averageBytesPerSecond = _completedAverageBytesPerSecond(
+      attachment,
+      live,
+    );
+    final elapsedDuration = _completedElapsedDuration(attachment, live);
 
     return SafeArea(
       top: false,
@@ -839,21 +844,15 @@ class ChatAttachmentDetail extends ConsumerWidget {
               label: l10n.remainingTime,
               value: formatLocalizedDuration(l10n, live!.remainingDuration!),
             ),
-          if (attachment.averageTransferSpeedBytesPerSecond > 0)
+          if (averageBytesPerSecond > 0)
             _DetailRow(
               label: l10n.averageSpeed,
-              value: formatLocalizedByteRate(
-                l10n,
-                attachment.averageTransferSpeedBytesPerSecond,
-              ),
+              value: formatLocalizedByteRate(l10n, averageBytesPerSecond),
             ),
-          if (attachment.transferDuration != null)
+          if (elapsedDuration != null)
             _DetailRow(
               label: l10n.elapsedTime,
-              value: formatLocalizedDuration(
-                l10n,
-                attachment.transferDuration!,
-              ),
+              value: formatLocalizedDuration(l10n, elapsedDuration),
             ),
           if (((live?.errorMessage ?? '').isNotEmpty) ||
               ((messageError ?? '').trim().isNotEmpty))
@@ -1400,6 +1399,36 @@ bool _isPausedTransfer(TransferProgressSnapshot? live) {
   return live?.phase == TransferProgressPhase.paused;
 }
 
+int _completedTotalBytes(
+  MessageAttachmentSnapshot attachment,
+  TransferProgressSnapshot? live,
+) {
+  if (live?.phase == TransferProgressPhase.completed && live != null) {
+    return live.totalBytes;
+  }
+  return attachment.totalBytes;
+}
+
+int _completedAverageBytesPerSecond(
+  MessageAttachmentSnapshot attachment,
+  TransferProgressSnapshot? live,
+) {
+  if (live?.phase == TransferProgressPhase.completed) {
+    return live?.averageBytesPerSecond ?? 0;
+  }
+  return attachment.averageTransferSpeedBytesPerSecond;
+}
+
+Duration? _completedElapsedDuration(
+  MessageAttachmentSnapshot attachment,
+  TransferProgressSnapshot? live,
+) {
+  if (live?.phase == TransferProgressPhase.completed) {
+    return live?.elapsedDuration;
+  }
+  return attachment.transferDuration;
+}
+
 TransferProgressSnapshot? _watchTransferProgress(
   WidgetRef ref,
   MessageAttachmentSnapshot attachment,
@@ -1435,20 +1464,22 @@ String? _attachmentTransferMeta(
   switch (kind) {
     case _AttachmentCardKind.file:
       if (isCompleted) {
-        final duration = attachment.transferDuration;
-        if (duration != null &&
-            attachment.totalBytes > 0 &&
-            attachment.averageTransferSpeedBytesPerSecond > 0) {
+        final duration = _completedElapsedDuration(attachment, live);
+        final totalBytes = _completedTotalBytes(attachment, live);
+        final averageBytesPerSecond = _completedAverageBytesPerSecond(
+          attachment,
+          live,
+        );
+        if (duration != null && totalBytes > 0 && averageBytesPerSecond > 0) {
           return formatCompletedTransferSummary(
             l10n,
-            totalBytes: attachment.totalBytes,
-            averageBytesPerSecond:
-                attachment.averageTransferSpeedBytesPerSecond,
+            totalBytes: totalBytes,
+            averageBytesPerSecond: averageBytesPerSecond,
             elapsedDuration: duration,
           );
         }
-        if (attachment.totalBytes > 0) {
-          return formatLocalizedBytes(l10n, attachment.totalBytes);
+        if (totalBytes > 0) {
+          return formatLocalizedBytes(l10n, totalBytes);
         }
       }
       return activeLine;
