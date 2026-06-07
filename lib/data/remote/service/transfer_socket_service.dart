@@ -33,8 +33,10 @@ class TransferSocketException implements Exception {
 
 const _socketSendBufferBytes = 8 * 1024 * 1024;
 const _socketReceiveBufferBytes = 8 * 1024 * 1024;
-const _soSndbuf = 0x1001;
-const _soRcvbuf = 0x1002;
+const _bsdSocketSendBufferOption = 0x1001;
+const _bsdSocketReceiveBufferOption = 0x1002;
+const _posixSocketSendBufferOption = 7;
+const _posixSocketReceiveBufferOption = 8;
 
 abstract class TransferConnection {
   String get remoteAddress;
@@ -262,12 +264,14 @@ void _setSocketBufferBestEffort(
   int? sendBufferBytes,
   int? receiveBufferBytes,
 }) {
+  final sendOption = _socketSendBufferOption;
+  final receiveOption = _socketReceiveBufferOption;
   try {
     if (sendBufferBytes != null) {
       socket.setRawOption(
         RawSocketOption.fromInt(
           RawSocketOption.levelSocket,
-          _soSndbuf,
+          sendOption,
           sendBufferBytes,
         ),
       );
@@ -276,7 +280,7 @@ void _setSocketBufferBestEffort(
       socket.setRawOption(
         RawSocketOption.fromInt(
           RawSocketOption.levelSocket,
-          _soRcvbuf,
+          receiveOption,
           receiveBufferBytes,
         ),
       );
@@ -284,4 +288,18 @@ void _setSocketBufferBestEffort(
   } catch (_) {
     // Best-effort tuning only. Some platforms or sandboxed runtimes may refuse it.
   }
+}
+
+int get _socketSendBufferOption {
+  if (Platform.isAndroid || Platform.isLinux) {
+    return _posixSocketSendBufferOption;
+  }
+  return _bsdSocketSendBufferOption;
+}
+
+int get _socketReceiveBufferOption {
+  if (Platform.isAndroid || Platform.isLinux) {
+    return _posixSocketReceiveBufferOption;
+  }
+  return _bsdSocketReceiveBufferOption;
 }
