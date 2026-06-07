@@ -380,6 +380,13 @@ class FileTransferCoordinator {
           }
           throw const FileTransferPausedException();
         }
+        if (connection != null) {
+          await _sendTransferFailureToPeer(
+            connection: connection,
+            attachmentId: queued.prepared.attachmentId,
+            error: error,
+          );
+        }
         _reportOutgoingAttemptFailed(queued.prepared, error);
         await connection?.close();
         connection = null;
