@@ -6,8 +6,8 @@ const transferDefaultPort = 39176;
 /// TCP connect and probe ack timeout for lightweight LAN operations.
 const transferConnectTimeout = Duration(seconds: 2);
 const transferTextAckTimeout = Duration(seconds: 8);
-const transferControlFrameTimeout = Duration(seconds: 15);
-const transferChunkAckTimeout = Duration(seconds: 15);
+const transferControlFrameTimeout = Duration(seconds: 30);
+const transferChunkAckTimeout = Duration(seconds: 30);
 const transferCompletionAckTimeout = Duration(minutes: 2);
 const transferHeartbeatInterval = Duration(seconds: 20);
 const transferHeartbeatTimeout = Duration(seconds: 18);
@@ -19,7 +19,7 @@ const transferMaxConcurrentTransfers = 2;
 const transferFrameMaxHeaderBytes = 16 * 1024;
 
 /// File transfer uses chunking; one control frame body should not exceed this.
-const transferFrameMaxBodyBytes = 1024 * 1024;
+const transferFrameMaxBodyBytes = 4 * 1024 * 1024;
 
 const transferFrameTypeSpeedProbe = 'speedProbe';
 const transferFrameTypeSpeedProbeAck = 'speedProbeAck';
@@ -44,15 +44,15 @@ const transferFrameTypeFileCompleteAck = 'fileCompleteAck';
 const transferFrameTypeError = 'error';
 
 const transferFileChunkBytes = transferFrameMaxBodyBytes;
-const transferChunkAckIntervalBytes = transferFileChunkBytes * 2;
-const transferMaxInflightBytes = transferFileChunkBytes * 16;
+const transferChunkAckIntervalBytes = transferFileChunkBytes * 8;
+const transferMaxInflightBytes = transferFileChunkBytes * 64;
 const transferFileFailedFailureReason = 'file_transfer_failed';
 const transferFileCancelledFailureReason = 'file_transfer_cancelled';
 const transferFileChecksumMismatchReason = 'file_checksum_mismatch';
 const transferChunkSendMaxAttempts = 3;
 const transferChunkSendRetryDelay = Duration(milliseconds: 300);
-const transferProgressPersistInterval = Duration(seconds: 2);
-const transferProgressPersistMinBytes = 16 * 1024 * 1024;
+const transferProgressPersistInterval = Duration(seconds: 3);
+const transferProgressPersistMinBytes = 64 * 1024 * 1024;
 const transferResumeCheckpointBytes = 64 * 1024 * 1024;
 const transferIncomingStorageSafetyMarginBytes = 32 * 1024 * 1024;
 const speedTestProbeRounds = 3;

@@ -91,6 +91,7 @@ class FileTransferCoordinator {
   final _pausedAttachmentIds = <String>{};
   final _lastProgressPersistedAt = <String, DateTime>{};
   final _lastProgressPersistedBytes = <String, int>{};
+  final _incomingPostChunkTasks = <String, Future<void>>{};
 
   bool hasActiveTransferOnConnection(TransferConnection connection) {
     return _incomingTransfers.values.any(
@@ -385,6 +386,7 @@ class FileTransferCoordinator {
       await incoming.randomAccessFile.close();
       await incoming.connection.close();
       await _resumeMetadataStore.clear(normalized);
+      _incomingPostChunkTasks.remove(normalized);
     }
 
     final outgoing = _outgoingConnections.remove(normalized);
@@ -544,6 +546,7 @@ class FileTransferCoordinator {
         continue;
       }
       await transfer.randomAccessFile.close();
+      await _drainIncomingPostChunkTasks(attachmentId);
       await _markIncomingFileFailed(
         transfer,
         const FileTransferException('Connection closed before file completed.'),
@@ -1127,6 +1130,7 @@ class FileTransferCoordinator {
     final raf = await targetFile.open(mode: FileMode.append);
     final activeTransfer = _incomingTransfers.remove(attachmentId);
     await activeTransfer?.randomAccessFile.close();
+    await _drainIncomingPostChunkTasks(attachmentId);
     final checksumAccumulator = await _createChecksumAccumulator(
       file: targetFile,
       endOffset: resumeFromByte,
@@ -1300,37 +1304,6 @@ class FileTransferCoordinator {
       offset + frame.body.length,
     );
     transfer.transferredBytes = transferredBytes;
-    final checkpoints = transfer.checkpointBuilder.addChunk(
-      frame.body,
-      endOffset: transferredBytes,
-    );
-    for (final checkpoint in checkpoints) {
-      await _resumeMetadataStore.recordCheckpoint(
-        attachmentId: attachmentId,
-        totalBytes: transfer.totalBytes,
-        checkpoint: checkpoint,
-      );
-    }
-    _progressStore.reportProgress(
-      attachmentId: attachmentId,
-      direction: TransferProgressDirection.incoming,
-      transferredBytes: transferredBytes,
-      totalBytes: transfer.totalBytes,
-      startedAt: _currentTransferStartedAt(attachmentId),
-    );
-    await _persistTransferProgress(
-      attachmentId: attachmentId,
-      transferredBytes: transferredBytes,
-      totalBytes: transfer.totalBytes,
-      force: transferredBytes >= transfer.totalBytes,
-    );
-    await _transferNotificationService.showProgress(
-      attachmentId: attachmentId,
-      fileName: transfer.fileName,
-      transferredBytes: transferredBytes,
-      totalBytes: transfer.totalBytes,
-      direction: TransferNotificationDirection.incoming,
-    );
     if (transfer.shouldSendChunkAck()) {
       transfer.lastAcknowledgedBytes = transferredBytes;
       await transfer.connection.sendFrame(
@@ -1345,6 +1318,39 @@ class FileTransferCoordinator {
         ),
       );
     }
+    _enqueueIncomingPostChunkTask(attachmentId, () async {
+      final checkpoints = transfer.checkpointBuilder.addChunk(
+        frame.body,
+        endOffset: transferredBytes,
+      );
+      for (final checkpoint in checkpoints) {
+        await _resumeMetadataStore.recordCheckpoint(
+          attachmentId: attachmentId,
+          totalBytes: transfer.totalBytes,
+          checkpoint: checkpoint,
+        );
+      }
+      _progressStore.reportProgress(
+        attachmentId: attachmentId,
+        direction: TransferProgressDirection.incoming,
+        transferredBytes: transferredBytes,
+        totalBytes: transfer.totalBytes,
+        startedAt: _currentTransferStartedAt(attachmentId),
+      );
+      await _persistTransferProgress(
+        attachmentId: attachmentId,
+        transferredBytes: transferredBytes,
+        totalBytes: transfer.totalBytes,
+        force: transferredBytes >= transfer.totalBytes,
+      );
+      await _transferNotificationService.showProgress(
+        attachmentId: attachmentId,
+        fileName: transfer.fileName,
+        transferredBytes: transferredBytes,
+        totalBytes: transfer.totalBytes,
+        direction: TransferNotificationDirection.incoming,
+      );
+    });
   }
 
   Future<void> _handleFileComplete(
@@ -1365,6 +1371,7 @@ class FileTransferCoordinator {
       return;
     }
 
+    await _drainIncomingPostChunkTasks(attachmentId);
     await transfer.randomAccessFile.close();
 
     if (transfer.transferredBytes < transfer.totalBytes) {
@@ -1723,6 +1730,32 @@ class FileTransferCoordinator {
     return _pausedAttachmentIds.contains(attachmentId);
   }
 
+  void _enqueueIncomingPostChunkTask(
+    String attachmentId,
+    Future<void> Function() task,
+  ) {
+    final previous =
+        _incomingPostChunkTasks[attachmentId] ?? Future<void>.value();
+    _incomingPostChunkTasks[attachmentId] = previous
+        .catchError((Object _) {})
+        .then((_) => task())
+        .catchError((Object error, StackTrace stackTrace) {
+          talker.error(
+            'DchllTest 接收分片后处理失败：附件ID=$attachmentId 错误=$error',
+            error,
+            stackTrace,
+          );
+        });
+  }
+
+  Future<void> _drainIncomingPostChunkTasks(String attachmentId) async {
+    final pending = _incomingPostChunkTasks.remove(attachmentId);
+    if (pending == null) {
+      return;
+    }
+    await pending.catchError((Object _) {});
+  }
+
   void _throwIfPaused(String attachmentId) {
     if (_isTransferPaused(attachmentId)) {
       throw const FileTransferPausedException();
@@ -1756,13 +1789,13 @@ class FileTransferCoordinator {
 
   int _chunkAckIntervalBytesForBytes(int totalBytes) {
     if (totalBytes >= 256 * 1024 * 1024 * 1024) {
-      return 64 * 1024 * 1024;
+      return 256 * 1024 * 1024;
     }
     if (totalBytes >= 32 * 1024 * 1024 * 1024) {
-      return 32 * 1024 * 1024;
+      return 128 * 1024 * 1024;
     }
     if (totalBytes >= 1024 * 1024 * 1024) {
-      return 8 * 1024 * 1024;
+      return 64 * 1024 * 1024;
     }
     return transferChunkAckIntervalBytes;
   }
@@ -1774,7 +1807,10 @@ class FileTransferCoordinator {
 
   Duration _chunkAckTimeoutForBytes(int totalBytes) {
     final windowBytes = _maxInflightBytesForBytes(totalBytes);
-    final expectedSeconds = max(15, (windowBytes / (8 * 1024 * 1024)).ceil());
+    final expectedSeconds = max(
+      transferChunkAckTimeout.inSeconds,
+      (windowBytes / (64 * 1024 * 1024)).ceil(),
+    );
     return Duration(seconds: expectedSeconds);
   }
 

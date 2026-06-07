@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -285,16 +286,19 @@ class _GroupedChatMessage extends StatelessWidget {
               : const SizedBox.shrink(),
         ),
         const SizedBox(width: 8),
-        Expanded(
-          child: ChatMessageBubble(
-            message: entry.message,
-            searchQuery: searchQuery,
-            isHighlighted: isHighlighted,
-            onOpenAttachment: onOpenAttachment,
-            onShowMessageActions: onShowMessageActions,
-            onPauseAttachment: onPauseAttachment,
-            onResumeAttachment: onResumeAttachment,
-            onCancelAttachment: onCancelAttachment,
+        Flexible(
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: ChatMessageBubble(
+              message: entry.message,
+              searchQuery: searchQuery,
+              isHighlighted: isHighlighted,
+              onOpenAttachment: onOpenAttachment,
+              onShowMessageActions: onShowMessageActions,
+              onPauseAttachment: onPauseAttachment,
+              onResumeAttachment: onResumeAttachment,
+              onCancelAttachment: onCancelAttachment,
+            ),
           ),
         ),
       ],
@@ -387,11 +391,10 @@ class ChatMessageBubble extends StatelessWidget {
     final bubbleColor = _bubbleColor(colorScheme, isSent);
     final foreground = _bubbleForeground(colorScheme, isSent);
     final hasAttachment = message.attachments.isNotEmpty;
-    final maxWidthFactor = hasAttachment ? 0.78 : 0.70;
 
     return ConstrainedBox(
       constraints: BoxConstraints(
-        maxWidth: MediaQuery.sizeOf(context).width * maxWidthFactor,
+        maxWidth: _maxBubbleWidth(context, hasAttachment: hasAttachment),
       ),
       child: InkWell(
         onLongPress: () => onShowMessageActions(message),
@@ -500,6 +503,17 @@ class ChatMessageBubble extends StatelessWidget {
       return Colors.black;
     }
     return Colors.white;
+  }
+
+  static double _maxBubbleWidth(
+    BuildContext context, {
+    required bool hasAttachment,
+  }) {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    if (hasAttachment) {
+      return math.min(screenWidth * 0.58, 380);
+    }
+    return math.min(screenWidth * 0.70, 520);
   }
 }
 
@@ -645,6 +659,7 @@ class ChatImageAttachment extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final fileName = attachment.fileName ?? l10n.fileAttachment;
+    final previewWidth = _mediaPreviewWidth(context);
     final live = _watchTransferProgress(ref, attachment);
     final meta = _attachmentTransferMeta(
       l10n,
@@ -666,7 +681,7 @@ class ChatImageAttachment extends ConsumerWidget {
     );
 
     return Container(
-      width: double.infinity,
+      width: previewWidth,
       margin: const EdgeInsets.only(top: 4),
       padding: const EdgeInsets.only(top: 12),
       decoration: BoxDecoration(
@@ -752,6 +767,7 @@ class ChatVideoAttachment extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final fileName = attachment.fileName ?? l10n.fileAttachment;
+    final previewWidth = _mediaPreviewWidth(context);
     final live = _watchTransferProgress(ref, attachment);
     final meta = _attachmentTransferMeta(
       l10n,
@@ -773,7 +789,7 @@ class ChatVideoAttachment extends ConsumerWidget {
     );
 
     return Container(
-      width: double.infinity,
+      width: previewWidth,
       margin: const EdgeInsets.only(top: 4),
       padding: const EdgeInsets.only(top: 12),
       decoration: BoxDecoration(
@@ -832,6 +848,11 @@ class ChatVideoAttachment extends ConsumerWidget {
       ),
     );
   }
+}
+
+double _mediaPreviewWidth(BuildContext context) {
+  final screenWidth = MediaQuery.sizeOf(context).width;
+  return math.min(screenWidth * 0.48, 320);
 }
 
 class ChatAttachmentDetail extends ConsumerWidget {
