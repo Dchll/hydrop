@@ -113,8 +113,8 @@ class TransferResumeMetadataStore {
       sink.writeln(
         jsonEncode({
           'type': 'header',
-          'totalBytes': totalBytes,
-          'segmentBytes': _segmentBytes,
+          'totalBytes': _encodeInt(totalBytes),
+          'segmentBytes': _encodeInt(_segmentBytes),
         }),
       );
       sink.writeln(jsonEncode(_checkpointLogRecord(checkpoint)));
@@ -164,8 +164,8 @@ class TransferResumeMetadataStore {
       final checkpoints = checkpointsByOffset.values.toList(growable: false)
         ..sort((left, right) => left.endOffset.compareTo(right.endOffset));
       return TransferResumeMetadata(
-        totalBytes: headerJson['totalBytes'] as int? ?? 0,
-        segmentBytes: headerJson['segmentBytes'] as int? ?? _segmentBytes,
+        totalBytes: _readInt(headerJson['totalBytes']) ?? 0,
+        segmentBytes: _readInt(headerJson['segmentBytes']) ?? _segmentBytes,
         checkpoints: checkpoints,
       );
     } on FormatException {
@@ -220,8 +220,8 @@ class TransferResumeMetadataStore {
     sink.writeln(
       jsonEncode({
         'type': 'header',
-        'totalBytes': metadata.totalBytes,
-        'segmentBytes': metadata.segmentBytes,
+        'totalBytes': _encodeInt(metadata.totalBytes),
+        'segmentBytes': _encodeInt(metadata.segmentBytes),
       }),
     );
     for (final checkpoint in metadata.checkpoints) {
@@ -235,10 +235,45 @@ class TransferResumeMetadataStore {
   ) {
     return {
       'type': 'checkpoint',
-      'endOffset': checkpoint.endOffset,
-      'length': checkpoint.length,
+      'endOffset': _encodeInt(checkpoint.endOffset),
+      'length': _encodeInt(checkpoint.length),
       'sha256': checkpoint.sha256,
     };
+  }
+
+  int? _readInt(Object? value) {
+    if (value is int) {
+      return value;
+    }
+    if (value is BigInt) {
+      return value.isValidInt ? value.toInt() : null;
+    }
+    if (value is String) {
+      final trimmed = value.trim();
+      if (trimmed.isEmpty) {
+        return null;
+      }
+      final parsed = BigInt.tryParse(trimmed);
+      if (parsed == null || !parsed.isValidInt) {
+        return null;
+      }
+      return parsed.toInt();
+    }
+    if (value is num) {
+      if (value.isNaN || value.isInfinite) {
+        return null;
+      }
+      if (value is double && value != value.truncateToDouble()) {
+        return null;
+      }
+      final truncated = value.toInt();
+      return truncated == value ? truncated : null;
+    }
+    return null;
+  }
+
+  String _encodeInt(int value) {
+    return value.toString();
   }
 }
 
@@ -263,8 +298,8 @@ class TransferResumeCheckpoint {
 
   factory TransferResumeCheckpoint.fromJson(Map<String, Object?> json) {
     return TransferResumeCheckpoint(
-      endOffset: json['endOffset'] as int? ?? 0,
-      length: json['length'] as int? ?? 0,
+      endOffset: _readTransferResumeMetadataInt(json['endOffset']) ?? 0,
+      length: _readTransferResumeMetadataInt(json['length']) ?? 0,
       sha256: json['sha256'] as String? ?? '',
     );
   }
@@ -325,4 +360,35 @@ class TransferSegmentCheckpointBuilder {
 
 Future<Directory> _defaultRootProvider() {
   return getApplicationSupportDirectory();
+}
+
+int? _readTransferResumeMetadataInt(Object? value) {
+  if (value is int) {
+    return value;
+  }
+  if (value is BigInt) {
+    return value.isValidInt ? value.toInt() : null;
+  }
+  if (value is String) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) {
+      return null;
+    }
+    final parsed = BigInt.tryParse(trimmed);
+    if (parsed == null || !parsed.isValidInt) {
+      return null;
+    }
+    return parsed.toInt();
+  }
+  if (value is num) {
+    if (value.isNaN || value.isInfinite) {
+      return null;
+    }
+    if (value is double && value != value.truncateToDouble()) {
+      return null;
+    }
+    final truncated = value.toInt();
+    return truncated == value ? truncated : null;
+  }
+  return null;
 }
