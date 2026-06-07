@@ -1758,6 +1758,19 @@ class FileTransferCoordinator {
     final direction = message?.direction == MessageDirection.received
         ? TransferProgressDirection.incoming
         : TransferProgressDirection.outgoing;
+    if (direction == TransferProgressDirection.incoming) {
+      final activeIncoming = _incomingTransfers.remove(attachmentId);
+      if (activeIncoming != null) {
+        await _drainIncomingPostChunkTasks(attachmentId);
+        await activeIncoming.randomAccessFile.close();
+        await activeIncoming.postProcessor.dispose();
+        talker.debug(
+          '[$_transferDiagTag] incoming transfer moved to paused state '
+          'attachmentId=$attachmentId transferredBytes='
+          '${activeIncoming.transferredBytes}',
+        );
+      }
+    }
     _progressStore.reportPaused(
       attachmentId: attachmentId,
       direction: direction,
