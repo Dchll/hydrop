@@ -59,6 +59,8 @@ abstract class TransferDuplexSocket {
 
   Future<void> add(List<int> data, {bool flush = true});
 
+  Future<void> addAll(Iterable<List<int>> chunks, {bool flush = true});
+
   Future<void> close();
 }
 
@@ -138,7 +140,12 @@ class _SocketTransferConnection implements TransferConnection {
 
   @override
   Future<void> sendFrame(TransferFrame frame, {bool flush = true}) async {
-    await _socket.add(_codec.encode(frame), flush: flush);
+    final encoded = _codec.encodeParts(frame);
+    await _socket.addAll([
+      encoded.preamble,
+      encoded.headerBytes,
+      encoded.bodyBytes,
+    ], flush: flush);
   }
 
   @override
@@ -175,6 +182,27 @@ class _IoTransferDuplexSocket implements TransferDuplexSocket {
 
     final operation = _writeQueue.then((_) async {
       _socket.add(data);
+      if (flush) {
+        await _socket.flush();
+      }
+    });
+    _writeQueue = operation.catchError((_) {});
+    await operation;
+  }
+
+  @override
+  Future<void> addAll(Iterable<List<int>> chunks, {bool flush = true}) async {
+    if (_isClosing) {
+      throw const TransferSocketException('Socket is closed.');
+    }
+
+    final operation = _writeQueue.then((_) async {
+      for (final chunk in chunks) {
+        if (chunk.isEmpty) {
+          continue;
+        }
+        _socket.add(chunk);
+      }
       if (flush) {
         await _socket.flush();
       }

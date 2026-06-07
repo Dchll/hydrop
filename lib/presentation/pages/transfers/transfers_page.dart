@@ -851,6 +851,7 @@ class _TransferItem {
   }
 
   bool get canPause =>
+      !isPaused &&
       (transferStatus == MessageAttachmentTransferStatus.pending ||
           transferStatus == MessageAttachmentTransferStatus.transferring) &&
       attachment.attachmentId != null &&

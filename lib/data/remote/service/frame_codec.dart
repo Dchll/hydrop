@@ -24,17 +24,40 @@ class FrameCodec {
   const FrameCodec();
 
   List<int> encode(TransferFrame frame) {
-    final headerBytes = utf8.encode(jsonEncode(frame.header));
-    final bodyBytes = List<int>.unmodifiable(frame.body);
-    _validateLengths(headerBytes.length, bodyBytes.length);
-
-    final bytes = Uint8List(8 + headerBytes.length + bodyBytes.length);
-    final header = ByteData.view(bytes.buffer);
-    header.setUint32(0, headerBytes.length, Endian.big);
-    header.setUint32(4, bodyBytes.length, Endian.big);
-    bytes.setRange(8, 8 + headerBytes.length, headerBytes);
-    bytes.setRange(8 + headerBytes.length, bytes.length, bodyBytes);
+    final encoded = encodeParts(frame);
+    final bytes = Uint8List(
+      encoded.preamble.length + encoded.headerBytes.length + frame.body.length,
+    );
+    bytes.setRange(0, encoded.preamble.length, encoded.preamble);
+    bytes.setRange(
+      encoded.preamble.length,
+      encoded.preamble.length + encoded.headerBytes.length,
+      encoded.headerBytes,
+    );
+    bytes.setRange(
+      encoded.preamble.length + encoded.headerBytes.length,
+      bytes.length,
+      frame.body,
+    );
     return List<int>.unmodifiable(bytes);
+  }
+
+  EncodedTransferFrameParts encodeParts(TransferFrame frame) {
+    final headerBytes = Uint8List.fromList(
+      utf8.encode(jsonEncode(frame.header)),
+    );
+    final bodyLength = frame.body.length;
+    _validateLengths(headerBytes.length, bodyLength);
+
+    final preamble = Uint8List(8);
+    final header = ByteData.view(preamble.buffer);
+    header.setUint32(0, headerBytes.length, Endian.big);
+    header.setUint32(4, bodyLength, Endian.big);
+    return EncodedTransferFrameParts(
+      preamble: preamble,
+      headerBytes: headerBytes,
+      bodyBytes: frame.body,
+    );
   }
 
   Stream<TransferFrame> decodeStream(Stream<List<int>> chunks) async* {
@@ -80,6 +103,18 @@ class FrameCodec {
       throw FrameCodecException('Invalid frame body length: $bodyLength.');
     }
   }
+}
+
+class EncodedTransferFrameParts {
+  const EncodedTransferFrameParts({
+    required this.preamble,
+    required this.headerBytes,
+    required this.bodyBytes,
+  });
+
+  final Uint8List preamble;
+  final Uint8List headerBytes;
+  final List<int> bodyBytes;
 }
 
 class _FrameBuffer {
