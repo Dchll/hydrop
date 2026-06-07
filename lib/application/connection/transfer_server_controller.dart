@@ -75,11 +75,13 @@ class TransferServerController {
 
   Future<void> _enqueueLifecycle(Future<void> Function() action) {
     final next = _lifecycleFuture
-        .catchError((Object _, StackTrace __) {
+        .catchError((Object error, StackTrace stackTrace) {
           // Keep later lifecycle operations running after an earlier failure.
         })
         .then((_) => action());
-    _lifecycleFuture = next.catchError((Object _, StackTrace __) {});
+    _lifecycleFuture = next.catchError(
+      (Object error, StackTrace stackTrace) {},
+    );
     return next;
   }
 

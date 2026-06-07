@@ -10,8 +10,10 @@ import 'package:hydrop/application/transfer/file_transfer_coordinator.dart';
 import 'package:hydrop/application/transfer/transfer_action_controller.dart';
 import 'package:hydrop/core/constants/transfer_constants.dart';
 import 'package:hydrop/core/utils/talker/talker.dart';
+import 'package:hydrop/data/local/model/device/device.dart';
 import 'package:hydrop/data/local/model/message/message.dart';
 import 'package:hydrop/data/local/repository/device_address_repository.dart';
+import 'package:hydrop/data/local/repository/device_repository.dart';
 import 'package:hydrop/data/local/repository/message_repository.dart';
 import 'package:hydrop/data/local/repository/mine_repository.dart';
 import 'package:hydrop/data/remote/service/frame_codec.dart';
@@ -28,6 +30,7 @@ final chatPageControllerProvider = Provider.family<ChatPageController, String>((
     attachmentActionController: ref.watch(attachmentActionControllerProvider),
     transferActionController: ref.watch(transferActionControllerProvider),
     addressRepository: ref.watch(deviceAddressRepositoryProvider),
+    deviceRepository: ref.watch(deviceRepositoryProvider),
     mineRepository: ref.watch(mineRepositoryProvider),
     transferSocketService: ref.watch(transferSocketServiceProvider),
     fileTransferCoordinator: ref.watch(fileTransferCoordinatorProvider),
@@ -57,6 +60,7 @@ class ChatPageController {
     required AttachmentActionController attachmentActionController,
     required TransferActionController transferActionController,
     required DeviceAddressRepository addressRepository,
+    required DeviceRepository deviceRepository,
     required MineRepository mineRepository,
     required TransferSocketService transferSocketService,
     required FileTransferCoordinator fileTransferCoordinator,
@@ -66,6 +70,7 @@ class ChatPageController {
        _attachmentActionController = attachmentActionController,
        _transferActionController = transferActionController,
        _addressRepository = addressRepository,
+       _deviceRepository = deviceRepository,
        _mineRepository = mineRepository,
        _transferSocketService = transferSocketService,
        _fileTransferCoordinator = fileTransferCoordinator,
@@ -76,6 +81,7 @@ class ChatPageController {
   final AttachmentActionController _attachmentActionController;
   final TransferActionController _transferActionController;
   final DeviceAddressRepository _addressRepository;
+  final DeviceRepository _deviceRepository;
   final MineRepository _mineRepository;
   final TransferSocketService _transferSocketService;
   final FileTransferCoordinator _fileTransferCoordinator;
@@ -123,6 +129,7 @@ class ChatPageController {
         address.port,
         timeout: transferConnectTimeout,
       );
+      await _markPeerConnected(address);
       talker.debug(
         'DchllTest 消息发送 TCP 已连接：远端设备ID=$_remoteDeviceId '
         '目标IP=${address.ipAddress} 目标端口=${address.port}',
@@ -394,6 +401,23 @@ class ChatPageController {
       return null;
     }
     return addresses.first;
+  }
+
+  Future<void> _markPeerConnected(DeviceAddressSnapshot address) async {
+    final now = DateTime.now();
+    await _addressRepository.updateAddressHealth(
+      id: address.id,
+      isReachable: true,
+      lastSuccessAt: now,
+      failureReason: null,
+    );
+    await _deviceRepository.updateConnectionStatus(
+      deviceId: _remoteDeviceId,
+      connectionStatus: DeviceConnectionStatus.localNetwork,
+      lastConnectedAt: now,
+      lastTransferAt: now,
+      lastError: null,
+    );
   }
 
   Future<TransferFrame> _waitForTextAck(

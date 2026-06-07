@@ -52,6 +52,16 @@ class ConnectionSessionRepository {
 
   final ConnectionSessionDao _connectionSessionDao;
 
+  Stream<List<ConnectionSessionSnapshot>> watchSessions({String? deviceId}) {
+    return _connectionSessionDao
+        .watchSessions(deviceId: deviceId)
+        .map(
+          (rows) => rows
+              .map(ConnectionSessionSnapshot.fromRow)
+              .toList(growable: false),
+        );
+  }
+
   Future<int> saveSession({
     required String sessionId,
     required String deviceId,

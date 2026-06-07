@@ -9,6 +9,17 @@ class ConnectionSessionDao extends DatabaseAccessor<AppDataBase>
     with _$ConnectionSessionDaoMixin {
   ConnectionSessionDao(super.db);
 
+  Stream<List<ConnectionSessionItem>> watchSessions({String? deviceId}) {
+    final query = select(connectionSessionItems)
+      ..orderBy([(table) => OrderingTerm.desc(table.id)]);
+
+    if (deviceId != null) {
+      query.where((table) => table.deviceId.equals(deviceId));
+    }
+
+    return query.watch();
+  }
+
   Future<int> upsertSession({
     required String sessionId,
     required String deviceId,

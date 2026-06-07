@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hydrop/application/discovery/discovery_controller.dart';
+import 'package:hydrop/data/local/model/connection/connection_session.dart';
 import 'package:hydrop/data/local/model/message/message.dart';
+import 'package:hydrop/data/local/repository/connection_session_repository.dart';
 import 'package:hydrop/data/local/repository/device_address_repository.dart';
 import 'package:hydrop/data/local/repository/device_repository.dart';
 import 'package:hydrop/data/local/repository/message_repository.dart';
@@ -12,20 +14,33 @@ final homeDeviceListProvider = StreamProvider<List<HomeDeviceListItem>>((ref) {
   final addressesStream = ref
       .watch(deviceAddressRepositoryProvider)
       .watchAddresses();
+  final sessionsStream = ref
+      .watch(connectionSessionRepositoryProvider)
+      .watchSessions();
   return Stream.multi((controller) {
     List<DeviceSnapshot> latestDevices = const [];
     List<DeviceAddressSnapshot> latestAddresses = const [];
+    List<ConnectionSessionSnapshot> latestSessions = const [];
 
     void emit() {
       final reachableDeviceIds = latestAddresses
-          .where((address) => address.isReachable)
+          .where(
+            (address) => address.isReachable || _isAddressRecentlySeen(address),
+          )
           .map((address) => address.deviceId)
+          .toSet();
+      final activeSessionDeviceIds = latestSessions
+          .where((session) => session.state == ConnectionSessionState.ready)
+          .map((session) => session.deviceId)
           .toSet();
       final items = latestDevices
           .map(
             (device) => HomeDeviceListItem.fromSnapshot(
               device,
               isReachable: reachableDeviceIds.contains(device.deviceId),
+              hasActiveSession: activeSessionDeviceIds.contains(
+                device.deviceId,
+              ),
             ),
           )
           .toList(growable: true);
@@ -57,10 +72,15 @@ final homeDeviceListProvider = StreamProvider<List<HomeDeviceListItem>>((ref) {
       latestAddresses = addresses;
       emit();
     }, onError: controller.addError);
+    final sessionsSubscription = sessionsStream.listen((sessions) {
+      latestSessions = sessions;
+      emit();
+    }, onError: controller.addError);
 
     controller.onCancel = () async {
       await devicesSubscription.cancel();
       await addressesSubscription.cancel();
+      await sessionsSubscription.cancel();
     };
   });
 });
@@ -117,11 +137,13 @@ class HomeDeviceListItem {
     required this.lastTransferAt,
     required this.lastError,
     required this.isReachable,
+    this.hasActiveSession,
   });
 
   factory HomeDeviceListItem.fromSnapshot(
     DeviceSnapshot snapshot, {
     required bool isReachable,
+    required bool hasActiveSession,
   }) {
     return HomeDeviceListItem(
       localId: snapshot.id,
@@ -135,6 +157,7 @@ class HomeDeviceListItem {
       lastTransferAt: snapshot.lastTransferAt,
       lastError: snapshot.lastError,
       isReachable: isReachable,
+      hasActiveSession: hasActiveSession,
     );
   }
 
@@ -148,8 +171,10 @@ class HomeDeviceListItem {
   final DateTime? lastTransferAt;
   final String? lastError;
   final bool isReachable;
+  final bool? hasActiveSession;
 
   bool get isConnected =>
+      hasActiveSession == true ||
       isReachable ||
       statusLabel == 'localNetwork' ||
       statusLabel == 'bluetooth';
@@ -233,4 +258,12 @@ String _relativeTimeLabel(DateTime time) {
     return '${elapsed.inHours}h ago';
   }
   return '${elapsed.inDays}d ago';
+}
+
+bool _isAddressRecentlySeen(DeviceAddressSnapshot address) {
+  final now = DateTime.now();
+  return now.difference(address.lastSeenAt) <= const Duration(seconds: 18) ||
+      (address.lastSuccessAt != null &&
+          now.difference(address.lastSuccessAt!) <=
+              const Duration(seconds: 18));
 }

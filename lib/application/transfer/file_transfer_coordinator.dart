@@ -172,6 +172,7 @@ class FileTransferCoordinator {
       final prepared = _OutgoingFileTransfer(
         attachmentId: attachmentId,
         localMessageId: item.localMessageId,
+        remoteDeviceId: item.remoteDeviceId,
         file: file,
         fileName: item.attachment.fileName ?? file.uri.pathSegments.last,
         totalBytes: item.attachment.totalBytes,
@@ -182,6 +183,7 @@ class FileTransferCoordinator {
         _QueuedOutgoingTransfer(
           prepared: prepared,
           endpointKey: _endpointKey(address.ipAddress, address.port),
+          addressId: address.id,
           host: address.ipAddress,
           port: address.port,
           localDeviceId: profile.deviceId,
@@ -215,6 +217,7 @@ class FileTransferCoordinator {
     final queued = _QueuedOutgoingTransfer(
       prepared: prepared,
       endpointKey: _endpointKey(host, port),
+      addressId: 0,
       host: host,
       port: port,
       localDeviceId: localDeviceId,
@@ -318,6 +321,10 @@ class FileTransferCoordinator {
           queued.host,
           queued.port,
           timeout: transferConnectTimeout,
+        );
+        await _markPeerConnected(
+          deviceId: queued.prepared.remoteDeviceId,
+          addressId: queued.addressId,
         );
         await connection.sendFrame(
           TransferFrame(
@@ -462,12 +469,14 @@ class FileTransferCoordinator {
         prepared: _OutgoingFileTransfer(
           attachmentId: normalized,
           localMessageId: localMessageId,
+          remoteDeviceId: message.remoteDeviceId,
           file: file,
           fileName: attachment.fileName ?? file.uri.pathSegments.last,
           totalBytes: attachment.totalBytes,
           mimeType: attachment.mimeType,
         )..acknowledgedBytes = attachment.transferredBytes,
         endpointKey: _endpointKey(address.ipAddress, address.port),
+        addressId: address.id,
         host: address.ipAddress,
         port: address.port,
         localDeviceId: profile.deviceId,
@@ -573,6 +582,7 @@ class FileTransferCoordinator {
     return _OutgoingFileTransfer(
       attachmentId: attachmentId,
       localMessageId: record.localMessageId,
+      remoteDeviceId: remoteDeviceId,
       file: file,
       fileName: resolvedFileName,
       mimeType: mimeType,
@@ -863,6 +873,28 @@ class FileTransferCoordinator {
   Future<bool> _isAutoResumeEnabled() async {
     return _settingRepository.watchSettings().first.then(
       (settings) => settings.autoResumeTransfersEnabled,
+    );
+  }
+
+  Future<void> _markPeerConnected({
+    required String deviceId,
+    required int addressId,
+  }) async {
+    final now = _now();
+    if (addressId > 0) {
+      await _deviceAddressRepository.updateAddressHealth(
+        id: addressId,
+        isReachable: true,
+        lastSuccessAt: now,
+        failureReason: null,
+      );
+    }
+    await _deviceRepository.updateConnectionStatus(
+      deviceId: deviceId,
+      connectionStatus: DeviceConnectionStatus.localNetwork,
+      lastConnectedAt: now,
+      lastTransferAt: now,
+      lastError: null,
     );
   }
 
@@ -1942,6 +1974,7 @@ class _OutgoingFileTransfer {
   _OutgoingFileTransfer({
     required this.attachmentId,
     required this.localMessageId,
+    required this.remoteDeviceId,
     required this.file,
     required this.fileName,
     required this.totalBytes,
@@ -1950,6 +1983,7 @@ class _OutgoingFileTransfer {
 
   final String attachmentId;
   final String localMessageId;
+  final String remoteDeviceId;
   final File file;
   final String fileName;
   final String? mimeType;
@@ -1985,6 +2019,7 @@ class _QueuedOutgoingTransfer {
   _QueuedOutgoingTransfer({
     required this.prepared,
     required this.endpointKey,
+    required this.addressId,
     required this.host,
     required this.port,
     required this.localDeviceId,
@@ -1993,6 +2028,7 @@ class _QueuedOutgoingTransfer {
 
   final _OutgoingFileTransfer prepared;
   final String endpointKey;
+  final int addressId;
   final String host;
   final int port;
   final String localDeviceId;

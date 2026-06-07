@@ -266,7 +266,7 @@ class TransferNotificationService {
       iOS: DarwinNotificationDetails(
         presentAlert: !ongoing,
         presentBanner: !ongoing,
-        presentList: true,
+        presentList: !ongoing,
         presentSound: false,
         subtitle: darwinSubtitle,
         threadIdentifier: 'transfer_$attachmentId',
@@ -274,7 +274,7 @@ class TransferNotificationService {
       macOS: DarwinNotificationDetails(
         presentAlert: !ongoing,
         presentBanner: !ongoing,
-        presentList: true,
+        presentList: !ongoing,
         presentSound: false,
         subtitle: darwinSubtitle,
         threadIdentifier: 'transfer_$attachmentId',
