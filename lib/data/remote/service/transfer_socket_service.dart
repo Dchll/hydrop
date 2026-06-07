@@ -31,6 +31,11 @@ class TransferSocketException implements Exception {
   String toString() => 'TransferSocketException: $message';
 }
 
+const _socketSendBufferBytes = 8 * 1024 * 1024;
+const _socketReceiveBufferBytes = 8 * 1024 * 1024;
+const _soSndbuf = 0x1001;
+const _soRcvbuf = 0x1002;
+
 abstract class TransferConnection {
   String get remoteAddress;
 
@@ -214,7 +219,7 @@ Future<TransferDuplexSocket> _defaultClientSocketFactory(
 ) async {
   try {
     final socket = await Socket.connect(host, port, timeout: timeout);
-    socket.setOption(SocketOption.tcpNoDelay, true);
+    _configureSocket(socket);
     return _IoTransferDuplexSocket(socket);
   } catch (error) {
     throw TransferSocketException('Failed to connect to $host:$port: $error');
@@ -232,7 +237,7 @@ Future<TransferServerSocket> _defaultServerSocketFactory(
       shared: true,
     );
     final subscription = server.listen((socket) {
-      socket.setOption(SocketOption.tcpNoDelay, true);
+      _configureSocket(socket);
       onClient(_IoTransferDuplexSocket(socket));
     });
     return _IoTransferServerSocket(server, subscription);
@@ -240,5 +245,43 @@ Future<TransferServerSocket> _defaultServerSocketFactory(
     throw TransferSocketException(
       'Failed to start TCP server on $port: $error',
     );
+  }
+}
+
+void _configureSocket(Socket socket) {
+  socket.setOption(SocketOption.tcpNoDelay, true);
+  _setSocketBufferBestEffort(socket, sendBufferBytes: _socketSendBufferBytes);
+  _setSocketBufferBestEffort(
+    socket,
+    receiveBufferBytes: _socketReceiveBufferBytes,
+  );
+}
+
+void _setSocketBufferBestEffort(
+  Socket socket, {
+  int? sendBufferBytes,
+  int? receiveBufferBytes,
+}) {
+  try {
+    if (sendBufferBytes != null) {
+      socket.setRawOption(
+        RawSocketOption.fromInt(
+          RawSocketOption.levelSocket,
+          _soSndbuf,
+          sendBufferBytes,
+        ),
+      );
+    }
+    if (receiveBufferBytes != null) {
+      socket.setRawOption(
+        RawSocketOption.fromInt(
+          RawSocketOption.levelSocket,
+          _soRcvbuf,
+          receiveBufferBytes,
+        ),
+      );
+    }
+  } catch (_) {
+    // Best-effort tuning only. Some platforms or sandboxed runtimes may refuse it.
   }
 }

@@ -1304,6 +1304,13 @@ class FileTransferCoordinator {
       offset + frame.body.length,
     );
     transfer.transferredBytes = transferredBytes;
+    _progressStore.reportProgress(
+      attachmentId: attachmentId,
+      direction: TransferProgressDirection.incoming,
+      transferredBytes: transferredBytes,
+      totalBytes: transfer.totalBytes,
+      startedAt: _currentTransferStartedAt(attachmentId),
+    );
     if (transfer.shouldSendChunkAck()) {
       transfer.lastAcknowledgedBytes = transferredBytes;
       await transfer.connection.sendFrame(
@@ -1330,13 +1337,6 @@ class FileTransferCoordinator {
           checkpoint: checkpoint,
         );
       }
-      _progressStore.reportProgress(
-        attachmentId: attachmentId,
-        direction: TransferProgressDirection.incoming,
-        transferredBytes: transferredBytes,
-        totalBytes: transfer.totalBytes,
-        startedAt: _currentTransferStartedAt(attachmentId),
-      );
       await _persistTransferProgress(
         attachmentId: attachmentId,
         transferredBytes: transferredBytes,

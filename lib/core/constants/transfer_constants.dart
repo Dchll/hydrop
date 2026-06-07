@@ -4,7 +4,7 @@ const transferProtocolVersion = 1;
 const transferDefaultPort = 39176;
 
 /// TCP connect and probe ack timeout for lightweight LAN operations.
-const transferConnectTimeout = Duration(seconds: 2);
+const transferConnectTimeout = Duration(seconds: 8);
 const transferTextAckTimeout = Duration(seconds: 8);
 const transferControlFrameTimeout = Duration(seconds: 30);
 const transferChunkAckTimeout = Duration(seconds: 30);
