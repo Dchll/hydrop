@@ -1608,6 +1608,7 @@ class FileTransferCoordinator {
     TransferFrame frame,
   ) async {
     final attachmentId = _readString(frame.header['attachmentId']);
+    final requestId = _readString(frame.header['requestId']);
     if (attachmentId == null) {
       return;
     }
@@ -1625,6 +1626,7 @@ class FileTransferCoordinator {
           header: {
             'type': transferFrameTypeFileResumeAck,
             'protocolVersion': transferProtocolVersion,
+            'requestId': requestId,
             'attachmentId': attachmentId,
             'accepted': false,
             'reason': 'Incoming transfer not found.',
@@ -1641,6 +1643,7 @@ class FileTransferCoordinator {
           header: {
             'type': transferFrameTypeFileResumeAck,
             'protocolVersion': transferProtocolVersion,
+            'requestId': requestId,
             'attachmentId': attachmentId,
             'accepted': true,
             'resumeFromByte': _encodeInt(attachment.transferredBytes),
@@ -1654,6 +1657,7 @@ class FileTransferCoordinator {
           header: {
             'type': transferFrameTypeFileResumeAck,
             'protocolVersion': transferProtocolVersion,
+            'requestId': requestId,
             'attachmentId': attachmentId,
             'accepted': false,
             'reason': '$error',
