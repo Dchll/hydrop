@@ -185,6 +185,26 @@ class AppLocalizationsEn extends AppLocalizations {
       'Device, message, and transfer records are kept locally';
 
   @override
+  String get androidAllFilesAccessTitle => 'All files access';
+
+  @override
+  String get androidAllFilesAccessSubtitle =>
+      'Required on Android to read and manage files directly in shared storage and the Downloads folder.';
+
+  @override
+  String get androidAllFilesAccessGranted => 'Granted';
+
+  @override
+  String get androidAllFilesAccessNotGranted => 'Not granted';
+
+  @override
+  String get androidAllFilesAccessOpenSettings => 'Open settings';
+
+  @override
+  String get androidAllFilesAccessOpenFailed =>
+      'Unable to open the Android all files access settings page.';
+
+  @override
   String get localIdentity => 'Local identity';
 
   @override

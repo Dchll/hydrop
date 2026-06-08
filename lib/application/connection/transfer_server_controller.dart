@@ -287,14 +287,15 @@ class TransferServerController {
       '来源端口=${connection.remotePort}',
     );
     _startHeartbeatTimeout(connection);
-    final subscription = connection.frames.listen(
+    late final StreamSubscription<TransferFrame> subscription;
+    subscription = connection.frames.listen(
       (frame) {
         talker.debug(
           'DchllTest 消息接收收到帧：来源IP=${connection.remoteAddress} '
           '来源端口=${connection.remotePort} 类型=${frame.header['type']} '
           '请求ID=${frame.header['requestId']} 正文字节=${frame.body.length}',
         );
-        _enqueueFrame(connection, frame);
+        subscription.pause(_enqueueFrame(connection, frame));
       },
       onDone: () {
         _removeConnection(connection, reason: 'incoming_stream_done');
@@ -320,9 +321,12 @@ class TransferServerController {
     _subscriptions[connection] = subscription;
   }
 
-  void _enqueueFrame(TransferConnection connection, TransferFrame frame) {
+  Future<void> _enqueueFrame(
+    TransferConnection connection,
+    TransferFrame frame,
+  ) {
     final previous = _frameQueues[connection] ?? Future<void>.value();
-    _frameQueues[connection] = previous
+    final next = previous
         .catchError((Object _) {
           // Keep later frames moving even if an earlier frame failed.
         })
@@ -336,6 +340,8 @@ class TransferServerController {
             stackTrace,
           );
         });
+    _frameQueues[connection] = next;
+    return next;
   }
 
   Future<void> _handleFrame(

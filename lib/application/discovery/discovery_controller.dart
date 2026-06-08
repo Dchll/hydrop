@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hydrop/application/discovery/android_discovery_network_controller.dart';
 import 'package:hydrop/application/connection/transfer_server_port_registry.dart';
 import 'package:hydrop/application/connection/speed_test_runner.dart';
 import 'package:hydrop/core/constants/discovery_constants.dart';
@@ -34,6 +35,9 @@ final discoveryControllerProvider = Provider<DiscoveryController>((ref) {
     deviceRepository: ref.watch(deviceRepositoryProvider),
     deviceAddressRepository: ref.watch(deviceAddressRepositoryProvider),
     portRegistry: ref.watch(transferServerPortRegistryProvider),
+    androidDiscoveryNetworkController: ref.watch(
+      androidDiscoveryNetworkControllerProvider,
+    ),
     deviceNameService: ref.watch(localDeviceNameServiceProvider),
     speedTestRunner: ref.watch(speedTestRunnerProvider),
     broadcastService: DiscoveryBroadcastService(
@@ -58,6 +62,7 @@ class DiscoveryController {
     required DeviceRepository deviceRepository,
     required DeviceAddressRepository deviceAddressRepository,
     required TransferServerPortRegistry portRegistry,
+    AndroidDiscoveryNetworkController? androidDiscoveryNetworkController,
     LocalDeviceNameService? deviceNameService,
     SpeedTestRunner? speedTestRunner,
     required DiscoveryBroadcastService broadcastService,
@@ -71,6 +76,7 @@ class DiscoveryController {
        _deviceRepository = deviceRepository,
        _deviceAddressRepository = deviceAddressRepository,
        _portRegistry = portRegistry,
+       _androidDiscoveryNetworkController = androidDiscoveryNetworkController,
        _deviceNameService = deviceNameService ?? LocalDeviceNameService(),
        _speedTestRunner = speedTestRunner,
        _broadcastService = broadcastService,
@@ -86,6 +92,7 @@ class DiscoveryController {
   final DeviceRepository _deviceRepository;
   final DeviceAddressRepository _deviceAddressRepository;
   final TransferServerPortRegistry _portRegistry;
+  final AndroidDiscoveryNetworkController? _androidDiscoveryNetworkController;
   final LocalDeviceNameService _deviceNameService;
   final SpeedTestRunner? _speedTestRunner;
   final DiscoveryBroadcastService _broadcastService;
@@ -101,6 +108,7 @@ class DiscoveryController {
   DiscoveryControllerTimerHandle? _heartbeatTimerHandle;
   StreamSubscription<int>? _portUpdateSubscription;
   String? _localDeviceId;
+  String? _localDisplayName;
   final _seenNonces = <String>{};
   final _seenNonceOrder = <String>[];
   final _lastSpeedTestAtByDeviceId = <String, DateTime>{};
@@ -128,6 +136,7 @@ class DiscoveryController {
     _heartbeatFailuresByDeviceId.clear();
     await _socketService.stop();
     await _broadcastService.stop();
+    await _androidDiscoveryNetworkController?.releaseMulticastLock();
   }
 
   Future<void> _startInternal() async {
@@ -137,6 +146,8 @@ class DiscoveryController {
       stableSeed: _deviceNameService.resolveStableSeed(),
     );
     _localDeviceId = profile.deviceId;
+    _localDisplayName = profile.displayName;
+    await _androidDiscoveryNetworkController?.acquireMulticastLock();
 
     await _startSocketBestEffort();
     await _startBroadcastBestEffort(profile);
@@ -255,7 +266,20 @@ class DiscoveryController {
       await _deviceAddressRepository.saveAddresses(addresses);
       _heartbeatFailuresByDeviceId[payload.deviceId] = 0;
       _scheduleSpeedTest(payload.deviceId, seenAt);
+      _probeDeviceHeartbeatSoon(payload.deviceId);
     }
+  }
+
+  void _probeDeviceHeartbeatSoon(String deviceId) {
+    if (_heartbeatInFlightByDeviceId.contains(deviceId)) {
+      return;
+    }
+    _heartbeatInFlightByDeviceId.add(deviceId);
+    unawaited(
+      _probeDeviceHeartbeat(deviceId).whenComplete(() {
+        _heartbeatInFlightByDeviceId.remove(deviceId);
+      }),
+    );
   }
 
   Future<void> _probeKnownDevices() async {
@@ -264,15 +288,7 @@ class DiscoveryController {
       if (device.deviceId == _localDeviceId) {
         continue;
       }
-      if (_heartbeatInFlightByDeviceId.contains(device.deviceId)) {
-        continue;
-      }
-      _heartbeatInFlightByDeviceId.add(device.deviceId);
-      unawaited(
-        _probeDeviceHeartbeat(device.deviceId).whenComplete(() {
-          _heartbeatInFlightByDeviceId.remove(device.deviceId);
-        }),
-      );
+      _probeDeviceHeartbeatSoon(device.deviceId);
     }
   }
 
@@ -326,6 +342,7 @@ class DiscoveryController {
             'protocolVersion': transferProtocolVersion,
             'requestId': requestId,
             'senderDeviceId': _localDeviceId,
+            'senderDisplayName': _localDisplayName,
             'senderTransferPort': _portRegistry.currentPort,
             'sentAt': now.millisecondsSinceEpoch,
           },

@@ -176,6 +176,25 @@ class AppLocalizationsZh extends AppLocalizations {
   String get storageValue => '设备、消息和传输记录均保存在本地';
 
   @override
+  String get androidAllFilesAccessTitle => '所有文件访问权限';
+
+  @override
+  String get androidAllFilesAccessSubtitle =>
+      'Android 上若要直接读取和管理共享存储及下载目录中的文件，需要开启此权限。';
+
+  @override
+  String get androidAllFilesAccessGranted => '已开启';
+
+  @override
+  String get androidAllFilesAccessNotGranted => '未开启';
+
+  @override
+  String get androidAllFilesAccessOpenSettings => '打开设置';
+
+  @override
+  String get androidAllFilesAccessOpenFailed => '无法打开 Android 所有文件访问权限设置页。';
+
+  @override
   String get localIdentity => '本机身份';
 
   @override
@@ -1059,6 +1078,25 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get storageValue => '裝置、訊息和傳輸記錄均保存在本地';
+
+  @override
+  String get androidAllFilesAccessTitle => '所有檔案存取權限';
+
+  @override
+  String get androidAllFilesAccessSubtitle =>
+      '在 Android 上若要直接讀取和管理共享儲存空間及下載目錄中的檔案，需要開啟此權限。';
+
+  @override
+  String get androidAllFilesAccessGranted => '已開啟';
+
+  @override
+  String get androidAllFilesAccessNotGranted => '未開啟';
+
+  @override
+  String get androidAllFilesAccessOpenSettings => '開啟設定';
+
+  @override
+  String get androidAllFilesAccessOpenFailed => '無法開啟 Android 所有檔案存取權限設定頁。';
 
   @override
   String get localIdentity => '本機身分';

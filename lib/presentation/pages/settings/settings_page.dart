@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:hydrop/application/home/home_page_state.dart';
 import 'package:hydrop/application/mine/mine_page_state.dart';
+import 'package:hydrop/application/settings/android_file_access_controller.dart';
 import 'package:hydrop/application/settings/database_reset_controller.dart';
 import 'package:hydrop/core/feedback/transient_feedback.dart';
 import 'package:hydrop/data/local/model/setting/setting.dart';
@@ -802,10 +803,13 @@ class _PrivacySummarySetting extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final mine = ref.watch(mineOverviewProvider);
+    final fileAccessController = ref.watch(androidFileAccessControllerProvider);
     final l10n = AppLocalizations.of(context);
     return Column(
       children: [
         _InfoSetting(title: l10n.storage, value: l10n.storageValue),
+        if (fileAccessController.isSupported)
+          _AndroidAllFilesAccessSetting(controller: fileAccessController),
         _InfoSetting(
           title: l10n.localIdentity,
           value: mine.maybeWhen(
@@ -821,6 +825,114 @@ class _PrivacySummarySetting extends ConsumerWidget {
           onPressed: onResetDatabase,
         ),
       ],
+    );
+  }
+}
+
+class _AndroidAllFilesAccessSetting extends ConsumerStatefulWidget {
+  const _AndroidAllFilesAccessSetting({required this.controller});
+
+  final AndroidFileAccessController controller;
+
+  @override
+  ConsumerState<_AndroidAllFilesAccessSetting> createState() =>
+      _AndroidAllFilesAccessSettingState();
+}
+
+class _AndroidAllFilesAccessSettingState
+    extends ConsumerState<_AndroidAllFilesAccessSetting> {
+  bool? _granted;
+  bool _loading = true;
+  bool _opening = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshStatus();
+  }
+
+  Future<void> _refreshStatus() async {
+    setState(() => _loading = true);
+    try {
+      final granted = await widget.controller.isAllFilesAccessGranted();
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _granted = granted;
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _openSettings() async {
+    final l10n = AppLocalizations.of(context);
+    setState(() => _opening = true);
+    try {
+      final opened = await widget.controller.openAllFilesAccessSettings();
+      if (!opened && mounted) {
+        await TransientFeedback.show(
+          context,
+          l10n.actionFailed(l10n.androidAllFilesAccessOpenFailed),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        await TransientFeedback.show(context, l10n.actionFailed('$error'));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _opening = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final granted = _granted == true;
+    final status = _loading
+        ? l10n.loadingLocalIdentity
+        : granted
+        ? l10n.androidAllFilesAccessGranted
+        : l10n.androidAllFilesAccessNotGranted;
+
+    return _SettingBlock(
+      title: l10n.androidAllFilesAccessTitle,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            l10n.androidAllFilesAccessSubtitle,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.72),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(status),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              OutlinedButton(
+                onPressed: _loading ? null : _refreshStatus,
+                child: Text(l10n.refresh),
+              ),
+              const SizedBox(width: 6),
+              FilledButton(
+                onPressed: _opening ? null : _openSettings,
+                child: Text(l10n.androidAllFilesAccessOpenSettings),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

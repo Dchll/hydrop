@@ -68,6 +68,12 @@
   "qrPairingValue": "Use Mine or Devices to show and scan connection QR codes",
   "storage": "Storage",
   "storageValue": "Device, message, and transfer records are kept locally",
+  "androidAllFilesAccessTitle": "All files access",
+  "androidAllFilesAccessSubtitle": "Required on Android to read and manage files directly in shared storage and the Downloads folder.",
+  "androidAllFilesAccessGranted": "Granted",
+  "androidAllFilesAccessNotGranted": "Not granted",
+  "androidAllFilesAccessOpenSettings": "Open settings",
+  "androidAllFilesAccessOpenFailed": "Unable to open the Android all files access settings page.",
   "localIdentity": "Local identity",
   "deviceIdValue": "Device ID {deviceId}",
   "@deviceIdValue": {

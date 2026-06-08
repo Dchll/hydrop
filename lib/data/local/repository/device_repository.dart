@@ -50,6 +50,8 @@ class DeviceSnapshot {
 }
 
 class DeviceRepository {
+  static const _maxDisplayNameLength = 32;
+
   DeviceRepository(DeviceDao deviceDao, [SettingDao? settingDao])
     : _deviceDao = deviceDao,
       _settingDao = settingDao ?? deviceDao.attachedDatabase.settingDao;
@@ -96,8 +98,13 @@ class DeviceRepository {
         ? (await _settingDao.watchSettings().first)
               .autoReceiveFilesByDefaultEnabled
         : null;
+    final normalizedDisplayName = _normalizeDisplayName(
+      displayName,
+      deviceId: deviceId,
+      existingDisplayName: existingDevice?.displayName,
+    );
     await _deviceDao.upsertDevice(
-      displayName: displayName,
+      displayName: normalizedDisplayName,
       deviceId: deviceId,
       connectionStatus: connectionStatus,
       autoReceiveFilesEnabled: autoReceiveFilesEnabled,
@@ -171,6 +178,46 @@ class DeviceRepository {
       lastDisconnectedAt: at,
       lastError: error,
     );
+  }
+
+  String _normalizeDisplayName(
+    String displayName, {
+    required String deviceId,
+    String? existingDisplayName,
+  }) {
+    final trimmedDisplayName = displayName.trim();
+    final trimmedDeviceId = deviceId.trim();
+    if (trimmedDisplayName.isNotEmpty &&
+        trimmedDisplayName != trimmedDeviceId) {
+      return _truncateDisplayName(trimmedDisplayName);
+    }
+    final trimmedExistingDisplayName = existingDisplayName?.trim() ?? '';
+    if (trimmedExistingDisplayName.isNotEmpty &&
+        trimmedExistingDisplayName != trimmedDeviceId) {
+      return _truncateDisplayName(trimmedExistingDisplayName);
+    }
+    if (trimmedDeviceId.isNotEmpty) {
+      return _fallbackDisplayNameFromDeviceId(trimmedDeviceId);
+    }
+    return 'Unknown device';
+  }
+
+  String _truncateDisplayName(String value) {
+    if (value.length <= _maxDisplayNameLength) {
+      return value;
+    }
+    return value.substring(0, _maxDisplayNameLength);
+  }
+
+  String _fallbackDisplayNameFromDeviceId(String deviceId) {
+    if (deviceId.length <= _maxDisplayNameLength) {
+      return deviceId;
+    }
+    const visibleSuffixLength = 8;
+    final suffixStart = deviceId.length > visibleSuffixLength
+        ? deviceId.length - visibleSuffixLength
+        : 0;
+    return 'Device ${deviceId.substring(suffixStart)}';
   }
 }
 

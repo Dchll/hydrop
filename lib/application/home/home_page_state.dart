@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hydrop/application/discovery/discovery_controller.dart';
 import 'package:hydrop/core/constants/discovery_constants.dart';
 import 'package:hydrop/data/local/model/connection/connection_session.dart';
+import 'package:hydrop/data/local/model/device/device.dart';
 import 'package:hydrop/data/local/model/message/message.dart';
 import 'package:hydrop/data/local/repository/connection_session_repository.dart';
 import 'package:hydrop/data/local/repository/device_address_repository.dart';
@@ -142,7 +143,7 @@ class HomeDeviceListItem {
     required this.localId,
     required this.displayName,
     required this.deviceId,
-    required this.statusLabel,
+    required this.connectionStatus,
     required this.averageTransferSpeedBytesPerSecond,
     required this.lastConnectedAt,
     required this.lastDisconnectedAt,
@@ -161,7 +162,7 @@ class HomeDeviceListItem {
       localId: snapshot.id,
       displayName: snapshot.displayName,
       deviceId: snapshot.deviceId,
-      statusLabel: snapshot.connectionStatus.name,
+      connectionStatus: snapshot.connectionStatus,
       averageTransferSpeedBytesPerSecond:
           snapshot.averageTransferSpeedBytesPerSecond,
       lastConnectedAt: snapshot.lastConnectedAt,
@@ -176,7 +177,7 @@ class HomeDeviceListItem {
   final int localId;
   final String displayName;
   final String deviceId;
-  final String statusLabel;
+  final DeviceConnectionStatus connectionStatus;
   final int averageTransferSpeedBytesPerSecond;
   final DateTime? lastConnectedAt;
   final DateTime? lastDisconnectedAt;
@@ -186,7 +187,9 @@ class HomeDeviceListItem {
   final bool? hasActiveSession;
 
   bool get isConnected =>
-      hasActiveSession == true || isReachable || statusLabel == 'bluetooth';
+      hasActiveSession == true ||
+      isReachable ||
+      connectionStatus == DeviceConnectionStatus.bluetooth;
 
   String get initials {
     final trimmed = displayName.trim();

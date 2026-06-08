@@ -541,29 +541,55 @@ class FileTransferCoordinator {
       return;
     }
 
+    talker.debug(
+      '[$_transferDiagTag] resume transfer requested attachmentId=$normalized',
+    );
     final attachment = await _messageRepository.getAttachmentByAttachmentId(
       normalized,
     );
-    final localMessageId = await _messageRepository
-        .getLocalMessageIdByAttachmentId(normalized);
-    if (attachment == null || localMessageId == null) {
+    if (attachment == null) {
+      talker.warning(
+        '[$_transferDiagTag] resume transfer failed: attachment missing '
+        'attachmentId=$normalized',
+      );
       throw const FileTransferException('Transfer record not found.');
     }
     final message = await _messageRepository.getMessageByAttachmentId(
       normalized,
     );
     if (message == null) {
-      throw const FileTransferException('Outgoing message record not found.');
+      talker.warning(
+        '[$_transferDiagTag] resume transfer failed: message missing '
+        'attachmentId=$normalized',
+      );
+      throw const FileTransferException('Message record not found.');
     }
+    final localMessageId = message.localMessageId;
     _pausedAttachmentIds.remove(normalized);
     _remotePausedAttachmentIds.remove(normalized);
+    talker.debug(
+      '[$_transferDiagTag] resume transfer state '
+      'attachmentId=$normalized direction=${message.direction.name} '
+      'status=${attachment.transferStatus.name} '
+      'transferredBytes=${attachment.transferredBytes} '
+      'totalBytes=${attachment.totalBytes}',
+    );
     if (message.direction == MessageDirection.received) {
       final address = await _resolveRecoveryAddress(message.remoteDeviceId);
       if (address == null) {
+        talker.warning(
+          '[$_transferDiagTag] resume incoming transfer failed: no address '
+          'attachmentId=$normalized remoteDeviceId=${message.remoteDeviceId}',
+        );
         throw const FileTransferException(
           'No reachable address is available for this device.',
         );
       }
+      talker.debug(
+        '[$_transferDiagTag] resume incoming transfer request remote '
+        'attachmentId=$normalized remoteDeviceId=${message.remoteDeviceId} '
+        'target=${address.ipAddress}:${address.port}',
+      );
       await _requestRemoteResume(
         attachmentId: normalized,
         remoteDeviceId: message.remoteDeviceId,
@@ -586,7 +612,18 @@ class FileTransferCoordinator {
         totalBytes: attachment.totalBytes,
         startedAt: attachment.transferStartedAt,
       );
+      talker.debug(
+        '[$_transferDiagTag] resume incoming transfer marked pending '
+        'attachmentId=$normalized remoteDeviceId=${message.remoteDeviceId}',
+      );
       return;
+    }
+    if (localMessageId == null || localMessageId.trim().isEmpty) {
+      talker.warning(
+        '[$_transferDiagTag] resume outgoing transfer failed: local message id '
+        'missing attachmentId=$normalized',
+      );
+      throw const FileTransferException('Outgoing message record not found.');
     }
     final profile = await _mineRepository.getMineProfile();
     if (profile == null) {
@@ -594,7 +631,22 @@ class FileTransferCoordinator {
         'Local device profile is not initialized.',
       );
     }
-    if (_isOutgoingAttachmentActiveOrQueued(normalized)) {
+    final removedQueued = _removeQueuedOutgoingTransfer(normalized);
+    if (removedQueued != null && !removedQueued.completer.isCompleted) {
+      removedQueued.completer.completeError(
+        const FileTransferPausedException(),
+      );
+      talker.debug(
+        '[$_transferDiagTag] resume outgoing transfer removed stale queue item '
+        'attachmentId=$normalized',
+      );
+    }
+    if (_outgoingTransfers.containsKey(normalized) ||
+        _outgoingConnections.containsKey(normalized)) {
+      talker.debug(
+        '[$_transferDiagTag] resume outgoing transfer skipped: already active '
+        'attachmentId=$normalized',
+      );
       return;
     }
     final filePath = attachment.filePath;
@@ -607,6 +659,10 @@ class FileTransferCoordinator {
     }
     final address = await _resolveRecoveryAddress(message.remoteDeviceId);
     if (address == null) {
+      talker.warning(
+        '[$_transferDiagTag] resume outgoing transfer failed: no address '
+        'attachmentId=$normalized remoteDeviceId=${message.remoteDeviceId}',
+      );
       throw const FileTransferException(
         'No reachable address is available for this device.',
       );
@@ -631,25 +687,30 @@ class FileTransferCoordinator {
       startedAt: attachment.transferStartedAt,
     );
 
-    _enqueueOutgoingTransfer(
-      _QueuedOutgoingTransfer(
-        prepared: _OutgoingFileTransfer(
-          attachmentId: normalized,
-          localMessageId: localMessageId,
-          remoteDeviceId: message.remoteDeviceId,
-          file: file,
-          fileName: attachment.fileName ?? file.uri.pathSegments.last,
-          totalBytes: attachment.totalBytes,
-          sourceFileModifiedAtStart: (await file.stat()).modified,
-          mimeType: attachment.mimeType,
-        )..acknowledgedBytes = attachment.transferredBytes,
-        endpointKey: _endpointKey(address.ipAddress, address.port),
-        addressId: address.id,
-        host: address.ipAddress,
-        port: address.port,
-        localDeviceId: profile.deviceId,
-        localDisplayName: profile.displayName,
-      ),
+    final queued = _QueuedOutgoingTransfer(
+      prepared: _OutgoingFileTransfer(
+        attachmentId: normalized,
+        localMessageId: localMessageId,
+        remoteDeviceId: message.remoteDeviceId,
+        file: file,
+        fileName: attachment.fileName ?? file.uri.pathSegments.last,
+        totalBytes: attachment.totalBytes,
+        sourceFileModifiedAtStart: (await file.stat()).modified,
+        mimeType: attachment.mimeType,
+      )..acknowledgedBytes = attachment.transferredBytes,
+      endpointKey: _endpointKey(address.ipAddress, address.port),
+      addressId: address.id,
+      host: address.ipAddress,
+      port: address.port,
+      localDeviceId: profile.deviceId,
+      localDisplayName: profile.displayName,
+    );
+    _enqueueOutgoingTransfer(queued);
+    talker.debug(
+      '[$_transferDiagTag] resume outgoing transfer queued '
+      'attachmentId=$normalized remoteDeviceId=${message.remoteDeviceId} '
+      'target=${address.ipAddress}:${address.port} '
+      'resumeFromByte=${attachment.transferredBytes}',
     );
   }
 
@@ -1735,7 +1796,7 @@ class FileTransferCoordinator {
         ),
       );
     }
-    _enqueueIncomingPostChunkTask(attachmentId, () async {
+    await _enqueueIncomingPostChunkTask(attachmentId, () async {
       final processed = await transfer.postProcessor.addChunk(
         frame.body,
         endOffset: transferredBytes,
@@ -2568,7 +2629,7 @@ class FileTransferCoordinator {
     return _pausedAttachmentIds.contains(attachmentId);
   }
 
-  void _enqueueIncomingPostChunkTask(
+  Future<void> _enqueueIncomingPostChunkTask(
     String attachmentId,
     Future<void> Function() task,
   ) {
@@ -2582,7 +2643,7 @@ class FileTransferCoordinator {
         'attachmentId=$attachmentId depth=$nextDepth',
       );
     }
-    _incomingPostChunkTasks[attachmentId] = previous
+    final next = previous
         .catchError((Object _) {})
         .then((_) => task())
         .whenComplete(() {
@@ -2620,6 +2681,8 @@ class FileTransferCoordinator {
             await transfer.connection.close();
           }());
         });
+    _incomingPostChunkTasks[attachmentId] = next;
+    return next;
   }
 
   Future<void> _drainIncomingPostChunkTasks(String attachmentId) async {

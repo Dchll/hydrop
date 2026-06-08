@@ -423,6 +423,42 @@ abstract class AppLocalizations {
   /// **'Device, message, and transfer records are kept locally'**
   String get storageValue;
 
+  /// No description provided for @androidAllFilesAccessTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'All files access'**
+  String get androidAllFilesAccessTitle;
+
+  /// No description provided for @androidAllFilesAccessSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Required on Android to read and manage files directly in shared storage and the Downloads folder.'**
+  String get androidAllFilesAccessSubtitle;
+
+  /// No description provided for @androidAllFilesAccessGranted.
+  ///
+  /// In en, this message translates to:
+  /// **'Granted'**
+  String get androidAllFilesAccessGranted;
+
+  /// No description provided for @androidAllFilesAccessNotGranted.
+  ///
+  /// In en, this message translates to:
+  /// **'Not granted'**
+  String get androidAllFilesAccessNotGranted;
+
+  /// No description provided for @androidAllFilesAccessOpenSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open settings'**
+  String get androidAllFilesAccessOpenSettings;
+
+  /// No description provided for @androidAllFilesAccessOpenFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to open the Android all files access settings page.'**
+  String get androidAllFilesAccessOpenFailed;
+
   /// No description provided for @localIdentity.
   ///
   /// In en, this message translates to:
