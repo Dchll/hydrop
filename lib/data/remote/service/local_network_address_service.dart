@@ -237,6 +237,8 @@ class LocalBroadcastSource {
   final String? gatewayAddress;
   final String? networkSignature;
   final bool isWifiLike;
+
+  String get key => '$interfaceName|$address|$broadcastAddress|$isIpv4';
 }
 
 Future<List<LocalInterfaceSnapshot>> _defaultInterfaceSnapshotProvider() async {

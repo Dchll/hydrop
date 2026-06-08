@@ -40,6 +40,16 @@ typedef AttachmentOpenRequest =
       String? messageError,
     );
 
+typedef AttachmentMoreRequest =
+    void Function(
+      MessageAttachmentSnapshot attachment,
+      MessageDirection direction,
+      String? messageError,
+    );
+
+typedef AttachmentFileActionRequest =
+    void Function(MessageAttachmentSnapshot attachment);
+
 typedef AttachmentTransferActionRequest =
     void Function(MessageAttachmentSnapshot attachment);
 
@@ -51,6 +61,9 @@ class ChatMessageTimeline extends StatefulWidget {
     required this.peerDisplayName,
     required this.highlightedMessageId,
     required this.onOpenAttachment,
+    required this.onShowAttachmentMore,
+    required this.onOpenAttachmentInSystemApp,
+    required this.onSaveAttachmentAs,
     required this.onShowMessageActions,
     required this.onPauseAttachment,
     required this.onResumeAttachment,
@@ -66,6 +79,9 @@ class ChatMessageTimeline extends StatefulWidget {
   final String peerDisplayName;
   final int? highlightedMessageId;
   final AttachmentOpenRequest onOpenAttachment;
+  final AttachmentMoreRequest onShowAttachmentMore;
+  final AttachmentFileActionRequest onOpenAttachmentInSystemApp;
+  final AttachmentFileActionRequest onSaveAttachmentAs;
   final ValueChanged<ConversationMessage> onShowMessageActions;
   final AttachmentTransferActionRequest onPauseAttachment;
   final AttachmentTransferActionRequest onResumeAttachment;
@@ -178,6 +194,10 @@ class _ChatMessageTimelineState extends State<ChatMessageTimeline> {
                     isHighlighted:
                         widget.highlightedMessageId == entry.message.id,
                     onOpenAttachment: widget.onOpenAttachment,
+                    onShowAttachmentMore: widget.onShowAttachmentMore,
+                    onOpenAttachmentInSystemApp:
+                        widget.onOpenAttachmentInSystemApp,
+                    onSaveAttachmentAs: widget.onSaveAttachmentAs,
                     onShowMessageActions: widget.onShowMessageActions,
                     onPauseAttachment: widget.onPauseAttachment,
                     onResumeAttachment: widget.onResumeAttachment,
@@ -235,6 +255,9 @@ class _GroupedChatMessage extends StatelessWidget {
     required this.searchQuery,
     required this.isHighlighted,
     required this.onOpenAttachment,
+    required this.onShowAttachmentMore,
+    required this.onOpenAttachmentInSystemApp,
+    required this.onSaveAttachmentAs,
     required this.onShowMessageActions,
     required this.onPauseAttachment,
     required this.onResumeAttachment,
@@ -246,6 +269,9 @@ class _GroupedChatMessage extends StatelessWidget {
   final String searchQuery;
   final bool isHighlighted;
   final AttachmentOpenRequest onOpenAttachment;
+  final AttachmentMoreRequest onShowAttachmentMore;
+  final AttachmentFileActionRequest onOpenAttachmentInSystemApp;
+  final AttachmentFileActionRequest onSaveAttachmentAs;
   final ValueChanged<ConversationMessage> onShowMessageActions;
   final AttachmentTransferActionRequest onPauseAttachment;
   final AttachmentTransferActionRequest onResumeAttachment;
@@ -269,6 +295,9 @@ class _GroupedChatMessage extends StatelessWidget {
               searchQuery: searchQuery,
               isHighlighted: isHighlighted,
               onOpenAttachment: onOpenAttachment,
+              onShowAttachmentMore: onShowAttachmentMore,
+              onOpenAttachmentInSystemApp: onOpenAttachmentInSystemApp,
+              onSaveAttachmentAs: onSaveAttachmentAs,
               onShowMessageActions: onShowMessageActions,
               onPauseAttachment: onPauseAttachment,
               onResumeAttachment: onResumeAttachment,
@@ -297,6 +326,9 @@ class _GroupedChatMessage extends StatelessWidget {
               searchQuery: searchQuery,
               isHighlighted: isHighlighted,
               onOpenAttachment: onOpenAttachment,
+              onShowAttachmentMore: onShowAttachmentMore,
+              onOpenAttachmentInSystemApp: onOpenAttachmentInSystemApp,
+              onSaveAttachmentAs: onSaveAttachmentAs,
               onShowMessageActions: onShowMessageActions,
               onPauseAttachment: onPauseAttachment,
               onResumeAttachment: onResumeAttachment,
@@ -371,6 +403,9 @@ class ChatMessageBubble extends StatelessWidget {
     required this.searchQuery,
     required this.isHighlighted,
     required this.onOpenAttachment,
+    required this.onShowAttachmentMore,
+    required this.onOpenAttachmentInSystemApp,
+    required this.onSaveAttachmentAs,
     required this.onShowMessageActions,
     required this.onPauseAttachment,
     required this.onResumeAttachment,
@@ -381,6 +416,9 @@ class ChatMessageBubble extends StatelessWidget {
   final String searchQuery;
   final bool isHighlighted;
   final AttachmentOpenRequest onOpenAttachment;
+  final AttachmentMoreRequest onShowAttachmentMore;
+  final AttachmentFileActionRequest onOpenAttachmentInSystemApp;
+  final AttachmentFileActionRequest onSaveAttachmentAs;
   final ValueChanged<ConversationMessage> onShowMessageActions;
   final AttachmentTransferActionRequest onPauseAttachment;
   final AttachmentTransferActionRequest onResumeAttachment;
@@ -476,6 +514,14 @@ class ChatMessageBubble extends StatelessWidget {
                       message.direction,
                       message.errorMessage,
                     ),
+                    onShowAttachmentMore: () => onShowAttachmentMore(
+                      attachment,
+                      message.direction,
+                      message.errorMessage,
+                    ),
+                    onOpenInSystemApp: () =>
+                        onOpenAttachmentInSystemApp(attachment),
+                    onSaveAs: () => onSaveAttachmentAs(attachment),
                     onShowActions: () => onShowMessageActions(message),
                     onPause: () => onPauseAttachment(attachment),
                     onResume: () => onResumeAttachment(attachment),
@@ -528,6 +574,9 @@ class ChatAttachmentCard extends ConsumerWidget {
     required this.messageError,
     required this.foreground,
     required this.onOpen,
+    required this.onShowAttachmentMore,
+    required this.onOpenInSystemApp,
+    required this.onSaveAs,
     required this.onShowActions,
     required this.onPause,
     required this.onResume,
@@ -539,6 +588,9 @@ class ChatAttachmentCard extends ConsumerWidget {
   final String? messageError;
   final Color foreground;
   final VoidCallback onOpen;
+  final VoidCallback onShowAttachmentMore;
+  final VoidCallback onOpenInSystemApp;
+  final VoidCallback onSaveAs;
   final VoidCallback onShowActions;
   final VoidCallback onPause;
   final VoidCallback onResume;
@@ -612,6 +664,40 @@ class ChatAttachmentCard extends ConsumerWidget {
                 ],
               ),
             ),
+            PopupMenuButton<_AttachmentMoreAction>(
+              tooltip: l10n.open,
+              onSelected: (action) {
+                switch (action) {
+                  case _AttachmentMoreAction.open:
+                    onOpenInSystemApp();
+                    break;
+                  case _AttachmentMoreAction.saveAs:
+                    onSaveAs();
+                    break;
+                  case _AttachmentMoreAction.details:
+                    onShowAttachmentMore();
+                    break;
+                }
+              },
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  value: _AttachmentMoreAction.open,
+                  child: Text(l10n.open),
+                ),
+                PopupMenuItem(
+                  value: _AttachmentMoreAction.saveAs,
+                  child: Text(l10n.save),
+                ),
+                PopupMenuItem(
+                  value: _AttachmentMoreAction.details,
+                  child: Text(l10n.deviceInfo),
+                ),
+              ],
+              icon: Icon(
+                Icons.more_horiz_rounded,
+                color: foreground.withValues(alpha: 0.78),
+              ),
+            ),
           ],
         ),
       ),
@@ -633,6 +719,8 @@ class ChatAttachmentCard extends ConsumerWidget {
     return Icons.insert_drive_file_rounded;
   }
 }
+
+enum _AttachmentMoreAction { open, saveAs, details }
 
 class ChatImageAttachment extends ConsumerWidget {
   const ChatImageAttachment({
@@ -1229,6 +1317,7 @@ class ChatComposer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
     return DropTarget(
       onDragEntered: (_) => onDropHighlightChanged(true),
       onDragExited: (_) => onDropHighlightChanged(false),
@@ -1296,11 +1385,7 @@ class ChatComposer extends StatelessWidget {
                     maxLines: 4,
                     textInputAction: TextInputAction.send,
                     onSubmitted: (_) => onSend(),
-                    decoration: InputDecoration(
-                      hintText: isDropTargetHighlighted
-                          ? l10n.chooseFileToSend
-                          : l10n.messageOrAttachFile,
-                    ),
+                    decoration: const InputDecoration(),
                   ),
                 ),
               ),
@@ -1309,13 +1394,17 @@ class ChatComposer extends StatelessWidget {
                 valueListenable: controller,
                 builder: (context, value, child) {
                   final hasText = value.text.trim().isNotEmpty;
-                  return FilledButton(
+                  return IconButton(
                     onPressed: hasText ? onSend : null,
-                    style: FilledButton.styleFrom(
+                    tooltip: l10n.messageOrAttachFile,
+                    style: IconButton.styleFrom(
                       minimumSize: const Size(52, 46),
                       padding: EdgeInsets.zero,
+                      foregroundColor: theme.colorScheme.primary,
+                      disabledForegroundColor: theme.colorScheme.onSurface
+                          .withValues(alpha: 0.28),
                     ),
-                    child: const Icon(Icons.arrow_upward_rounded),
+                    icon: const Icon(Icons.arrow_upward_rounded),
                   );
                 },
               ),

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hydrop/application/connection/transfer_server_port_registry.dart';
 import 'package:hydrop/application/connection/speed_test_runner.dart';
 import 'package:hydrop/core/constants/discovery_constants.dart';
 import 'package:hydrop/core/constants/transfer_constants.dart';
@@ -14,6 +15,8 @@ import 'package:hydrop/data/remote/service/discovery_payload_codec.dart';
 import 'package:hydrop/data/remote/service/discovery_socket_service.dart';
 import 'package:hydrop/data/remote/service/local_device_name_service.dart';
 import 'package:hydrop/data/remote/service/local_network_address_service.dart';
+import 'package:hydrop/data/remote/service/frame_codec.dart';
+import 'package:hydrop/data/remote/service/transfer_socket_service.dart';
 
 typedef DiscoveryControllerTimerFactory =
     DiscoveryControllerTimerHandle Function(
@@ -30,12 +33,14 @@ final discoveryControllerProvider = Provider<DiscoveryController>((ref) {
     mineRepository: ref.watch(mineRepositoryProvider),
     deviceRepository: ref.watch(deviceRepositoryProvider),
     deviceAddressRepository: ref.watch(deviceAddressRepositoryProvider),
+    portRegistry: ref.watch(transferServerPortRegistryProvider),
     deviceNameService: ref.watch(localDeviceNameServiceProvider),
     speedTestRunner: ref.watch(speedTestRunnerProvider),
     broadcastService: DiscoveryBroadcastService(
       localNetworkAddressService: ref.watch(localNetworkAddressServiceProvider),
     ),
     socketService: DiscoverySocketService(),
+    transferSocketService: ref.watch(transferSocketServiceProvider),
   );
 
   unawaited(
@@ -52,38 +57,55 @@ class DiscoveryController {
     required MineRepository mineRepository,
     required DeviceRepository deviceRepository,
     required DeviceAddressRepository deviceAddressRepository,
+    required TransferServerPortRegistry portRegistry,
     LocalDeviceNameService? deviceNameService,
     SpeedTestRunner? speedTestRunner,
     required DiscoveryBroadcastService broadcastService,
     required DiscoverySocketService socketService,
+    required TransferSocketService transferSocketService,
     DiscoveryControllerTimerFactory? ttlTimerFactory,
+    DiscoveryControllerTimerFactory? heartbeatTimerFactory,
     DateTime Function()? now,
+    String Function(String prefix)? requestIdGenerator,
   }) : _mineRepository = mineRepository,
        _deviceRepository = deviceRepository,
        _deviceAddressRepository = deviceAddressRepository,
+       _portRegistry = portRegistry,
        _deviceNameService = deviceNameService ?? LocalDeviceNameService(),
        _speedTestRunner = speedTestRunner,
        _broadcastService = broadcastService,
        _socketService = socketService,
+       _transferSocketService = transferSocketService,
        _ttlTimerFactory = ttlTimerFactory ?? _defaultTtlTimerFactory,
-       _now = now ?? DateTime.now;
+       _heartbeatTimerFactory =
+           heartbeatTimerFactory ?? _defaultTtlTimerFactory,
+       _now = now ?? DateTime.now,
+       _requestIdGenerator = requestIdGenerator ?? _defaultDiscoveryRequestId;
 
   final MineRepository _mineRepository;
   final DeviceRepository _deviceRepository;
   final DeviceAddressRepository _deviceAddressRepository;
+  final TransferServerPortRegistry _portRegistry;
   final LocalDeviceNameService _deviceNameService;
   final SpeedTestRunner? _speedTestRunner;
   final DiscoveryBroadcastService _broadcastService;
   final DiscoverySocketService _socketService;
+  final TransferSocketService _transferSocketService;
   final DiscoveryControllerTimerFactory _ttlTimerFactory;
+  final DiscoveryControllerTimerFactory _heartbeatTimerFactory;
   final DateTime Function() _now;
+  final String Function(String prefix) _requestIdGenerator;
 
   Future<void>? _startFuture;
   DiscoveryControllerTimerHandle? _ttlTimerHandle;
+  DiscoveryControllerTimerHandle? _heartbeatTimerHandle;
+  StreamSubscription<int>? _portUpdateSubscription;
   String? _localDeviceId;
   final _seenNonces = <String>{};
   final _seenNonceOrder = <String>[];
   final _lastSpeedTestAtByDeviceId = <String, DateTime>{};
+  final _heartbeatFailuresByDeviceId = <String, int>{};
+  final _heartbeatInFlightByDeviceId = <String>{};
 
   Future<void> start() {
     return _startFuture ??= _startInternal();
@@ -98,6 +120,12 @@ class DiscoveryController {
     _startFuture = null;
     _ttlTimerHandle?.cancel();
     _ttlTimerHandle = null;
+    _heartbeatTimerHandle?.cancel();
+    _heartbeatTimerHandle = null;
+    await _portUpdateSubscription?.cancel();
+    _portUpdateSubscription = null;
+    _heartbeatInFlightByDeviceId.clear();
+    _heartbeatFailuresByDeviceId.clear();
     await _socketService.stop();
     await _broadcastService.stop();
   }
@@ -112,7 +140,9 @@ class DiscoveryController {
 
     await _startSocketBestEffort();
     await _startBroadcastBestEffort(profile);
+    _startPortSync(profile);
     _startTtlScanner();
+    _startHeartbeatMaintainer();
   }
 
   Future<void> _startSocketBestEffort() async {
@@ -137,21 +167,29 @@ class DiscoveryController {
       await _broadcastService.start(
         deviceId: profile.deviceId,
         displayName: profile.displayName,
-        tcpPort: discoveryTransferPort,
+        tcpPort: _portRegistry.currentPort,
+        tcpPortResolver: () => _portRegistry.currentPort,
         capabilities: discoveryBroadcastCapabilities,
       );
       talker.debug(
         'DchllTest 设备发现广播服务已启动：本机设备ID=${profile.deviceId} '
-        'TCP端口=$discoveryTransferPort',
+        'TCP端口=${_portRegistry.currentPort}',
       );
     } catch (error, stackTrace) {
       talker.error(
         'DchllTest 设备发现广播服务启动失败：本机设备ID=${profile.deviceId} '
-        'TCP端口=$discoveryTransferPort 错误=$error',
+        'TCP端口=${_portRegistry.currentPort} 错误=$error',
         error,
         stackTrace,
       );
     }
+  }
+
+  void _startPortSync(MineProfile profile) {
+    _portUpdateSubscription?.cancel();
+    _portUpdateSubscription = _portRegistry.updates.listen((_) {
+      unawaited(_startBroadcastBestEffort(profile));
+    });
   }
 
   void _startTtlScanner() {
@@ -159,6 +197,14 @@ class DiscoveryController {
     _ttlTimerHandle = _ttlTimerFactory(
       discoveryTtlScanInterval,
       _expireDevices,
+    );
+  }
+
+  void _startHeartbeatMaintainer() {
+    _heartbeatTimerHandle?.cancel();
+    _heartbeatTimerHandle = _heartbeatTimerFactory(
+      discoveryHeartbeatProbeInterval,
+      _probeKnownDevices,
     );
   }
 
@@ -184,6 +230,7 @@ class DiscoveryController {
         deviceId: deviceId,
         connectionStatus: DeviceConnectionStatus.disconnected,
       );
+      _heartbeatFailuresByDeviceId.remove(deviceId);
     }
   }
 
@@ -206,8 +253,125 @@ class DiscoveryController {
     final addresses = _toAddressUpserts(payload, event, seenAt);
     if (addresses.isNotEmpty) {
       await _deviceAddressRepository.saveAddresses(addresses);
+      _heartbeatFailuresByDeviceId[payload.deviceId] = 0;
       _scheduleSpeedTest(payload.deviceId, seenAt);
     }
+  }
+
+  Future<void> _probeKnownDevices() async {
+    final devices = await _deviceRepository.watchDevices().first;
+    for (final device in devices) {
+      if (device.deviceId == _localDeviceId) {
+        continue;
+      }
+      if (_heartbeatInFlightByDeviceId.contains(device.deviceId)) {
+        continue;
+      }
+      _heartbeatInFlightByDeviceId.add(device.deviceId);
+      unawaited(
+        _probeDeviceHeartbeat(device.deviceId).whenComplete(() {
+          _heartbeatInFlightByDeviceId.remove(device.deviceId);
+        }),
+      );
+    }
+  }
+
+  Future<void> _probeDeviceHeartbeat(String deviceId) async {
+    final addresses = await _deviceAddressRepository.listAddressesForDevice(
+      deviceId,
+    );
+    if (addresses.isEmpty) {
+      return;
+    }
+    for (final address in addresses) {
+      final success = await _probeAddressHeartbeat(address);
+      if (success) {
+        _heartbeatFailuresByDeviceId[deviceId] = 0;
+        await _deviceRepository.updateConnectionStatus(
+          deviceId: deviceId,
+          connectionStatus: DeviceConnectionStatus.localNetwork,
+          lastError: null,
+        );
+        return;
+      }
+    }
+
+    final failures = (_heartbeatFailuresByDeviceId[deviceId] ?? 0) + 1;
+    _heartbeatFailuresByDeviceId[deviceId] = failures;
+    if (failures < discoveryHeartbeatFailureThreshold) {
+      return;
+    }
+    await _deviceRepository.updateConnectionStatus(
+      deviceId: deviceId,
+      connectionStatus: DeviceConnectionStatus.disconnected,
+      lastDisconnectedAt: _now(),
+      lastError: discoveryHeartbeatUnreachableFailureReason,
+    );
+  }
+
+  Future<bool> _probeAddressHeartbeat(DeviceAddressSnapshot address) async {
+    TransferConnection? connection;
+    try {
+      connection = await _transferSocketService.connect(
+        address.ipAddress,
+        address.port,
+        timeout: discoveryHeartbeatAckTimeout,
+      );
+      final now = _now();
+      final requestId = _requestIdGenerator('discovery-heartbeat');
+      await connection.sendFrame(
+        TransferFrame(
+          header: {
+            'type': transferFrameTypeHeartbeat,
+            'protocolVersion': transferProtocolVersion,
+            'requestId': requestId,
+            'senderDeviceId': _localDeviceId,
+            'senderTransferPort': _portRegistry.currentPort,
+            'sentAt': now.millisecondsSinceEpoch,
+          },
+        ),
+      );
+      await _waitForHeartbeatAck(connection, requestId);
+      await _deviceAddressRepository.updateAddressHealth(
+        id: address.id,
+        isReachable: true,
+        lastSuccessAt: now,
+        failureReason: null,
+      );
+      return true;
+    } catch (_) {
+      await _deviceAddressRepository.updateAddressHealth(
+        id: address.id,
+        isReachable: false,
+        lastFailureAt: _now(),
+        failureReason: discoveryHeartbeatProbeFailedFailureReason,
+      );
+      return false;
+    } finally {
+      await connection?.close();
+    }
+  }
+
+  Future<void> _waitForHeartbeatAck(
+    TransferConnection connection,
+    String requestId,
+  ) async {
+    await for (final frame in connection.frames.timeout(
+      discoveryHeartbeatAckTimeout,
+    )) {
+      if (frame.header['requestId'] != requestId) {
+        continue;
+      }
+      if (frame.header['type'] == transferFrameTypeHeartbeatAck) {
+        return;
+      }
+      if (frame.header['type'] == transferFrameTypeError) {
+        throw const TransferSocketException('Remote side rejected heartbeat.');
+      }
+    }
+    throw const TransferSocketException(
+      'Connection closed before heartbeat acknowledgement.',
+    );
   }
 
   void _scheduleSpeedTest(String deviceId, DateTime seenAt) {
@@ -310,4 +474,8 @@ class _DiscoveryTimerHandle implements DiscoveryControllerTimerHandle {
   void cancel() {
     _timer.cancel();
   }
+}
+
+String _defaultDiscoveryRequestId(String prefix) {
+  return '$prefix-${DateTime.now().microsecondsSinceEpoch}';
 }

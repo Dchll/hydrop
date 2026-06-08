@@ -5,6 +5,7 @@ import 'dart:math';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hydrop/application/connection/transfer_server_port_registry.dart';
 import 'package:hydrop/application/transfer/attachment_action_controller.dart';
 import 'package:hydrop/application/transfer/file_transfer_coordinator.dart';
 import 'package:hydrop/application/transfer/transfer_action_controller.dart';
@@ -32,6 +33,7 @@ final chatPageControllerProvider = Provider.family<ChatPageController, String>((
     addressRepository: ref.watch(deviceAddressRepositoryProvider),
     deviceRepository: ref.watch(deviceRepositoryProvider),
     mineRepository: ref.watch(mineRepositoryProvider),
+    portRegistry: ref.watch(transferServerPortRegistryProvider),
     transferSocketService: ref.watch(transferSocketServiceProvider),
     fileTransferCoordinator: ref.watch(fileTransferCoordinatorProvider),
   );
@@ -62,6 +64,7 @@ class ChatPageController {
     required DeviceAddressRepository addressRepository,
     required DeviceRepository deviceRepository,
     required MineRepository mineRepository,
+    required TransferServerPortRegistry portRegistry,
     required TransferSocketService transferSocketService,
     required FileTransferCoordinator fileTransferCoordinator,
     String Function()? requestIdGenerator,
@@ -72,6 +75,7 @@ class ChatPageController {
        _addressRepository = addressRepository,
        _deviceRepository = deviceRepository,
        _mineRepository = mineRepository,
+       _portRegistry = portRegistry,
        _transferSocketService = transferSocketService,
        _fileTransferCoordinator = fileTransferCoordinator,
        _requestIdGenerator = requestIdGenerator ?? _defaultRequestId;
@@ -83,6 +87,7 @@ class ChatPageController {
   final DeviceAddressRepository _addressRepository;
   final DeviceRepository _deviceRepository;
   final MineRepository _mineRepository;
+  final TransferServerPortRegistry _portRegistry;
   final TransferSocketService _transferSocketService;
   final FileTransferCoordinator _fileTransferCoordinator;
   final String Function() _requestIdGenerator;
@@ -150,6 +155,7 @@ class ChatPageController {
             'messageId': record.localMessageId,
             'senderDeviceId': profile.deviceId,
             'senderDisplayName': profile.displayName,
+            'senderTransferPort': _portRegistry.currentPort,
           },
           body: utf8.encode(trimmed),
         ),

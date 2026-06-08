@@ -149,6 +149,7 @@ class TransferFileChunkReaderSession {
         if (!_readyCompleter.isCompleted) {
           _readyCompleter.complete();
         }
+        return;
       case _readerMessageChunk:
         final offset = message.length > 1 ? message[1] : null;
         final chunkIndex = message.length > 2 ? message[2] : null;
@@ -169,6 +170,7 @@ class TransferFileChunkReaderSession {
             bytes: bytes,
           ),
         );
+        return;
       case _readerMessageDone:
         final checksum = message.length > 1 ? message[1] : null;
         if (checksum is! String) {
@@ -180,6 +182,7 @@ class TransferFileChunkReaderSession {
           _checksumCompleter.complete(checksum);
         }
         _completePendingRead(null);
+        return;
       case _readerMessageError:
         final errorMessage = message.length > 1 ? message[1] : null;
         _fail(
@@ -189,10 +192,12 @@ class TransferFileChunkReaderSession {
                 : 'File reader isolate failed.',
           ),
         );
+        return;
       default:
         _fail(
           const FileSystemException('Unknown file reader isolate message.'),
         );
+        return;
     }
   }
 
@@ -333,9 +338,11 @@ Future<void> _transferFileChunkReaderMain(
           switch (message.first) {
             case _readerCommandNext:
               await handleNextChunk();
+              return;
             case _readerCommandCancel:
               isCancelled = true;
               await closeReader();
+              return;
             default:
               throw const FileSystemException(
                 'Unknown file reader isolate command.',

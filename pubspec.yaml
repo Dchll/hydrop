@@ -34,6 +34,9 @@ dependencies:
   # https://pub.dev/packages/pasteboard
   pasteboard: ^0.3.0
 
+  # https://pub.dev/packages/open_filex
+  open_filex: ^4.7.0
+
   # https://pub.dev/packages/url_launcher
   url_launcher: ^6.3.2
 

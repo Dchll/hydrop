@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final transferProgressStoreProvider =
@@ -88,15 +90,26 @@ class TransferProgressStore
   TransferProgressStore({DateTime Function()? now})
     : _now = now ?? DateTime.now;
 
+  static const _refreshInterval = Duration(seconds: 1);
+
   final DateTime Function() _now;
+  final _liveSnapshots = <String, TransferProgressSnapshot>{};
+  final _flushTimers = <String, Timer>{};
 
   @override
   Map<String, TransferProgressSnapshot> build() {
+    ref.onDispose(() {
+      for (final timer in _flushTimers.values) {
+        timer.cancel();
+      }
+      _flushTimers.clear();
+      _liveSnapshots.clear();
+    });
     return const {};
   }
 
   TransferProgressSnapshot? snapshotFor(String attachmentId) {
-    return state[attachmentId];
+    return _liveSnapshots[attachmentId] ?? state[attachmentId];
   }
 
   void reportProgress({
@@ -207,40 +220,118 @@ class TransferProgressStore
         ? 0
         : transferredBytes;
     final now = _now();
-    final previous = state[attachmentId];
-    final computedSpeed =
-        bytesPerSecond ??
-        _computeBytesPerSecond(previous, normalizedTransferred, now);
-    final resolvedStartedAt = startedAt ?? previous?.startedAt ?? now;
-    final snapshot = TransferProgressSnapshot(
+    final previousLive = _liveSnapshots[attachmentId];
+    final previousVisible = state[attachmentId];
+    final resolvedStartedAt =
+        startedAt ??
+        previousLive?.startedAt ??
+        previousVisible?.startedAt ??
+        now;
+    final liveSnapshot = TransferProgressSnapshot(
       attachmentId: attachmentId,
       direction: direction,
       phase: phase,
       transferredBytes: normalizedTransferred,
       totalBytes: totalBytes < 0 ? 0 : totalBytes,
-      bytesPerSecond: computedSpeed,
+      bytesPerSecond: bytesPerSecond ?? previousLive?.bytesPerSecond ?? 0,
       startedAt: resolvedStartedAt,
       updatedAt: now,
       completedAt: phase == TransferProgressPhase.completed ? now : null,
       errorMessage: errorMessage,
     );
-    state = {...state, attachmentId: snapshot};
+    _liveSnapshots[attachmentId] = liveSnapshot;
+
+    if (phase == TransferProgressPhase.transferring) {
+      final visible = previousVisible;
+      if (visible == null ||
+          visible.phase != TransferProgressPhase.transferring) {
+        _publishSnapshot(
+          liveSnapshot.copyWith(bytesPerSecond: bytesPerSecond ?? 0),
+        );
+      }
+      _scheduleFlush(attachmentId);
+      return;
+    }
+
+    _cancelFlush(attachmentId);
+    _publishSnapshot(
+      liveSnapshot.copyWith(bytesPerSecond: bytesPerSecond ?? 0),
+    );
   }
 
-  int _computeBytesPerSecond(
-    TransferProgressSnapshot? previous,
-    int transferredBytes,
-    DateTime now,
-  ) {
-    if (previous == null ||
-        previous.phase != TransferProgressPhase.transferring) {
-      return 0;
+  void _publishSnapshot(TransferProgressSnapshot snapshot) {
+    state = {...state, snapshot.attachmentId: snapshot};
+  }
+
+  void _scheduleFlush(String attachmentId) {
+    if (_flushTimers.containsKey(attachmentId)) {
+      return;
     }
-    final byteDelta = transferredBytes - previous.transferredBytes;
-    final elapsedMs = now.difference(previous.updatedAt).inMilliseconds;
-    if (byteDelta <= 0 || elapsedMs <= 0) {
-      return previous.bytesPerSecond;
+    final visible = state[attachmentId];
+    final elapsed = visible == null
+        ? Duration.zero
+        : _now().difference(visible.updatedAt);
+    final delay = elapsed >= _refreshInterval
+        ? Duration.zero
+        : _refreshInterval - elapsed;
+    _flushTimers[attachmentId] = Timer(delay, () {
+      _flushTimers.remove(attachmentId);
+      _flushProgress(attachmentId);
+    });
+  }
+
+  void _cancelFlush(String attachmentId) {
+    _flushTimers.remove(attachmentId)?.cancel();
+  }
+
+  void _flushProgress(String attachmentId) {
+    final live = _liveSnapshots[attachmentId];
+    final visible = state[attachmentId];
+    if (live == null ||
+        visible == null ||
+        live.phase != TransferProgressPhase.transferring) {
+      return;
     }
-    return (byteDelta * 1000) ~/ elapsedMs;
+    final now = _now();
+    final elapsedMs = now.difference(visible.updatedAt).inMilliseconds;
+    final byteDelta = live.transferredBytes - visible.transferredBytes;
+    final bytesPerSecond = elapsedMs <= 0 || byteDelta <= 0
+        ? 0
+        : (byteDelta * 1000) ~/ elapsedMs;
+    final snapshot = live.copyWith(
+      bytesPerSecond: bytesPerSecond,
+      updatedAt: now,
+    );
+    _publishSnapshot(snapshot);
+    if (snapshot.phase == TransferProgressPhase.transferring) {
+      _scheduleFlush(attachmentId);
+    }
+  }
+}
+
+extension on TransferProgressSnapshot {
+  TransferProgressSnapshot copyWith({
+    TransferProgressDirection? direction,
+    TransferProgressPhase? phase,
+    int? transferredBytes,
+    int? totalBytes,
+    int? bytesPerSecond,
+    DateTime? startedAt,
+    DateTime? updatedAt,
+    DateTime? completedAt,
+    String? errorMessage,
+  }) {
+    return TransferProgressSnapshot(
+      attachmentId: attachmentId,
+      direction: direction ?? this.direction,
+      phase: phase ?? this.phase,
+      transferredBytes: transferredBytes ?? this.transferredBytes,
+      totalBytes: totalBytes ?? this.totalBytes,
+      bytesPerSecond: bytesPerSecond ?? this.bytesPerSecond,
+      startedAt: startedAt ?? this.startedAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      completedAt: completedAt,
+      errorMessage: errorMessage ?? this.errorMessage,
+    );
   }
 }

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hydrop/application/discovery/discovery_controller.dart';
+import 'package:hydrop/core/constants/discovery_constants.dart';
 import 'package:hydrop/data/local/model/connection/connection_session.dart';
 import 'package:hydrop/data/local/model/message/message.dart';
 import 'package:hydrop/data/local/repository/connection_session_repository.dart';
@@ -21,6 +22,7 @@ final homeDeviceListProvider = StreamProvider<List<HomeDeviceListItem>>((ref) {
     List<DeviceSnapshot> latestDevices = const [];
     List<DeviceAddressSnapshot> latestAddresses = const [];
     List<ConnectionSessionSnapshot> latestSessions = const [];
+    Timer? recencyRefreshTimer;
 
     void emit() {
       final reachableDeviceIds = latestAddresses
@@ -30,7 +32,13 @@ final homeDeviceListProvider = StreamProvider<List<HomeDeviceListItem>>((ref) {
           .map((address) => address.deviceId)
           .toSet();
       final activeSessionDeviceIds = latestSessions
-          .where((session) => session.state == ConnectionSessionState.ready)
+          .where(
+            (session) =>
+                session.state == ConnectionSessionState.ready &&
+                session.lastHeartbeatAt != null &&
+                DateTime.now().difference(session.lastHeartbeatAt!) <=
+                    discoverySessionFreshness,
+          )
           .map((session) => session.deviceId)
           .toSet();
       final items = latestDevices
@@ -76,8 +84,12 @@ final homeDeviceListProvider = StreamProvider<List<HomeDeviceListItem>>((ref) {
       latestSessions = sessions;
       emit();
     }, onError: controller.addError);
+    recencyRefreshTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      emit();
+    });
 
     controller.onCancel = () async {
+      recencyRefreshTimer?.cancel();
       await devicesSubscription.cancel();
       await addressesSubscription.cancel();
       await sessionsSubscription.cancel();
@@ -174,10 +186,7 @@ class HomeDeviceListItem {
   final bool? hasActiveSession;
 
   bool get isConnected =>
-      hasActiveSession == true ||
-      isReachable ||
-      statusLabel == 'localNetwork' ||
-      statusLabel == 'bluetooth';
+      hasActiveSession == true || isReachable || statusLabel == 'bluetooth';
 
   String get initials {
     final trimmed = displayName.trim();
@@ -262,8 +271,8 @@ String _relativeTimeLabel(DateTime time) {
 
 bool _isAddressRecentlySeen(DeviceAddressSnapshot address) {
   final now = DateTime.now();
-  return now.difference(address.lastSeenAt) <= const Duration(seconds: 18) ||
+  return now.difference(address.lastSeenAt) <= discoveryRecentSuccessWindow ||
       (address.lastSuccessAt != null &&
           now.difference(address.lastSuccessAt!) <=
-              const Duration(seconds: 18));
+              discoveryRecentSuccessWindow);
 }

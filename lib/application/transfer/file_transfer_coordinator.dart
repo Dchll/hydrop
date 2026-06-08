@@ -5,8 +5,8 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:crypto/crypto.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hydrop/application/connection/transfer_server_port_registry.dart';
 import 'package:hydrop/application/transfer/transfer_chunk_post_processor.dart';
 import 'package:hydrop/application/transfer/transfer_file_chunk_reader.dart';
 import 'package:hydrop/application/transfer/transfer_progress_state.dart';
@@ -52,6 +52,7 @@ final fileTransferCoordinatorProvider = Provider<FileTransferCoordinator>((
     deviceRepository: ref.watch(deviceRepositoryProvider),
     mineRepository: ref.watch(mineRepositoryProvider),
     settingRepository: ref.watch(settingRepositoryProvider),
+    portRegistry: ref.watch(transferServerPortRegistryProvider),
     transferSocketService: ref.watch(transferSocketServiceProvider),
     attachmentStorage: ref.watch(attachmentStorageProvider),
     transferFileChunkReader: ref.watch(transferFileChunkReaderProvider),
@@ -69,6 +70,7 @@ class FileTransferCoordinator {
     required DeviceRepository deviceRepository,
     required MineRepository mineRepository,
     required SettingRepository settingRepository,
+    required TransferServerPortRegistry portRegistry,
     required TransferSocketService transferSocketService,
     required AttachmentStorage attachmentStorage,
     required TransferFileChunkReader transferFileChunkReader,
@@ -83,6 +85,7 @@ class FileTransferCoordinator {
        _deviceRepository = deviceRepository,
        _mineRepository = mineRepository,
        _settingRepository = settingRepository,
+       _portRegistry = portRegistry,
        _transferSocketService = transferSocketService,
        _attachmentStorage = attachmentStorage,
        _transferFileChunkReader = transferFileChunkReader,
@@ -98,6 +101,7 @@ class FileTransferCoordinator {
   final DeviceRepository _deviceRepository;
   final MineRepository _mineRepository;
   final SettingRepository _settingRepository;
+  final TransferServerPortRegistry _portRegistry;
   final TransferSocketService _transferSocketService;
   final AttachmentStorage _attachmentStorage;
   final TransferFileChunkReader _transferFileChunkReader;
@@ -226,6 +230,7 @@ class FileTransferCoordinator {
         file: file,
         fileName: item.attachment.fileName ?? file.uri.pathSegments.last,
         totalBytes: item.attachment.totalBytes,
+        sourceFileModifiedAtStart: (await file.stat()).modified,
         mimeType: item.attachment.mimeType,
       )..acknowledgedBytes = item.attachment.transferredBytes;
 
@@ -635,6 +640,7 @@ class FileTransferCoordinator {
           file: file,
           fileName: attachment.fileName ?? file.uri.pathSegments.last,
           totalBytes: attachment.totalBytes,
+          sourceFileModifiedAtStart: (await file.stat()).modified,
           mimeType: attachment.mimeType,
         )..acknowledgedBytes = attachment.transferredBytes,
         endpointKey: _endpointKey(address.ipAddress, address.port),
@@ -747,7 +753,8 @@ class FileTransferCoordinator {
     final resolvedFileName = fileName ?? file.uri.pathSegments.last;
     final attachmentId = _idGenerator('attachment');
     final transferTaskId = _idGenerator('transfer');
-    final totalBytes = await file.length();
+    final fileStat = await file.stat();
+    final totalBytes = fileStat.size;
     if (totalBytes <= 0) {
       throw const FileTransferException('File must not be empty.');
     }
@@ -774,6 +781,7 @@ class FileTransferCoordinator {
       fileName: resolvedFileName,
       mimeType: mimeType,
       totalBytes: totalBytes,
+      sourceFileModifiedAtStart: fileStat.modified,
     );
   }
 
@@ -811,6 +819,7 @@ class FileTransferCoordinator {
             'checksumAlgorithm': 'sha256',
             'senderDeviceId': localDeviceId,
             'senderDisplayName': localDisplayName,
+            'senderTransferPort': _portRegistry.currentPort,
             'sentAt': _now().millisecondsSinceEpoch,
           },
         ),
@@ -836,6 +845,7 @@ class FileTransferCoordinator {
         prepared.totalBytes,
       );
       prepared.acknowledgedBytes = resumeFromByte;
+      prepared.resumeFromByte = resumeFromByte;
       await _messageRepository.updateAttachmentTransfer(
         attachmentId: prepared.attachmentId,
         transferredBytes: resumeFromByte,
@@ -914,6 +924,16 @@ class FileTransferCoordinator {
         completeRequestId,
         timeout: _completionAckTimeoutForBytes(prepared.totalBytes),
       );
+      talker.debug(
+        '[$_transferDiagTag] outgoing file completion send '
+        'attachmentId=${prepared.attachmentId} '
+        'remoteDeviceId=${prepared.remoteDeviceId} '
+        'resumeFromByte=${prepared.resumeFromByte} '
+        'ackedBytes=${prepared.acknowledgedBytes} '
+        'lastSentOffset=${prepared.lastSentOffset} '
+        'checksum=$checksumSha256 '
+        'tailDigests=${prepared.chunkDigestTrail.describe()}',
+      );
       await connection.sendFrame(
         TransferFrame(
           header: {
@@ -930,10 +950,62 @@ class FileTransferCoordinator {
       final completeAck = await completeAckFuture;
       if (completeAck.header['accepted'] == false) {
         final reason = _readString(completeAck.header['reason']);
+        if (reason == transferFileChecksumMismatchReason) {
+          final remoteActualChecksum = _readString(
+            completeAck.header['actualChecksum'],
+          );
+          final remoteProcessorChecksum = _readString(
+            completeAck.header['processorChecksum'],
+          );
+          final remoteResumeFromByte = _readInt(
+            completeAck.header['resumeFromByte'],
+          );
+          final remoteFileLength = _readInt(completeAck.header['fileLength']);
+          talker.warning(
+            '[$_transferDiagTag] outgoing file completion rejected by remote '
+            'attachmentId=${prepared.attachmentId} '
+            'remoteDeviceId=${prepared.remoteDeviceId} '
+            'resumeFromByte=${prepared.resumeFromByte} '
+            'localChecksum=$checksumSha256 '
+            'remoteActualChecksum=$remoteActualChecksum '
+            'remoteProcessorChecksum=$remoteProcessorChecksum '
+            'remoteResumeFromByte=$remoteResumeFromByte '
+            'remoteFileLength=$remoteFileLength '
+            'tailDigests=${prepared.chunkDigestTrail.describe()}',
+          );
+          talker.warning(
+            '[DCHLL_TRANSFER_ALERT] outgoing file completion rejected by remote '
+            'attachmentId=${prepared.attachmentId} '
+            'remoteDeviceId=${prepared.remoteDeviceId} '
+            'resumeFromByte=${prepared.resumeFromByte} '
+            'localChecksum=$checksumSha256 '
+            'remoteActualChecksum=$remoteActualChecksum '
+            'remoteProcessorChecksum=$remoteProcessorChecksum '
+            'remoteResumeFromByte=$remoteResumeFromByte '
+            'remoteFileLength=$remoteFileLength '
+            'tailDigests=${prepared.chunkDigestTrail.describe()}',
+          );
+          throw FileTransferException(
+            'file_checksum_mismatch('
+            'remoteActualChecksum=$remoteActualChecksum, '
+            'remoteProcessorChecksum=$remoteProcessorChecksum, '
+            'remoteResumeFromByte=$remoteResumeFromByte, '
+            'remoteFileLength=$remoteFileLength'
+            ')',
+          );
+        }
         throw FileTransferException(
           reason ?? 'Remote side rejected file completion.',
         );
       }
+      talker.debug(
+        '[$_transferDiagTag] outgoing file completion ack received '
+        'attachmentId=${prepared.attachmentId} '
+        'remoteDeviceId=${prepared.remoteDeviceId} '
+        'resumeFromByte=${prepared.resumeFromByte} '
+        'ackedBytes=${prepared.acknowledgedBytes} '
+        'lastSentOffset=${prepared.lastSentOffset}',
+      );
 
       final completedSnapshot = _progressStore.snapshotFor(
         prepared.attachmentId,
@@ -1368,6 +1440,7 @@ class FileTransferCoordinator {
       remoteDeviceId: senderDeviceId,
       attachmentId: attachmentId,
       fileName: fileName,
+      mimeType: _readString(frame.header['mimeType']),
       existingFilePath: existingAttachment?.filePath,
     );
     final autoResumeEnabled = await _isAutoResumeEnabled();
@@ -1403,6 +1476,7 @@ class FileTransferCoordinator {
       return;
     }
     final raf = await targetFile.open(mode: FileMode.append);
+    await raf.setPosition(resumeFromByte);
     final activeTransfer = _incomingTransfers.remove(attachmentId);
     await activeTransfer?.randomAccessFile.close();
     await _drainIncomingPostChunkTasks(attachmentId);
@@ -1411,10 +1485,16 @@ class FileTransferCoordinator {
       file: targetFile,
       endOffset: resumeFromByte,
     );
+    final checkpointSeedChunks = await _readFileCheckpointSeedChunks(
+      file: targetFile,
+      endOffset: resumeFromByte,
+      segmentBytes: _resumeMetadataStore.segmentBytes,
+    );
     final postProcessor = await _transferChunkPostProcessor.start(
       segmentBytes: _resumeMetadataStore.segmentBytes,
       resumeFromByte: resumeFromByte,
       seedChunks: checksumSeedChunks,
+      checkpointSeedChunks: checkpointSeedChunks,
     );
     _incomingTransfers[attachmentId] = _IncomingFileTransfer(
       attachmentId: attachmentId,
@@ -1425,6 +1505,7 @@ class FileTransferCoordinator {
       randomAccessFile: raf,
       totalBytes: totalBytes,
       transferredBytes: resumeFromByte,
+      resumeFromByte: resumeFromByte,
       chunkAckIntervalBytes: _chunkAckIntervalBytesForBytes(totalBytes),
       postProcessor: postProcessor,
     );
@@ -1482,6 +1563,12 @@ class FileTransferCoordinator {
         },
       ),
     );
+    talker.debug(
+      '[$_transferDiagTag] incoming file offer accepted '
+      'attachmentId=$attachmentId remoteDeviceId=$senderDeviceId '
+      'resumeFromByte=$resumeFromByte totalBytes=$totalBytes '
+      'targetFile=${targetFile.path}',
+    );
     unawaited(
       _transferNotificationService.showProgress(
         attachmentId: attachmentId,
@@ -1497,6 +1584,7 @@ class FileTransferCoordinator {
     required String remoteDeviceId,
     required String attachmentId,
     required String fileName,
+    String? mimeType,
     String? existingFilePath,
   }) async {
     if (existingFilePath != null && existingFilePath.isNotEmpty) {
@@ -1506,6 +1594,7 @@ class FileTransferCoordinator {
       remoteDeviceId: remoteDeviceId,
       attachmentId: attachmentId,
       fileName: fileName,
+      mimeType: mimeType,
     );
   }
 
@@ -1594,7 +1683,26 @@ class FileTransferCoordinator {
       return;
     }
 
+    final currentFileLength = transfer.transferredBytes;
+    if (currentFileLength < offset) {
+      await _failIncomingTransferProtocol(
+        transfer,
+        'Incoming file length is behind expected offset.',
+      );
+      return;
+    }
+    if (currentFileLength > offset) {
+      talker.warning(
+        '[$_transferDiagTag] incoming file length ahead of offset, truncating '
+        'attachmentId=$attachmentId offset=$offset '
+        'currentFileLength=$currentFileLength '
+        'transferredBytes=${transfer.transferredBytes}',
+      );
+      await transfer.randomAccessFile.truncate(offset);
+    }
+    await transfer.randomAccessFile.setPosition(offset);
     await transfer.randomAccessFile.writeFrom(frame.body);
+    transfer.chunkDigestTrail.record(offset: offset, bytes: frame.body);
     final transferredBytes = max(
       transfer.transferredBytes,
       offset + frame.body.length,
@@ -1687,6 +1795,7 @@ class FileTransferCoordinator {
       await _drainIncomingPostChunkTasks(attachmentId);
       await transfer.randomAccessFile.close();
       final finalizeStartedAt = _now();
+      final finalFileLength = await transfer.file.length();
 
       if (transfer.transferredBytes < transfer.totalBytes) {
         await _markIncomingFileFailed(
@@ -1710,15 +1819,49 @@ class FileTransferCoordinator {
         );
         return;
       }
+      if (finalFileLength != transfer.totalBytes) {
+        talker.warning(
+          '[$_transferDiagTag] incoming file length mismatch before finalize '
+          'attachmentId=$attachmentId fileLength=$finalFileLength '
+          'transferredBytes=${transfer.transferredBytes} '
+          'totalBytes=${transfer.totalBytes}',
+        );
+        await _markIncomingFileFailed(
+          transfer,
+          const FileTransferException('file_length_mismatch'),
+        );
+        await connection.sendFrame(
+          TransferFrame(
+            header: {
+              'type': transferFrameTypeFileCompleteAck,
+              'protocolVersion': transferProtocolVersion,
+              'requestId': requestId,
+              'attachmentId': attachmentId,
+              'accepted': false,
+              'reason': 'file_length_mismatch',
+              'sentAt': _now().millisecondsSinceEpoch,
+            },
+          ),
+        );
+        return;
+      }
 
-      final actualChecksum = await transfer.postProcessor.finalize();
+      final processorChecksum = await transfer.postProcessor.finalize();
       await transfer.postProcessor.dispose();
-      transfer.checksumSha256 = actualChecksum;
+      transfer.checksumSha256 = processorChecksum;
       final finalizeDurationMs = _now()
           .difference(finalizeStartedAt)
           .inMilliseconds;
       if (expectedChecksum != null) {
-        if (actualChecksum != expectedChecksum) {
+        if (processorChecksum != expectedChecksum) {
+          talker.warning(
+            '[$_transferDiagTag] incoming checksum mismatch '
+            'attachmentId=$attachmentId resumeFromByte=${transfer.resumeFromByte} '
+            'expected=$expectedChecksum '
+            'actual=$processorChecksum '
+            'filePath=${transfer.file.path} '
+            'tailDigests=${transfer.chunkDigestTrail.describe()}',
+          );
           await _markIncomingFileFailed(
             transfer,
             const FileTransferException(transferFileChecksumMismatchReason),
@@ -1732,6 +1875,10 @@ class FileTransferCoordinator {
                 'attachmentId': attachmentId,
                 'accepted': false,
                 'reason': transferFileChecksumMismatchReason,
+                'actualChecksum': processorChecksum,
+                'processorChecksum': processorChecksum,
+                'resumeFromByte': _encodeInt(transfer.resumeFromByte),
+                'fileLength': _encodeInt(finalFileLength),
                 'sentAt': _now().millisecondsSinceEpoch,
               },
             ),
@@ -2394,6 +2541,7 @@ class FileTransferCoordinator {
           'requestId': _idGenerator('heartbeat'),
           'senderDeviceId': localDeviceId,
           'senderDisplayName': localDisplayName,
+          'senderTransferPort': _portRegistry.currentPort,
           'sentAt': _now().millisecondsSinceEpoch,
         },
       ),
@@ -2528,13 +2676,56 @@ class FileTransferCoordinator {
     required File file,
     required _OutgoingFileTransfer prepared,
   }) async {
-    final checksum = prepared.checksumSha256;
-    if (checksum != null && checksum.trim().isNotEmpty) {
-      return checksum;
+    final fileStat = await file.stat();
+    if (fileStat.size != prepared.totalBytes) {
+      talker.warning(
+        '[$_transferDiagTag] outgoing source file size changed during transfer '
+        'attachmentId=${prepared.attachmentId} '
+        'remoteDeviceId=${prepared.remoteDeviceId} '
+        'resumeFromByte=${prepared.resumeFromByte} '
+        'startBytes=${prepared.totalBytes} endBytes=${fileStat.size} '
+        'filePath=${file.path}',
+      );
+      talker.warning(
+        '[DCHLL_TRANSFER_ALERT] outgoing source file size changed during transfer '
+        'attachmentId=${prepared.attachmentId} '
+        'remoteDeviceId=${prepared.remoteDeviceId} '
+        'resumeFromByte=${prepared.resumeFromByte} '
+        'startBytes=${prepared.totalBytes} endBytes=${fileStat.size} '
+        'filePath=${file.path}',
+      );
+      throw const FileTransferException(
+        'source_file_size_changed_during_transfer',
+      );
     }
-    final accumulator = _StreamingSha256Accumulator();
-    await accumulator.addFileRange(file, endOffset: prepared.totalBytes);
-    return accumulator.closeAndDigest();
+    final streamedChecksum = prepared.checksumSha256;
+    if (streamedChecksum != null && streamedChecksum.isNotEmpty) {
+      if (prepared.sourceFileModifiedAtStart != null &&
+          fileStat.modified != prepared.sourceFileModifiedAtStart) {
+        talker.warning(
+          '[$_transferDiagTag] outgoing source file modified during transfer '
+          'attachmentId=${prepared.attachmentId} '
+          'resumeFromByte=${prepared.resumeFromByte} '
+          'startModifiedAt=${prepared.sourceFileModifiedAtStart?.toIso8601String()} '
+          'endModifiedAt=${fileStat.modified.toIso8601String()} '
+          'filePath=${file.path}',
+        );
+        talker.warning(
+          '[DCHLL_TRANSFER_ALERT] outgoing source file modified during transfer '
+          'attachmentId=${prepared.attachmentId} '
+          'remoteDeviceId=${prepared.remoteDeviceId} '
+          'resumeFromByte=${prepared.resumeFromByte} '
+          'startModifiedAt=${prepared.sourceFileModifiedAtStart?.toIso8601String()} '
+          'endModifiedAt=${fileStat.modified.toIso8601String()} '
+          'filePath=${file.path}',
+        );
+      }
+      prepared.checksumSha256 = streamedChecksum;
+      return streamedChecksum;
+    }
+    throw const FileTransferException(
+      'missing_streamed_checksum_for_completed_transfer',
+    );
   }
 
   Future<List<List<int>>> _readFileSeedChunks({
@@ -2546,6 +2737,28 @@ class FileTransferCoordinator {
     }
     final chunks = <List<int>>[];
     await for (final chunk in file.openRead(0, endOffset)) {
+      if (chunk.isEmpty) {
+        continue;
+      }
+      chunks.add(Uint8List.fromList(chunk));
+    }
+    return chunks;
+  }
+
+  Future<List<List<int>>> _readFileCheckpointSeedChunks({
+    required File file,
+    required int endOffset,
+    required int segmentBytes,
+  }) async {
+    if (endOffset <= 0 || segmentBytes <= 0) {
+      return const [];
+    }
+    final checkpointSeedStart = (endOffset ~/ segmentBytes) * segmentBytes;
+    if (checkpointSeedStart >= endOffset) {
+      return const [];
+    }
+    final chunks = <List<int>>[];
+    await for (final chunk in file.openRead(checkpointSeedStart, endOffset)) {
       if (chunk.isEmpty) {
         continue;
       }
@@ -2790,6 +3003,7 @@ class _IncomingFileTransfer {
     required this.connection,
     required this.randomAccessFile,
     required this.totalBytes,
+    required this.resumeFromByte,
     required this.chunkAckIntervalBytes,
     required this.postProcessor,
     this.transferredBytes = 0,
@@ -2802,8 +3016,10 @@ class _IncomingFileTransfer {
   final TransferConnection connection;
   final RandomAccessFile randomAccessFile;
   final int totalBytes;
+  final int resumeFromByte;
   final int chunkAckIntervalBytes;
   final TransferChunkPostProcessorSession postProcessor;
+  final _ChunkDigestTrail chunkDigestTrail = _ChunkDigestTrail();
   int transferredBytes;
   int lastAcknowledgedBytes = 0;
   String? checksumSha256;
@@ -2825,6 +3041,7 @@ class _OutgoingFileTransfer {
     required this.file,
     required this.fileName,
     required this.totalBytes,
+    required this.sourceFileModifiedAtStart,
     this.mimeType,
   });
 
@@ -2835,9 +3052,45 @@ class _OutgoingFileTransfer {
   final String fileName;
   final String? mimeType;
   final int totalBytes;
+  final DateTime? sourceFileModifiedAtStart;
+  final _ChunkDigestTrail chunkDigestTrail = _ChunkDigestTrail();
+  int resumeFromByte = 0;
   int lastSentOffset = 0;
   int acknowledgedBytes = 0;
   String? checksumSha256;
+}
+
+class _ChunkDigestTrail {
+  _ChunkDigestTrail();
+
+  static const int maxEntries = 6;
+  final ListQueue<_ChunkDigestEntry> _entries = ListQueue<_ChunkDigestEntry>();
+
+  void record({required int offset, required List<int> bytes}) {
+    if (bytes.isEmpty) {
+      return;
+    }
+    if (_entries.length >= maxEntries) {
+      _entries.removeFirst();
+    }
+    _entries.addLast(_ChunkDigestEntry(offset: offset, length: bytes.length));
+  }
+
+  String describe() {
+    if (_entries.isEmpty) {
+      return '[]';
+    }
+    return _entries
+        .map((entry) => '{offset=${entry.offset},length=${entry.length}}')
+        .join(',');
+  }
+}
+
+class _ChunkDigestEntry {
+  const _ChunkDigestEntry({required this.offset, required this.length});
+
+  final int offset;
+  final int length;
 }
 
 class FileTransferException implements Exception {
@@ -3179,56 +3432,4 @@ class _AckWindowWaiter {
 
   final bool Function(int acknowledgedBytes) predicate;
   final Completer<void> completer;
-}
-
-class _StreamingSha256Accumulator {
-  _StreamingSha256Accumulator() {
-    _sink = sha256.startChunkedConversion(_digestSink);
-  }
-
-  final _DigestCaptureSink _digestSink = _DigestCaptureSink();
-  late final ByteConversionSink _sink;
-  bool _closed = false;
-
-  Future<void> addFileRange(File file, {required int endOffset}) async {
-    if (_closed || endOffset <= 0) {
-      return;
-    }
-    await for (final chunk in file.openRead(0, endOffset)) {
-      addBytes(chunk);
-    }
-  }
-
-  void addBytes(List<int> chunk) {
-    if (_closed || chunk.isEmpty) {
-      return;
-    }
-    _sink.add(chunk);
-  }
-
-  String closeAndDigest() {
-    if (!_closed) {
-      _sink.close();
-      _closed = true;
-    }
-    final digest = _digestSink.digest;
-    if (digest == null) {
-      throw const FileTransferException(
-        'Failed to finalize transfer checksum.',
-      );
-    }
-    return digest.toString();
-  }
-}
-
-class _DigestCaptureSink implements Sink<Digest> {
-  Digest? digest;
-
-  @override
-  void add(Digest data) {
-    digest = data;
-  }
-
-  @override
-  void close() {}
 }

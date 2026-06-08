@@ -3,14 +3,18 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hydrop/application/connection/transfer_server_port_registry.dart';
 import 'package:hydrop/application/transfer/file_transfer_coordinator.dart';
 import 'package:hydrop/core/constants/transfer_constants.dart';
 import 'package:hydrop/core/utils/talker/talker.dart';
+import 'package:hydrop/data/local/dao/device_address_dao.dart';
 import 'package:hydrop/data/local/model/connection/connection_session.dart';
 import 'package:hydrop/data/local/model/device/device.dart';
+import 'package:hydrop/data/local/repository/device_address_repository.dart';
 import 'package:hydrop/data/local/repository/device_repository.dart';
 import 'package:hydrop/data/local/repository/connection_session_repository.dart';
 import 'package:hydrop/data/local/repository/message_repository.dart';
+import 'package:hydrop/data/local/repository/mine_repository.dart';
 import 'package:hydrop/data/remote/service/frame_codec.dart';
 import 'package:hydrop/data/remote/service/transfer_socket_service.dart';
 
@@ -23,9 +27,12 @@ final transferServerControllerProvider = Provider<TransferServerController>((
   final controller = TransferServerController(
     transferSocketService: ref.watch(transferSocketServiceProvider),
     fileTransferCoordinator: ref.watch(fileTransferCoordinatorProvider),
+    portRegistry: ref.watch(transferServerPortRegistryProvider),
+    deviceAddressRepository: ref.watch(deviceAddressRepositoryProvider),
     deviceRepository: ref.watch(deviceRepositoryProvider),
     connectionSessionRepository: ref.watch(connectionSessionRepositoryProvider),
     messageRepository: ref.watch(messageRepositoryProvider),
+    mineRepository: ref.watch(mineRepositoryProvider),
   );
 
   unawaited(
@@ -41,22 +48,31 @@ class TransferServerController {
   TransferServerController({
     required TransferSocketService transferSocketService,
     FileTransferCoordinator? fileTransferCoordinator,
+    TransferServerPortRegistry? portRegistry,
+    DeviceAddressRepository? deviceAddressRepository,
     DeviceRepository? deviceRepository,
     ConnectionSessionRepository? connectionSessionRepository,
     MessageRepository? messageRepository,
+    MineRepository? mineRepository,
     DateTime Function()? now,
   }) : _transferSocketService = transferSocketService,
        _fileTransferCoordinator = fileTransferCoordinator,
+       _portRegistry = portRegistry,
+       _deviceAddressRepository = deviceAddressRepository,
        _deviceRepository = deviceRepository,
        _connectionSessionRepository = connectionSessionRepository,
        _messageRepository = messageRepository,
+       _mineRepository = mineRepository,
        _now = now ?? DateTime.now;
 
   final TransferSocketService _transferSocketService;
   final FileTransferCoordinator? _fileTransferCoordinator;
+  final TransferServerPortRegistry? _portRegistry;
+  final DeviceAddressRepository? _deviceAddressRepository;
   final DeviceRepository? _deviceRepository;
   final ConnectionSessionRepository? _connectionSessionRepository;
   final MessageRepository? _messageRepository;
+  final MineRepository? _mineRepository;
   final DateTime Function() _now;
 
   TransferServer? _server;
@@ -164,6 +180,7 @@ class TransferServerController {
     final server = _server;
     _server = null;
     _serverDoneFuture = null;
+    _portRegistry?.reset();
     await server?.close();
     talker.debug('[$_transferDiagTag] transfer server stopped');
   }
@@ -177,6 +194,7 @@ class TransferServerController {
         port: transferDefaultPort,
         onConnection: _handleConnection,
       );
+      _portRegistry?.update(_server!.port);
       _watchServerLifecycle(_server!);
       _restartTimer?.cancel();
       _restartTimer = null;
@@ -186,10 +204,7 @@ class TransferServerController {
       talker.debug('DchllTest 消息接收服务已启动：监听端口=${_server?.port}');
     } on TransferSocketException catch (error, stackTrace) {
       if (_isAddressInUse(error)) {
-        talker.warning(
-          'DchllTest 消息接收服务端口被占用，已跳过启动：端口=$transferDefaultPort 错误=$error',
-        );
-        _scheduleRestart();
+        await _startOnFallbackPort(error);
         return;
       }
       talker.error(
@@ -203,6 +218,37 @@ class TransferServerController {
         'DchllTest 消息接收服务启动失败：端口=$transferDefaultPort 错误=$error',
         error,
         stackTrace,
+      );
+      _scheduleRestart();
+    }
+  }
+
+  Future<void> _startOnFallbackPort(
+    TransferSocketException originalError,
+  ) async {
+    try {
+      _server = await _transferSocketService.startServer(
+        port: 0,
+        onConnection: _handleConnection,
+      );
+      _portRegistry?.update(_server!.port);
+      _watchServerLifecycle(_server!);
+      _restartTimer?.cancel();
+      _restartTimer = null;
+      talker.warning(
+        'DchllTest 消息接收服务默认端口被占用，已切换到动态端口：'
+        '默认端口=$transferDefaultPort 实际端口=${_server?.port} 错误=$originalError',
+      );
+      talker.warning(
+        '[$_transferDiagTag] transfer server fallback port engaged '
+        'defaultPort=$transferDefaultPort actualPort=${_server?.port}',
+      );
+    } catch (fallbackError, fallbackStackTrace) {
+      talker.error(
+        'DchllTest 消息接收服务动态端口启动失败：默认端口=$transferDefaultPort '
+        '原始错误=$originalError 回退错误=$fallbackError',
+        fallbackError,
+        fallbackStackTrace,
       );
       _scheduleRestart();
     }
@@ -405,13 +451,16 @@ class TransferServerController {
     TransferFrame frame,
   ) async {
     await _trackConnectionPeer(connection, frame);
+    final profile = await _mineRepository?.getMineProfile();
     await connection.sendFrame(
       TransferFrame(
         header: {
           'type': transferFrameTypeHeartbeatAck,
           'protocolVersion': transferProtocolVersion,
           'requestId': frame.header['requestId'],
-          'senderDeviceId': frame.header['senderDeviceId'],
+          'senderDeviceId': profile?.deviceId,
+          'senderDisplayName': profile?.displayName,
+          'senderTransferPort': _portRegistry?.currentPort,
           'receivedAt': _now().millisecondsSinceEpoch,
         },
       ),
@@ -643,12 +692,36 @@ class TransferServerController {
     }
 
     final now = _now();
+    final announcedTransferPort = frame.header['senderTransferPort'] is int
+        ? frame.header['senderTransferPort'] as int
+        : transferDefaultPort;
     final sessionId = _connectionSessionIds.putIfAbsent(
       connection,
       () => 'incoming_${connection.remoteAddress}_${connection.remotePort}',
     );
     _connectionDeviceIds[connection] = deviceId;
     _startHeartbeatTimeout(connection);
+    await _deviceRepository?.saveDiscoveredDevice(
+      displayName: _readString(frame.header['senderDisplayName']) ?? deviceId,
+      deviceId: deviceId,
+      connectionStatus: DeviceConnectionStatus.localNetwork,
+      lastConnectedAt: now,
+      lastTransferAt: now,
+    );
+    await _deviceAddressRepository?.saveAddress(
+      DeviceAddressUpsert(
+        deviceId: deviceId,
+        ipAddress: connection.remoteAddress,
+        ipVersion: connection.remoteAddress.contains(':')
+            ? DeviceIpVersion.ipv6
+            : DeviceIpVersion.ipv4,
+        port: announcedTransferPort,
+        source: DeviceAddressSource.remembered,
+        isReachable: true,
+        lastSeenAt: now,
+        lastSuccessAt: now,
+      ),
+    );
     await _deviceRepository?.markConnected(deviceId: deviceId, at: now);
     await _connectionSessionRepository?.saveSession(
       sessionId: sessionId,

@@ -30,6 +30,7 @@ class TransferChunkPostProcessor {
     required int segmentBytes,
     required int resumeFromByte,
     required List<List<int>> seedChunks,
+    required List<List<int>> checkpointSeedChunks,
   }) async {
     final receivePort = ReceivePort();
     final errorPort = ReceivePort();
@@ -46,6 +47,7 @@ class TransferChunkPostProcessor {
         segmentBytes: segmentBytes,
         resumeFromByte: resumeFromByte,
         seedChunks: seedChunks,
+        checkpointSeedChunks: checkpointSeedChunks,
         replyPort: receivePort.sendPort,
       ),
       onError: errorPort.sendPort,
@@ -106,7 +108,9 @@ class TransferChunkPostProcessorSession {
       _postProcessorCommandAddChunk,
       requestId,
       endOffset,
-      TransferableTypedData.fromList([Uint8List.fromList(bytes)]),
+      TransferableTypedData.fromList([
+        bytes is Uint8List ? bytes : Uint8List.fromList(bytes),
+      ]),
     ]);
     return completer.future;
   }
@@ -248,12 +252,14 @@ class _TransferChunkPostProcessorRequest {
     required this.segmentBytes,
     required this.resumeFromByte,
     required this.seedChunks,
+    required this.checkpointSeedChunks,
     required this.replyPort,
   });
 
   final int segmentBytes;
   final int resumeFromByte;
   final List<List<int>> seedChunks;
+  final List<List<int>> checkpointSeedChunks;
   final SendPort replyPort;
 }
 
@@ -272,11 +278,23 @@ Future<void> _transferChunkPostProcessorMain(
     request.segmentBytes,
   )..seedFromOffset(request.resumeFromByte);
 
+  var checkpointSeedOffset = request.resumeFromByte;
+  for (final chunk in request.checkpointSeedChunks) {
+    checkpointSeedOffset -= chunk.length;
+  }
+
   for (final seed in request.seedChunks) {
     if (seed.isEmpty) {
       continue;
     }
     checksumAccumulator.add(seed);
+  }
+  for (final seed in request.checkpointSeedChunks) {
+    if (seed.isEmpty) {
+      continue;
+    }
+    checkpointSeedOffset += seed.length;
+    checkpointBuilder.addChunk(seed, endOffset: checkpointSeedOffset);
   }
 
   var isDone = false;

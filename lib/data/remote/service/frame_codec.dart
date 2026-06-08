@@ -152,10 +152,12 @@ class _FrameBuffer {
   Uint8List readBytes(int length) {
     final start = _start;
     final end = start + length;
-    final bytes = Uint8List.sublistView(_storage, start, end);
+    final bytes = Uint8List.fromList(
+      Uint8List.sublistView(_storage, start, end),
+    );
     _start = end;
     _maybeCompact();
-    return Uint8List.fromList(bytes);
+    return bytes;
   }
 
   void _ensureCapacity(int incomingLength) {

@@ -129,6 +129,7 @@ class DiscoveryBroadcastService {
     required String deviceId,
     required String displayName,
     required int tcpPort,
+    int Function()? tcpPortResolver,
     required Iterable<String> capabilities,
   }) async {
     await stop();
@@ -136,6 +137,7 @@ class DiscoveryBroadcastService {
       deviceId: deviceId,
       displayName: displayName,
       tcpPort: tcpPort,
+      tcpPortResolver: tcpPortResolver,
       capabilities: List.unmodifiable(capabilities),
     );
     await _openSockets();
@@ -157,7 +159,21 @@ class DiscoveryBroadcastService {
 
   Future<void> _openSockets() async {
     final sources = await _localNetworkAddressService.listBroadcastSources();
+    final existingKeys = _sockets.map((socket) => socket.source.key).toSet();
+    final nextKeys = sources.map((source) => source.key).toSet();
+
+    _sockets.removeWhere((socket) {
+      if (nextKeys.contains(socket.source.key)) {
+        return false;
+      }
+      socket.close();
+      return true;
+    });
+
     for (final source in sources) {
+      if (existingKeys.contains(source.key)) {
+        continue;
+      }
       try {
         final socket = await _socketFactory(source);
         _sockets.add(_ManagedDiscoveryBroadcastSocket(source, socket));
@@ -172,9 +188,7 @@ class DiscoveryBroadcastService {
       return;
     }
 
-    if (_sockets.isEmpty) {
-      await _openSockets();
-    }
+    await _openSockets();
     if (_sockets.isEmpty) {
       return;
     }
@@ -187,7 +201,7 @@ class DiscoveryBroadcastService {
         deviceId: _session!.deviceId,
         displayName: _session!.displayName,
         protocolVersion: discoveryBroadcastProtocolVersion,
-        tcpPort: _session!.tcpPort,
+        tcpPort: _session!.resolvedTcpPort,
         capabilities: _session!.capabilities,
         nonce: _nonceGenerator(),
         sentAt: _now(),
@@ -231,13 +245,23 @@ class _BroadcastSession {
     required this.deviceId,
     required this.displayName,
     required this.tcpPort,
+    this.tcpPortResolver,
     required this.capabilities,
   });
 
   final String deviceId;
   final String displayName;
   final int tcpPort;
+  final int Function()? tcpPortResolver;
   final List<String> capabilities;
+
+  int get resolvedTcpPort {
+    final resolved = tcpPortResolver?.call();
+    if (resolved == null || resolved <= 0) {
+      return tcpPort;
+    }
+    return resolved;
+  }
 }
 
 class _ManagedDiscoveryBroadcastSocket {

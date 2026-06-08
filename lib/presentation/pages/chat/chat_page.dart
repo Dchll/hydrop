@@ -4,6 +4,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hydrop/application/transfer/attachment_action_controller.dart';
 import 'package:hydrop/application/chat/chat_page_state.dart';
 import 'package:hydrop/application/chat/chat_search_state.dart';
 import 'package:hydrop/application/transfer/transfer_progress_state.dart';
@@ -70,128 +71,156 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     final messages = ref.watch(conversationProvider(widget.remoteDeviceId));
     final searchState = ref.watch(chatSearchProvider(widget.remoteDeviceId));
     final l10n = AppLocalizations.of(context);
+    final borderColor = Theme.of(context).colorScheme.outlineVariant;
 
     return HdPageScaffold(
       padding: const EdgeInsets.all(6),
       child: Column(
         children: [
-          HdFloatingAppBar(
-            title: widget.displayName,
-            leading: widget.showBackButton
-                ? HdFloatingIconButton(
-                    icon: Icons.arrow_back_rounded,
-                    tooltip: l10n.backToDevices,
-                    onPressed: () => context.maybePop(),
-                  )
-                : null,
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                HdFloatingIconButton(
-                  icon: searchState.isSearching
-                      ? Icons.close_rounded
-                      : Icons.search_rounded,
-                  tooltip: searchState.isSearching
-                      ? l10n.closeSearch
-                      : l10n.searchMessages,
-                  onPressed: _toggleSearch,
-                ),
-                const SizedBox(width: 8),
-                HdFloatingIconButton(
-                  icon: Icons.info_outline_rounded,
-                  tooltip: l10n.deviceInfo,
-                  onPressed: _showDeviceInfo,
-                ),
-                const SizedBox(width: 8),
-                HdFloatingIconButton(
-                  icon: Icons.delete_outline_rounded,
-                  tooltip: l10n.clearConversation,
-                  onPressed: _confirmClearConversation,
-                ),
-              ],
+          DecoratedBox(
+            decoration: BoxDecoration(
+              border: Border(bottom: BorderSide(color: borderColor, width: 1)),
             ),
-            bottom: searchState.isSearching
-                ? _ChatSearchBar(
-                    controller: _searchController,
-                    query: searchState.query,
-                    selectedIndex: searchState.selectedIndex,
-                    resultCount: _searchResultCount(
-                      messages.asData?.value ?? const [],
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: HdFloatingAppBar(
+                title: widget.displayName,
+                leading: widget.showBackButton
+                    ? HdFloatingIconButton(
+                        icon: Icons.arrow_back_rounded,
+                        tooltip: l10n.backToDevices,
+                        onPressed: () => context.maybePop(),
+                      )
+                    : null,
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    HdFloatingIconButton(
+                      icon: searchState.isSearching
+                          ? Icons.close_rounded
+                          : Icons.search_rounded,
+                      tooltip: searchState.isSearching
+                          ? l10n.closeSearch
+                          : l10n.searchMessages,
+                      onPressed: _toggleSearch,
                     ),
-                    onChanged: (query) {
-                      ref
-                          .read(
-                            chatSearchProvider(widget.remoteDeviceId).notifier,
-                          )
-                          .updateQuery(query);
-                    },
-                    onPrevious: _selectPreviousSearchResult,
-                    onNext: _selectNextSearchResult,
-                  )
-                : null,
+                    const SizedBox(width: 8),
+                    HdFloatingIconButton(
+                      icon: Icons.info_outline_rounded,
+                      tooltip: l10n.deviceInfo,
+                      onPressed: _showDeviceInfo,
+                    ),
+                    const SizedBox(width: 8),
+                    HdFloatingIconButton(
+                      icon: Icons.delete_outline_rounded,
+                      tooltip: l10n.clearConversation,
+                      onPressed: _confirmClearConversation,
+                    ),
+                  ],
+                ),
+                bottom: searchState.isSearching
+                    ? _ChatSearchBar(
+                        controller: _searchController,
+                        query: searchState.query,
+                        selectedIndex: searchState.selectedIndex,
+                        resultCount: _searchResultCount(
+                          messages.asData?.value ?? const [],
+                        ),
+                        onChanged: (query) {
+                          ref
+                              .read(
+                                chatSearchProvider(
+                                  widget.remoteDeviceId,
+                                ).notifier,
+                              )
+                              .updateQuery(query);
+                        },
+                        onPrevious: _selectPreviousSearchResult,
+                        onNext: _selectNextSearchResult,
+                      )
+                    : null,
+              ),
+            ),
           ),
-          const SizedBox(height: 6),
           Expanded(
-            child: messages.when(
-              data: (items) {
-                final matches = _matchingMessages(items, searchState.query);
-                final isSearching = searchState.query.trim().isNotEmpty;
-                final visibleItems = isSearching
-                    ? items
-                    : _pagedMessages(items);
-                _lastFilteredMessages = matches;
-                _lastRenderedMessages = visibleItems;
-                final highlightedMessageId = _highlightedMessageId(
-                  matches,
-                  searchState,
-                );
-                return ChatMessageTimeline(
-                  messages: visibleItems,
-                  hasOlderMessages:
-                      !isSearching && items.length > visibleItems.length,
-                  onLoadOlder: _loadOlderMessages,
-                  searchQuery: searchState.query,
-                  highlightedMessageId: highlightedMessageId,
-                  peerDisplayName: widget.displayName,
-                  onOpenAttachment: _showAttachmentDetail,
-                  onShowMessageActions: _showMessageActions,
-                  onPauseAttachment: _pauseAttachment,
-                  onResumeAttachment: _resumeAttachment,
-                  onCancelAttachment: _confirmCancelAttachment,
-                  emptyTitle: l10n.noMessagesYet,
-                  emptyMessage: l10n.emptyConversationMessage,
-                );
-              },
-              error: (error, stackTrace) => HdPanel(
-                child: ChatCenteredState(
-                  title: l10n.unableToLoadConversation,
-                  message: error.toString(),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(color: borderColor, width: 1),
                 ),
               ),
-              loading: () => const HdPanel(
-                child: Center(child: CircularProgressIndicator()),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: messages.when(
+                  data: (items) {
+                    final matches = _matchingMessages(items, searchState.query);
+                    final isSearching = searchState.query.trim().isNotEmpty;
+                    final visibleItems = isSearching
+                        ? items
+                        : _pagedMessages(items);
+                    _lastFilteredMessages = matches;
+                    _lastRenderedMessages = visibleItems;
+                    final highlightedMessageId = _highlightedMessageId(
+                      matches,
+                      searchState,
+                    );
+                    return ChatMessageTimeline(
+                      messages: visibleItems,
+                      hasOlderMessages:
+                          !isSearching && items.length > visibleItems.length,
+                      onLoadOlder: _loadOlderMessages,
+                      searchQuery: searchState.query,
+                      highlightedMessageId: highlightedMessageId,
+                      peerDisplayName: widget.displayName,
+                      onOpenAttachment: _openAttachmentFromTap,
+                      onShowAttachmentMore: _showAttachmentMoreActions,
+                      onOpenAttachmentInSystemApp: _openAttachmentInSystemApp,
+                      onSaveAttachmentAs: _saveAttachment,
+                      onShowMessageActions: _showMessageActions,
+                      onPauseAttachment: _pauseAttachment,
+                      onResumeAttachment: _resumeAttachment,
+                      onCancelAttachment: _confirmCancelAttachment,
+                      emptyTitle: l10n.noMessagesYet,
+                      emptyMessage: l10n.emptyConversationMessage,
+                    );
+                  },
+                  error: (error, stackTrace) => HdPanel(
+                    child: ChatCenteredState(
+                      title: l10n.unableToLoadConversation,
+                      message: error.toString(),
+                    ),
+                  ),
+                  loading: () => const HdPanel(
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                ),
               ),
             ),
           ),
-          AnimatedPadding(
-            duration: const Duration(milliseconds: 180),
-            curve: Curves.easeOutCubic,
-            padding: EdgeInsets.only(
-              top: 12,
-              bottom: keyboardInset > padding.bottom
-                  ? keyboardInset - padding.bottom
-                  : 0,
+          DecoratedBox(
+            decoration: BoxDecoration(
+              border: Border(top: BorderSide(color: borderColor, width: 1)),
             ),
-            child: ChatComposer(
-              controller: _messageController,
-              isPickingFile: _isPickingFile,
-              isDropTargetHighlighted: _isDropTargetHighlighted,
-              onSend: _sendText,
-              onAttachFile: _pickFile,
-              onFilesDropped: _sendDroppedFiles,
-              onPasteFiles: _pasteFiles,
-              onDropHighlightChanged: _setDropTargetHighlighted,
-              onPickEmoji: _insertEmoji,
+            child: AnimatedPadding(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOutCubic,
+              padding: EdgeInsets.only(
+                top: 8,
+                bottom: keyboardInset > padding.bottom
+                    ? keyboardInset - padding.bottom
+                    : 0,
+              ),
+              child: ChatComposer(
+                controller: _messageController,
+                isPickingFile: _isPickingFile,
+                isDropTargetHighlighted: _isDropTargetHighlighted,
+                onSend: _sendText,
+                onAttachFile: _pickFile,
+                onFilesDropped: _sendDroppedFiles,
+                onPasteFiles: _pasteFiles,
+                onDropHighlightChanged: _setDropTargetHighlighted,
+                onPickEmoji: _insertEmoji,
+              ),
             ),
           ),
         ],
@@ -872,11 +901,11 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     );
   }
 
-  Future<void> _showAttachmentDetail(
+  Future<void> _openAttachmentFromTap(
     MessageAttachmentSnapshot attachment,
     MessageDirection direction,
     String? messageError,
-  ) {
+  ) async {
     final fileName = attachment.fileName ?? '';
     final isImage =
         (attachment.mimeType ?? '').startsWith('image/') ||
@@ -917,6 +946,28 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         ChatVideoViewer(attachment: attachment, onSave: _saveAttachment),
       );
     }
+    if (attachment.filePath != null && attachment.filePath!.trim().isNotEmpty) {
+      final l10n = AppLocalizations.of(context);
+      try {
+        await ref
+            .read(attachmentActionControllerProvider)
+            .openOnDevice(attachment);
+        return;
+      } catch (error) {
+        _showSnackBar(l10n.actionFailed('$error'));
+        return;
+      }
+    }
+  }
+
+  Future<void> _showAttachmentDetail(
+    MessageAttachmentSnapshot attachment,
+    MessageDirection direction,
+    String? messageError,
+  ) async {
+    if (!mounted) {
+      return;
+    }
     final colorScheme = Theme.of(context).colorScheme;
     return showModalBottomSheet<void>(
       context: context,
@@ -942,6 +993,91 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         );
       },
     );
+  }
+
+  Future<void> _showAttachmentMoreActions(
+    MessageAttachmentSnapshot attachment,
+    MessageDirection direction,
+    String? messageError,
+  ) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context);
+    final fileName = attachment.fileName ?? l10n.fileAttachment;
+    return showModalBottomSheet<void>(
+      context: context,
+      useSafeArea: true,
+      showDragHandle: false,
+      builder: (sheetContext) {
+        return Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: colorScheme.surface,
+            border: Border(
+              top: BorderSide(color: colorScheme.outline, width: 2),
+            ),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (attachment.filePath != null &&
+                    attachment.filePath!.trim().isNotEmpty)
+                  _ActionSheetTile(
+                    icon: Icons.open_in_new_rounded,
+                    title: '${l10n.open} - $fileName',
+                    onTap: () async {
+                      Navigator.of(sheetContext).pop();
+                      try {
+                        await ref
+                            .read(attachmentActionControllerProvider)
+                            .openOnDevice(attachment);
+                      } catch (error) {
+                        _showSnackBar(l10n.actionFailed('$error'));
+                      }
+                    },
+                  ),
+                if (attachment.filePath != null &&
+                    attachment.filePath!.trim().isNotEmpty)
+                  _ActionSheetTile(
+                    icon: Icons.save_alt_rounded,
+                    title: '${l10n.save} - $fileName',
+                    onTap: () async {
+                      Navigator.of(sheetContext).pop();
+                      await _saveAttachment(attachment);
+                    },
+                  ),
+                _ActionSheetTile(
+                  icon: Icons.info_outline_rounded,
+                  title: '${l10n.deviceInfo} - $fileName',
+                  onTap: () async {
+                    Navigator.of(sheetContext).pop();
+                    await _showAttachmentDetail(
+                      attachment,
+                      direction,
+                      messageError,
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _openAttachmentInSystemApp(
+    MessageAttachmentSnapshot attachment,
+  ) async {
+    final l10n = AppLocalizations.of(context);
+    try {
+      await ref
+          .read(attachmentActionControllerProvider)
+          .openOnDevice(attachment);
+    } catch (error) {
+      _showSnackBar(l10n.actionFailed('$error'));
+    }
   }
 
   Future<void> _showFullScreenPreview(Widget child) {

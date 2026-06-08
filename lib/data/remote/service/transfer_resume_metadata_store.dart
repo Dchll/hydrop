@@ -80,7 +80,7 @@ class TransferResumeMetadataStore {
     }
 
     if (fileLength != validBytes) {
-      final raf = await file.open(mode: FileMode.write);
+      final raf = await file.open(mode: FileMode.append);
       try {
         await raf.truncate(validBytes);
       } finally {

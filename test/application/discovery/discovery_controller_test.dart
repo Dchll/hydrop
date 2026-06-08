@@ -1,5 +1,6 @@
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hydrop/application/connection/transfer_server_port_registry.dart';
 import 'package:hydrop/core/constants/discovery_constants.dart';
 import 'package:hydrop/data/local/dao/device_address_dao.dart';
 import 'package:hydrop/application/discovery/discovery_controller.dart';
@@ -12,6 +13,7 @@ import 'package:hydrop/data/remote/service/discovery_broadcast_service.dart';
 import 'package:hydrop/data/remote/service/discovery_payload_codec.dart';
 import 'package:hydrop/data/remote/service/discovery_socket_service.dart';
 import 'package:hydrop/data/remote/service/local_network_address_service.dart';
+import 'package:hydrop/data/remote/service/transfer_socket_service.dart';
 
 void main() {
   test(
@@ -37,8 +39,10 @@ void main() {
         mineRepository: mineRepository,
         deviceRepository: deviceRepository,
         deviceAddressRepository: addressRepository,
+        portRegistry: TransferServerPortRegistry(),
         broadcastService: broadcastService,
         socketService: socketService,
+        transferSocketService: const FakeTransferSocketService(),
         now: () => now,
       );
       addTearDown(controller.stop);
@@ -131,8 +135,10 @@ void main() {
       mineRepository: mineRepository,
       deviceRepository: DeviceRepository(database.deviceDao),
       deviceAddressRepository: addressRepository,
+      portRegistry: TransferServerPortRegistry(),
       broadcastService: FakeDiscoveryBroadcastService(),
       socketService: socketService,
+      transferSocketService: const FakeTransferSocketService(),
     );
     addTearDown(controller.stop);
 
@@ -208,8 +214,10 @@ void main() {
         mineRepository: mineRepository,
         deviceRepository: deviceRepository,
         deviceAddressRepository: addressRepository,
+        portRegistry: TransferServerPortRegistry(),
         broadcastService: FakeDiscoveryBroadcastService(),
         socketService: FakeDiscoverySocketService(),
+        transferSocketService: const FakeTransferSocketService(),
         now: () => now,
         ttlTimerFactory: (interval, onTick) {
           ttlTimer = FakeDiscoveryControllerTimerHandle(
@@ -258,6 +266,7 @@ class FakeDiscoveryBroadcastService extends DiscoveryBroadcastService {
     required String deviceId,
     required String displayName,
     required int tcpPort,
+    int Function()? tcpPortResolver,
     required Iterable<String> capabilities,
   }) async {
     startedDeviceId = deviceId;
@@ -319,5 +328,18 @@ class FakeDiscoveryControllerTimerHandle
   @override
   void cancel() {
     cancelled = true;
+  }
+}
+
+class FakeTransferSocketService extends TransferSocketService {
+  const FakeTransferSocketService() : super();
+
+  @override
+  Future<TransferConnection> connect(
+    String host,
+    int port, {
+    Duration timeout = const Duration(seconds: 8),
+  }) async {
+    throw const TransferSocketException('not implemented in test');
   }
 }

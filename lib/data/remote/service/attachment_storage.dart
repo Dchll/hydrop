@@ -18,17 +18,16 @@ class AttachmentStorage {
     required String remoteDeviceId,
     required String attachmentId,
     required String fileName,
+    String? mimeType,
   }) async {
     final root = await _rootProvider();
-    final directory = Directory('${root.path}/Hydrop');
+    final sanitizedFileName = sanitizeFileName(fileName);
+    final directory = root;
     if (!directory.existsSync()) {
       await directory.create(recursive: true);
     }
 
-    return _availableFile(
-      directory: directory,
-      fileName: sanitizeFileName(fileName),
-    );
+    return _availableFile(directory: directory, fileName: sanitizedFileName);
   }
 
   Future<bool> hasSufficientSpaceForIncomingFile({

@@ -32,7 +32,7 @@ class TransferNotificationService {
   static const _channelName = 'Transfer progress';
   static const _channelDescription = 'Shows Hydrop file transfer progress.';
   static const _progressMax = 100;
-  static const _throttle = Duration(milliseconds: 500);
+  static const _throttle = Duration(seconds: 1);
   static const _completionCancelDelay = Duration(seconds: 4);
 
   final SettingRepository _settings;
